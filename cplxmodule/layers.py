@@ -81,13 +81,27 @@ class CplxConv1d(CplxToCplx):
         return u, v
 
 
-class CplxDropout1D(torch.nn.Dropout2d, CplxToCplx):
+class CplxDropout1d(torch.nn.Dropout2d, CplxToCplx):
     r"""
-    Complex dropout layer: simultaneous dropout on both real and imaginary parts.
+    Complex 1d dropout layer: simultaneous dropout on both real and
+    imaginary parts.
+
+    See torch.nn.Dropout1d for reference on the input dimensions and arguments.
     """
     def forward(self, input):
         output = super().forward(cplx_to_real(input, flatten=False))
         return real_to_cplx(output.flatten(-2))
+
+
+class CplxAvgPool1d(torch.nn.AvgPool1d, CplxToCplx):
+    r"""
+    Complex 1d average pooling layer: simultaneously pools both real
+    and imaginary parts.
+
+    See torch.nn.AvgPool1d for reference on the input dimensions and arguments.
+    """
+    def forward(self, input):
+        return tuple(map(super().forward, input))
 
 
 class CplxRotate(CplxToCplx):
