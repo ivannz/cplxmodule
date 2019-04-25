@@ -49,6 +49,11 @@ def cplx_apply(input, f, *a, **k):
     return f(re, *a, **k), f(im, *a, **k)
 
 
+def cplx_identity(input):
+    r"""Return the complex tensor in re-im pair."""
+    return input
+
+
 def cplx_exp(input):
     r"""Compute the exponential of the complex tensor in re-im pair."""
     re, im = input

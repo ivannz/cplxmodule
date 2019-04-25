@@ -9,6 +9,9 @@ from .cplx import cplx_modulus, cplx_angle
 from .cplx import cplx_exp, cplx_log
 
 from .cplx import cplx_apply, cplx_modrelu
+from .cplx import cplx_identity
+
+from .utils import torch_module
 
 
 class CplxActivation(CplxToCplx):
@@ -23,21 +26,6 @@ class CplxActivation(CplxToCplx):
         return cplx_apply(input, self.f, *self.a, **self.k)
 
 
-class CplxModulus(CplxToReal):
-    def forward(self, input):
-        return cplx_modulus(input)
-
-
-class CplxAngle(CplxToReal):
-    def forward(self, input):
-        return cplx_angle(input)
-
-
-class CplxIdentity(CplxToCplx):
-    def forward(self, input):
-        return input
-
-
 class CplxModReLU(CplxToCplx):
     def __init__(self, threshold=0.5):
         super().__init__()
@@ -47,11 +35,12 @@ class CplxModReLU(CplxToCplx):
         return cplx_modrelu(input, self.threshold)
 
 
-class CplxExp(CplxToCplx):
-    def forward(self, input):
-        return cplx_exp(input)
+CplxModulus = torch_module(cplx_modulus, (CplxToReal,), "CplxModulus")
 
+CplxAngle = torch_module(cplx_angle, (CplxToReal,), "CplxAngle")
 
-class CplxLog(CplxToCplx):
-    def forward(self, input):
-        return cplx_log(input)
+CplxIdentity = torch_module(cplx_identity, (CplxToCplx,), "CplxIdentity")
+
+CplxExp = torch_module(cplx_exp, (CplxToCplx,), "CplxExp")
+
+CplxLog = torch_module(cplx_log, (CplxToCplx,), "CplxLog")
