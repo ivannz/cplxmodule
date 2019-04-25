@@ -101,6 +101,7 @@ class CplxAvgPool1d(torch.nn.AvgPool1d, CplxToCplx):
     See torch.nn.AvgPool1d for reference on the input dimensions and arguments.
     """
     def forward(self, input):
+        # apply parent.forward to re and im parts
         return tuple(map(super().forward, input))
 
 
