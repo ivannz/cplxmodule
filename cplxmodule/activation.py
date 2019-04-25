@@ -6,7 +6,9 @@ import torch.nn.functional as F
 from .base import CplxToCplx, CplxToReal
 
 from .cplx import cplx_modulus, cplx_angle
-from .cplx import cplx_apply, cplx_exp, cplx_log
+from .cplx import cplx_exp, cplx_log
+
+from .cplx import cplx_apply, cplx_modrelu
 
 
 class CplxActivation(CplxToCplx):
@@ -34,6 +36,15 @@ class CplxAngle(CplxToReal):
 class CplxIdentity(CplxToCplx):
     def forward(self, input):
         return input
+
+
+class CplxModReLU(CplxToCplx):
+    def __init__(self, threshold=0.5):
+        super().__init__()
+        self.threshold = threshold
+
+    def forward(self, input):
+        return cplx_modrelu(input, self.threshold)
 
 
 class CplxExp(CplxToCplx):

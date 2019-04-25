@@ -72,3 +72,14 @@ def cplx_cosh(input):
     r"""Compute the hyperbolic sine of the complex tensor in re-im pair."""
     re, im = input
     return torch.cosh(re) * torch.cos(im), torch.sinh(re) * torch.sin(im)
+
+
+def cplx_modrelu(input, threshold=0.5):
+    r"""Compute the modulus relu of the complex tensor in re-im pair."""
+
+    # gain = (1 - \trfac{b}{|z|})_+
+    mod = torch.clamp(cplx_modulus(input), min=1e-5)
+    gain = torch.relu(mod - threshold) / mod
+
+    re, im = input
+    return gain * re, gain * im
