@@ -27,8 +27,21 @@ class CplxActivation(CplxToCplx):
 
 
 class CplxModReLU(CplxToCplx):
+    r"""
+    Applies soft thresholding to the complex modulus:
+    $$
+        F
+        \colon \mathbb{C} \to \mathbb{C}
+        \colon z \mapsto (\lvert z \rvert - \tau)_+
+                         \tfrac{z}{\lvert z \rvert}
+        \,, $$
+    with $\tau \in \mathbb{R}$. The if threshold=None then it
+    becomes a learnable parameter.
+    """
     def __init__(self, threshold=0.5):
         super().__init__()
+        if not isinstance(threshold, float):
+            threshold = torch.nn.Parameter(torch.rand(1) * 0.25)
         self.threshold = threshold
 
     def forward(self, input):
