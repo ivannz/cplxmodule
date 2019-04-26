@@ -16,9 +16,12 @@ class CplxMultichannelGainLayer(CplxToCplx):
     where $G_i \colon [0, +\infty)^d \to \mathbb{R}^d$ is the complex modulus
     gain function of the $i$-th channel.
 
-    Takes in `... x n_in` complex input and applies complex modulus gain
-    defined via a real-to-real gain network, which maps `... x n_in` to
+    The layer takes in `... x n_in` complex input and applies complex modulus
+    gain defined via a real-to-real gain network, which maps `... x n_in` to
     `... x [C * n_in]` or `... x C x n_in`.
+
+    The output of the gain function must be a mutliple of $d$, i.e. be able
+    to be reshaped into `C \times d`.
     """
     def __init__(self, gain, flatten=False):
         super().__init__()
@@ -35,10 +38,15 @@ class CplxMultichannelGainLayer(CplxToCplx):
 
         # reshape gain `... x C x n_in` and (re, im) `... x 1 x n_in`
         *head, n_features = re.shape
-        gain = gain.reshape(*head, -1, n_features)
-        re, im = re.unsqueeze(-2), im.unsqueeze(-2)
+        try:
+            gain = gain.reshape(*head, -1, n_features)
+        except RuntimeError as e:
+            tail = tuple(gain.shape[len(head):])
+            raise ValueError(f"""`gain` {tail} is incompatible with the """
+                             f"""input complex tensor {n_features}.""") from e
 
         # apply the gain
+        re, im = re.unsqueeze(-2), im.unsqueeze(-2)
         re, im = gain * re, gain * im
 
         if self.flatten:
