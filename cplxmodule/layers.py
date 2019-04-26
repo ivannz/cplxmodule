@@ -7,6 +7,8 @@ from .base import CplxToCplx
 from .base import real_to_cplx
 from .base import cplx_to_real
 
+from .cplx import cplx_phaseshift
+
 
 class CplxLinear(CplxToCplx):
     r"""
@@ -105,27 +107,25 @@ class CplxAvgPool1d(torch.nn.AvgPool1d, CplxToCplx):
         return tuple(map(super().forward, input))
 
 
-class CplxRotate(CplxToCplx):
+class CplxPhaseShift(CplxToCplx):
     r"""
-    A learnable complex phase transform
+    A learnable complex phase shift
     $$
         F
-        \colon \mathbb{C}^{\ldots \times d}
-                \to \mathbb{C}^{\ldots \times d}
-        \colon z \mapsto z e^{i \theta}
+        \colon \mathbb{C}^{\ldots \times C \times d}
+                \to \mathbb{C}^{\ldots \times C \times d}
+        \colon z \mapsto z_{\ldots kj} e^{i \theta_{kj}}
         \,, $$
-    where $\theta$ is in radians.
+    where $\theta_k$ is the phase shift of the $k$-the channel in radians.
+    Torch's broadcasting rules apply and the passed dimensions conform with
+    the upstream input. For example, `CplxPhaseShift(C, 1)` shifts each $d$-dim
+    complex vector by the phase of its channel, and `CplxPhaseShift(d)` shifts
+    each complex feature in all channels by the same phase. Finally calling
+    with CplxPhaseShift(1) shifts the inputs by the single common phase.
     """
-    def __init__(self, in_features):
+    def __init__(self, *dim):
         super().__init__()
-
-        self.alpha = torch.nn.Parameter(torch.randn(in_features) * 0.02)
+        self.phi = torch.nn.Parameter(torch.randn(*dim) * 0.02)
 
     def forward(self, input):
-        re, im = input
-
-        u, v = torch.cos(self.alpha), torch.sin(self.alpha)
-
-        # (u + iv) e^{i \phi}
-        #  = u cos \alpha - v sin \alpha + i (u sin \alpha + v cos \alpha)
-        return re * u - im * v, re * v + im * u
+        return cplx_phaseshift(input, self.phi)

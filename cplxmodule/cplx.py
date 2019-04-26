@@ -88,3 +88,18 @@ def cplx_modrelu(input, threshold=0.5):
 
     re, im = input
     return gain * re, gain * im
+
+
+def cplx_phaseshift(input, phi=0.0):
+    r"""
+    Apply phase shift to the complex tensor in re-im pair.
+    $$
+        F
+        \colon \mathbb{C} \to \mathbb{C}
+        \colon z \mapsto z e^{i\phi}
+                = u cos \phi - v sin \phi
+                    + i (u sin \phi + v cos \phi)
+        \,, $$
+    with $\phi$ in radians.
+    """
+    return cplx_mul(input, (torch.cos(phi), torch.sin(phi)))
