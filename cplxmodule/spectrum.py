@@ -2,36 +2,47 @@ import torch
 import numpy as np
 
 
-def window_view(x, dim, size, stride):
+def fix_dim(dim, n_dim):
+    r"""For the given dimensionality make sure the `axis` is nonnegative."""
+    dim = (n_dim + dim) if dim < 0 else dim
+    assert 0 <= dim < n_dim
+    return dim
+
+
+def window_view(x, dim, size, stride, at=None):
     r"""
     Similar to `torch.unfold()`, but the window dimensions of size `size`
-    is placed right after `dim`, and not appended.
+    is placed right after `dim` (by default), and not appended.
     """
-
-    # correct the dim
-    dim = (x.dim() + dim) if dim < 0 else dim
-    assert 0 <= dim < x.dim()
-
+    dim = fix_dim(dim, x.dim())
     if x.shape[dim] < size:
         raise ValueError(f"""`x` at dim {dim} is too short ({x.shape[dim]}) """
                          f"""for this window size ({size}).""")
 
+    if at is None:
+        at = dim + 1
+    at = fix_dim(at, x.dim() + 1)
+
     # compute new shape and strides
-    shape, strides = x.size(), x.stride()
+    shape, strides = list(x.size()), list(x.stride())
     strided_size = ((shape[dim] - size + 1) + stride - 1) // stride
 
-    # number of full strides in dim
-    shape = shape[:dim] + (strided_size, size) + shape[dim+1:]
-    strides = strides[:dim] + (strides[dim] * stride,
-                               strides[dim]) + strides[dim+1:]
+    # new shape and stride structure
+    shape_view = shape[:dim] + [strided_size] + shape[dim+1:]
+    shape_view.insert(at, size)
+
+    strides_view = strides[:dim] + [strides[dim] * stride] + strides[dim+1:]
+    strides_view.insert(at, strides[dim])
 
     # differentiable strided view
-    return torch.as_strided(x, shape, strides)
+    return torch.as_strided(x, shape_view, strides_view)
 
 
 def pwelch(x, dim, window, fs=1., scaling="density", n_overlap=None):
-    dim = (x.dim() + dim) if dim < 0 else dim
-    assert 0 <= dim < x.dim() - 1
+    dim = fix_dim(dim, x.dim())
+    if not (0 <= dim < x.dim() - 1):
+        raise ValueError("""The last dimension of the input tesnor is """
+                         """reserved for real and imaginary parts.""")
 
     n_window = len(window)
     if n_overlap is None:
@@ -64,15 +75,12 @@ def pwelch(x, dim, window, fs=1., scaling="density", n_overlap=None):
 
 
 def fftshift(x, dim=-1):
-    dim = (x.dim() + dim) if dim < 0 else dim
-    assert 0 <= dim < x.dim()
-
+    dim = fix_dim(dim, x.dim())
     return torch.roll(x, x.shape[dim] // 2, dim)
 
 
 def bandwidth_power(x, fs, bands, dim=-2, n_overlap=None, nperseg=None):
-    dim = (x.dim() + dim) if dim < 0 else dim
-    assert 0 <= dim < x.dim() - 1
+    dim = fix_dim(dim, x.dim())
     if nperseg is None:
         nperseg = x.shape[dim]
 
@@ -196,6 +204,9 @@ def test_view(random_state):
         a = tr_x_view.index_select(dim, torch.tensor(i)).squeeze(dim).numpy()
         b = tr_x.index_select(dim, torch.tensor(slice_)).numpy()
         assert np.allclose(a, b)
+
+    assert np.allclose(window_view(tr_x, dim, size, stride, at=-1).numpy(),
+                       tr_x.unfold(dim, size, stride).numpy())
 
 
 def test_welch(random_state):
