@@ -137,7 +137,8 @@ def pwelch(x, dim, window, fs=1., scaling="density", n_overlap=None):
 
     # 5. get the frequencies
     freq = np.fft.fftfreq(n_window, 1. / fs)
-    return torch.tensor(freq, dtype=x.dtype), Pxx
+    freq = torch.tensor(freq, dtype=x.dtype, device=x.device)
+    return freq, Pxx
 
 
 def fftshift(x, dim=-1):
@@ -208,14 +209,16 @@ def bandwidth_power(x, fs, bands, dim=-2, n_overlap=None, nperseg=None):
         nperseg = x.shape[dim]
 
     # 1. Welch
-    window = torch.hamming_window(nperseg, periodic=False, dtype=x.dtype)
+    window = torch.hamming_window(nperseg, periodic=False,
+                                  dtype=x.dtype, device=x.device)
     ff, px = pwelch(x, dim, window, fs=fs, scaling="spectrum",
                     n_overlap=n_overlap)
 
     ff, px = fftshift(ff), fftshift(px, dim=dim)
     if not bands:
         # this needs to return a tensor that has the expected shape
-        return ff, px, torch.empty(*px.shape[:dim], *px.shape[dim+1:], 0)
+        return ff, px, torch.empty(*px.shape[:dim], *px.shape[dim+1:], 0,
+                                   dtype=px.dtype, device=px.device)
 
     # 2. Compute power within each band
     channel, df = [], 1. / (nperseg * fs)
