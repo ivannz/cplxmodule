@@ -4,15 +4,37 @@ import numpy as np
 
 def fix_dim(dim, n_dim):
     r"""For the given dimensionality make sure the `axis` is nonnegative."""
-    dim = (n_dim + dim) if dim < 0 else dim
-    assert 0 <= dim < n_dim
-    return dim
+    axis = (n_dim + dim) if dim < 0 else dim
+    if not 0 <= axis < n_dim:
+        raise ValueError(f"""Dimension {dim} is out of range for {n_dim}.""")
+
+    return axis
 
 
 def window_view(x, dim, size, stride, at=None):
-    r"""
+    r"""Returns a sliding window view into the tensor.
+
     Similar to `torch.unfold()`, but the window dimensions of size `size`
     is placed right after `dim` (by default), and not appended.
+
+    Arguments
+    ---------
+    x : torch.tensor
+        Time series of measurement values
+    dim : int
+        Axis along which the periodogram is computed, i.e. ``dim=-1``.
+    size : int
+        The size of the sliding windows.
+    stride : int
+        The step between two sliding windows.
+    at : int, optional
+        The dimension at which to put the slice of each window.
+
+    Returns
+    -------
+    x_view : torch.tensor
+        The view into a sliding window. The returned tensor is not, in
+        general, contiguous in memory.
     """
     dim = fix_dim(dim, x.dim())
     if x.shape[dim] < size:
@@ -39,10 +61,54 @@ def window_view(x, dim, size, stride, at=None):
 
 
 def pwelch(x, dim, window, fs=1., scaling="density", n_overlap=None):
+    r"""Estimate power spectral density using Welch's method.
+
+    Arguments
+    ---------
+    x : torch.tensor
+        Time series of measurement values
+    dim : int
+        Axis along which the periodogram is computed, i.e. ``dim=-1``.
+    window : array_like
+        The weights to be used directly as the window and its length
+        determines the length of the FFT used.
+    fs : float, optional
+        Sampling frequency of the `x` time series. Defaults to 1.0.
+    scaling : { 'density', 'spectrum' }, optional
+        Selects between computing the power spectral density ('density')
+        where `Pxx` has units of V**2/Hz and computing the power
+        spectrum ('spectrum') where `Pxx` has units of V**2, if `x`
+        is measured in V and `fs` is measured in Hz. Defaults to
+        'density'.
+    n_noverlap : int, optional
+        Number of points to overlap between segments. If `None`,
+        ``n_noverlap = len(window) // 2``. Defaults to `None`.
+
+    Returns
+    -------
+    f : torch.tensor
+        The 1d tensor of sample frequencies.
+    Pxx : torch.tensor
+        Power spectral density or power spectrum of `x`.
+
+    Compatibility
+    -------------
+    This torch implementation is designed to be compatible with `welch`
+    from `scipy.signal` with the following fixed parameters:
+    ``nfft=None, nperseg=None, detrend=False, return_onesided=False``.
+
+    See Also
+    --------
+    scipy.signal.welch: the reference for this function.
+    """
+    if x.shape[-1] != 2:
+        raise TypeError("""The last dimension of the input must be 2:"""
+                        """x[..., 0] is real and x[..., 1] is imaginary.""")
+
     dim = fix_dim(dim, x.dim())
-    if not (0 <= dim < x.dim() - 1):
-        raise ValueError("""The last dimension of the input tesnor is """
-                         """reserved for real and imaginary parts.""")
+    if not 0 <= dim < x.dim() - 1:
+        raise ValueError("""The last dimension of the input cannot contain """
+                         """the signal.""")
 
     n_window = len(window)
     if n_overlap is None:
@@ -67,19 +133,76 @@ def pwelch(x, dim, window, fs=1., scaling="density", n_overlap=None):
     elif scaling == 'spectrum':
         scale = torch.sum(window)**2
     # used to have `/ x_window.shape[dim]`
-    pwr = torch.sum(fft**2, dim=-1).mean(dim=dim) / scale
+    Pxx = torch.sum(fft**2, dim=-1).mean(dim=dim) / scale
 
     # 5. get the frequencies
     freq = np.fft.fftfreq(n_window, 1. / fs)
-    return torch.tensor(freq, dtype=x.dtype), pwr
+    return torch.tensor(freq, dtype=x.dtype), Pxx
 
 
 def fftshift(x, dim=-1):
+    r"""Shift the zero-frequency component to the center of the spectrum.
+
+    Parameters
+    ----------
+    x : torch.tensor
+        Input tensor.
+    dim : int, optional
+        Dimension over which to shift.  Default is the last dimension.
+
+    Returns
+    -------
+    y : torch.tensor
+        The shifted tensor.
+
+    Compatibility
+    -------------
+    This torch implementation is designed to be compatible with `fftshift`
+    from `numpy.fft`.
+
+    See Also
+    --------
+    numpy.fft.fftshift: the reference for this function.
+    """
     dim = fix_dim(dim, x.dim())
     return torch.roll(x, x.shape[dim] // 2, dim)
 
 
 def bandwidth_power(x, fs, bands, dim=-2, n_overlap=None, nperseg=None):
+    r"""Compute the total power of a batch of signals in each band.
+
+    Uses Welch's method (see `scipy.signal.welch`) with Hamming window
+    to estimate the power spectrum.
+
+    Arguments
+    ---------
+    x : torch.tensor
+        Time series of measurement values
+    fs : float
+        Sampling frequency of the `x` time series.
+    bands : iterable of tuples
+        An iterable object of tuples, each containing the frequency band
+        in a tuple `(lo, hi)` for the lower and upper end of the band
+        respectively.
+    dim : int
+        Axis along which the periodogram is computed, i.e. ``dim=-2``.
+    n_noverlap : int, optional
+        Number of points to overlap between segments. If `None`,
+        ``n_noverlap = len(window) // 2``. Defaults to `None`.
+    nperseg : int, optional
+        Length of each segment to use for spectrum estimation. Defaults to
+        None, in which case is set equal to the length of the signal in `x`.
+
+    Returns
+    -------
+    f : torch.tensor
+        The 1d tensor of sample frequencies.
+    Pxx : torch.tensor
+        Power spectral density or power spectrum of `x`.
+    band_pwr : tensor
+        The tensor of shape `(... x len(bands))` with the per-band power
+        distribution.
+    """
     dim = fix_dim(dim, x.dim())
     if nperseg is None:
         nperseg = x.shape[dim]
@@ -92,7 +215,7 @@ def bandwidth_power(x, fs, bands, dim=-2, n_overlap=None, nperseg=None):
     ff, px = fftshift(ff), fftshift(px, dim=dim)
     if not bands:
         # this needs to return a tensor that has the expected shape
-        return ff, px, None
+        return ff, px, torch.empty(*px.shape[:dim], *px.shape[dim+1:], 0)
 
     # 2. Compute power within each band
     channel, df = [], 1. / (nperseg * fs)
@@ -165,12 +288,14 @@ def test_window(random_state=None):
     n_window = 1024
 
     np_window = hamming(n_window, False).astype(np.float64)
-    tr_window = torch.hamming_window(n_window, periodic=True, dtype=torch.float64)
+    tr_window = torch.hamming_window(n_window, periodic=True,
+                                     dtype=torch.float64)
 
     assert np.allclose(np_window, tr_window.numpy())
 
     np_window = hamming(n_window, True).astype(np.float64)
-    tr_window = torch.hamming_window(n_window, periodic=False, dtype=torch.float64)
+    tr_window = torch.hamming_window(n_window, periodic=False,
+                                     dtype=torch.float64)
 
     assert np.allclose(np_window, tr_window.numpy())
 
