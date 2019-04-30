@@ -36,6 +36,12 @@ def window_view(x, dim, size, stride, at=None):
         The view into a sliding window. The returned tensor is not, in
         general, contiguous in memory.
     """
+    if size <= 0:
+        raise ValueError(f"""`size` must be a positive integer.""")
+
+    if stride < 0:
+        raise ValueError(f"""`stride` must be a nonnegative integer.""")
+
     dim = fix_dim(dim, x.dim())
     if x.shape[dim] < size:
         raise ValueError(f"""`x` at dim {dim} is too short ({x.shape[dim]}) """
@@ -101,6 +107,9 @@ def pwelch(x, dim, window, fs=1., scaling="density", n_overlap=None):
     --------
     scipy.signal.welch: the reference for this function.
     """
+    if scaling not in ("density", "spectrum"):
+        raise ValueError(f"""Unrecognized `scaling` value {scaling}""")
+
     if x.shape[-1] != 2:
         raise TypeError("""The last dimension of the input must be 2:"""
                         """x[..., 0] is real and x[..., 1] is imaginary.""")
@@ -128,10 +137,11 @@ def pwelch(x, dim, window, fs=1., scaling="density", n_overlap=None):
     fft = torch.transpose(fft, -2, dim + 1)
 
     # 4. compute the power spectrum with the proper scaling
-    if scaling == 'density':
+    if scaling == "density":
         scale = fs * torch.sum(window**2)
-    elif scaling == 'spectrum':
+    elif scaling == "spectrum":
         scale = torch.sum(window)**2
+
     # used to have `/ x_window.shape[dim]`
     Pxx = torch.sum(fft**2, dim=-1).mean(dim=dim) / scale
 
