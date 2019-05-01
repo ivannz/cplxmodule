@@ -179,7 +179,8 @@ def fftshift(x, dim=-1):
     return torch.roll(x, x.shape[dim] // 2, dim)
 
 
-def bandwidth_power(x, fs, bands, dim=-2, n_overlap=None, nperseg=None):
+def bandwidth_power(x, fs, bands, dim=-2, n_overlap=None,
+                    nperseg=None, scaling="density"):
     r"""Compute the total power of a batch of signals in each band.
 
     Uses Welch's method (see `scipy.signal.welch`) with Hamming window
@@ -203,6 +204,12 @@ def bandwidth_power(x, fs, bands, dim=-2, n_overlap=None, nperseg=None):
     nperseg : int, optional
         Length of each segment to use for spectrum estimation. Defaults to
         None, in which case is set equal to the length of the signal in `x`.
+    scaling : { 'density', 'spectrum' }, optional
+        Selects between computing the power spectral density ('density')
+        where `Pxx` has units of V**2/Hz and computing the power
+        spectrum ('spectrum') where `Pxx` has units of V**2, if `x`
+        is measured in V and `fs` is measured in Hz. Defaults to
+        'density'.
 
     Returns
     -------
@@ -221,7 +228,7 @@ def bandwidth_power(x, fs, bands, dim=-2, n_overlap=None, nperseg=None):
     # 1. Welch
     window = torch.hamming_window(nperseg, periodic=False,
                                   dtype=x.dtype, device=x.device)
-    ff, px = pwelch(x, dim, window, fs=fs, scaling="spectrum",
+    ff, px = pwelch(x, dim, window, fs=fs, scaling=scaling,
                     n_overlap=n_overlap)
 
     ff, px = fftshift(ff), fftshift(px, dim=dim)
@@ -288,7 +295,7 @@ def acpr_calc(signal, sample_rate, mcf, acf, mcb, acb, nperseg=None, dim=-2):
     # compute the power in each band
     ff, px, channel = bandwidth_power(signal, sample_rate, bands,
                                       dim=dim, nperseg=nperseg,
-                                      n_overlap=0)
+                                      n_overlap=0, scaling="spectrum")
 
     return channel[..., [0]], channel[..., 1:]
 
