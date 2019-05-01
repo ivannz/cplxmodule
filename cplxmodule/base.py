@@ -52,8 +52,12 @@ class CplxToReal(torch.nn.Module):
         \colon u + i v \mapsto \bigl(u_\omega, v_\omega\bigr)_{\omega}
         \,. $$
     """
+    def __init__(self, flatten=True):
+        super().__init__()
+        self.flatten = flatten
+
     def forward(self, input):
-        return cplx_to_real(input)
+        return cplx_to_real(input, self.flatten)
 
 
 class CplxToCplx(torch.nn.Module):
