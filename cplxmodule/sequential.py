@@ -5,6 +5,7 @@ from collections import OrderedDict
 
 from .base import CplxToCplx
 from .utils import is_cplx_to_cplx
+from .layers import CplxLinear
 
 
 class CplxSequential(torch.nn.Sequential, CplxToCplx):
@@ -31,17 +32,33 @@ class CplxSequential(torch.nn.Sequential, CplxToCplx):
         super().__init__(*args)
 
 
+class CplxResidualBottleneck(CplxToCplx):
+    r"""A tag for Complex Linear layer, that alters the behaviour
+    of the residual container.
+    """
+    pass
+
+
 class CplxResidualSequential(CplxSequential):
     r"""
     Sequence of complex-to-complex residual modules:
     $$
         z_l = F_l(z_{l-1}) + z_{l-1}
         \,, $$
-    for $l=1..L$ and the complex input $z_0$.
+    for $l=1..L$ and the complex input $z_0$. In the case when $F_l$ is
+    of type `CplxResidualBottleneck`, the update becomes:
+    $$
+        z_l = F_l(z_{l-1})
+        \,. $$
     """
     def forward(self, input):
         for module in self:
-            input = tuple(map(torch.add, input, module(input)))
+            if isinstance(module, CplxResidualBottleneck):
+                input = module(input)
+
+            else:
+                input = tuple(map(torch.add, input, module(input)))
+
         return input
 
 
