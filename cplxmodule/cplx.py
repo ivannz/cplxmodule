@@ -1,5 +1,7 @@
 import torch
 
+import torch.nn.functional as F
+
 
 def cplx_modulus(input):
     r"""
