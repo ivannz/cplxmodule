@@ -103,3 +103,20 @@ def cplx_phaseshift(input, phi=0.0):
     with $\phi$ in radians.
     """
     return cplx_mul(input, (torch.cos(phi), torch.sin(phi)))
+
+
+def cplx_linear(input, weight, bias=None):
+    r"""Applies a complex linear transformation to the incoming complex
+    data: :math:`y = x A^T + b`.
+    """
+    # W = U + i V,  z = u + i v, c = \Re c + i \Im c
+    x_re, x_im = input
+    w_re, w_im = weight
+    b_re, b_im = bias if bias is not None else (None, None)
+
+    #  W z + c = (U + i V) (u + i v) + \Re c + i \Im c
+    #          = (U u + \Re c - V v) + i (V u + \Im c + U v)
+    u = F.linear(x_re, w_re, b_re) - F.linear(x_im, w_im, None)
+    v = F.linear(x_re, w_im, b_im) + F.linear(x_im, w_re, None)
+
+    return u, v

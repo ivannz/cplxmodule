@@ -8,6 +8,7 @@ from .base import real_to_cplx
 from .base import cplx_to_real
 
 from .cplx import cplx_phaseshift
+from .cplx import cplx_linear
 
 
 class CplxLinear(CplxToCplx):
@@ -28,16 +29,16 @@ class CplxLinear(CplxToCplx):
         self.re = torch.nn.Linear(in_features, out_features, bias=bias)
         self.im = torch.nn.Linear(in_features, out_features, bias=bias)
 
+        self.weight = self.re.weight, self.im.weight
+        self.bias = self.re.bias, self.im.bias
+
+    def reset_parameters(self):
+        self.re.reset_parameters()
+        self.im.reset_parameters()
+
     def forward(self, input):
-        re, im = input
+        return cplx_linear(input, self.weight, self.bias)
 
-        # W = U + i V,  z = u + i v, c = c_re + i c_im:
-        #  W z + c = (U + i V) (u + i v) + c_re + i c_im
-        #          = (U u + c_re - V v) + i (V u + c_im + U v)
-        u = self.re(re) - F.linear(im, self.im.weight, None)
-        v = self.im(re) + F.linear(im, self.re.weight, None)
-
-        return u, v
 
 
 class CplxConv1d(CplxToCplx):
