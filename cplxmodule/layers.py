@@ -29,16 +29,15 @@ class CplxLinear(CplxToCplx):
         self.re = torch.nn.Linear(in_features, out_features, bias=bias)
         self.im = torch.nn.Linear(in_features, out_features, bias=bias)
 
-        self.weight = self.re.weight, self.im.weight
-        self.bias = self.re.bias, self.im.bias
-
     def reset_parameters(self):
         self.re.reset_parameters()
         self.im.reset_parameters()
 
     def forward(self, input):
-        return cplx_linear(input, self.weight, self.bias)
+        weight = self.re.weight, self.im.weight
+        bias = self.re.bias, self.im.bias
 
+        return cplx_linear(input, weight, bias)
 
 
 class CplxConv1d(CplxToCplx):
