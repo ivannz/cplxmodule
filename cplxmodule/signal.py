@@ -1,7 +1,8 @@
 import torch
 
-from .base import Cplx, CplxToCplx
-from .cplx import cplx_modulus, cplx_apply
+from .cplx import Cplx
+from .layers import CplxToCplx
+
 from .utils import is_cplx_to_cplx
 
 

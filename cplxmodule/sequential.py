@@ -3,9 +3,9 @@ import torch.nn
 
 from collections import OrderedDict
 
-from .base import CplxToCplx
+from .layers import CplxToCplx
+
 from .utils import is_cplx_to_cplx
-from .cplx import cplx_add
 
 
 class CplxSequential(torch.nn.Sequential, CplxToCplx):
@@ -57,7 +57,7 @@ class CplxResidualSequential(CplxSequential):
                 input = module(input)
 
             else:
-                input = cplx_add(input, module(input))
+                input = input + module(input)
 
         return input
 
@@ -75,5 +75,6 @@ class CplxBusResidualSequential(CplxSequential):
         # loop over the layers in sequence and add them to the bus
         bus = input
         for module in self:
-            input = cplx_add(bus, module(input))
+            input = bus + module(input)
+
         return input

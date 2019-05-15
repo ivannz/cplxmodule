@@ -1,9 +1,7 @@
 import torch
 import torch.nn
 
-from .base import CplxToCplx
-from .base import CplxToReal
-from .base import RealToCplx
+from .layers import CplxToCplx, CplxToReal, RealToCplx
 
 
 def is_from_cplx(module):
