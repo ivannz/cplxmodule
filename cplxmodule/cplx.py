@@ -2,53 +2,32 @@ import torch
 
 import torch.nn.functional as F
 
+from .base import Cplx
+
 
 def cplx_modulus(input):
-    r"""
-    Compute the modulus of the complex tensor in re-im pair:
-    $$
-        F
-        \colon \mathbb{C}^{\ldots \times d}
-                \to \mathbb{R}_+^{\ldots \times d}
-        \colon u + i v \mapsto \lvert u + i v \rvert
-        \,. $$
-    """
-    input = torch.stack(input, dim=0)
-    return torch.norm(input, p=2, dim=0, keepdim=False)
+    return abs(input)
 
 
 def cplx_angle(input):
-    r"""
-    Compute the angle of the complex tensor in re-im pair.
-    $$
-        F
-        \colon \mathbb{C}^{\ldots \times d}
-                \to \mathbb{R}^{\ldots \times d}
-        \colon \underbrace{u + i v}_{r e^{i\phi}} \mapsto \phi
-                = \arctan \tfrac{v}{u}
-        \,. $$
-    """
-    re, im = input
-    return torch.atan2(im, re)
-
-
-def cplx_conj(input):
-    r"""Compute the conjugate of the complex tensor in re-im pair."""
-    re, im = input
-    return re, -im
-
-
-def cplx_mul(input0, input1):
-    r"""Multiply the complex tensors in re-im pairs."""
-    re0, im0 = input0
-    re1, im1 = input1
-    return re0 * re1 - im0 * im1, re0 * im1 + im0 * re1
+    return input.angle
 
 
 def cplx_apply(input, f, *a, **k):
-    r"""Applies the function elementwise to the complex tensor in re-im pair."""
-    re, im = input
-    return f(re, *a, **k), f(im, *a, **k)
+    return input.apply(f, *a, **k)
+
+
+def cplx_conj(input):
+    return input.conj
+
+
+def cplx_mul(input0, input1):
+    return input0 * input1
+
+
+def cplx_add(input0, input1):
+    r"""Multiply the complex tensors in re-im pairs."""
+    return input0 + input1
 
 
 def cplx_identity(input):
@@ -58,38 +37,35 @@ def cplx_identity(input):
 
 def cplx_exp(input):
     r"""Compute the exponential of the complex tensor in re-im pair."""
-    re, im = input
-    r, u, v = torch.exp(re), torch.cos(im), torch.sin(im)
-    return r * u, r * v
+    scale = torch.exp(input.real)
+    return Cplx(scale * torch.cos(input.imag),
+                scale * torch.sin(input.imag))
 
 
 def cplx_log(input):
     r"""Compute the logarithm of the complex tensor in re-im pair."""
     r, theta = cplx_modulus(input), cplx_angle(input)
-    return torch.log(r), theta
+    return Cplx(torch.log(r), theta)
 
 
 def cplx_sinh(input):
     r"""Compute the hyperbolic sine of the complex tensor in re-im pair."""
-    re, im = input
-    return torch.sinh(re) * torch.cos(im), torch.cosh(re) * torch.sin(im)
+    return Cplx(torch.sinh(input.real) * torch.cos(input.imag),
+                torch.cosh(input.real) * torch.sin(input.imag))
 
 
 def cplx_cosh(input):
     r"""Compute the hyperbolic sine of the complex tensor in re-im pair."""
-    re, im = input
-    return torch.cosh(re) * torch.cos(im), torch.sinh(re) * torch.sin(im)
+    return Cplx(torch.cosh(input.real) * torch.cos(input.imag),
+                torch.sinh(input.real) * torch.sin(input.imag))
 
 
 def cplx_modrelu(input, threshold=0.5):
     r"""Compute the modulus relu of the complex tensor in re-im pair."""
-
-    # gain = (1 - \trfac{b}{|z|})_+
+    # scale = (1 - \trfac{b}{|z|})_+
     mod = torch.clamp(cplx_modulus(input), min=1e-5)
-    gain = torch.relu(mod - threshold) / mod
-
-    re, im = input
-    return gain * re, gain * im
+    scale = torch.relu(mod - threshold) / mod
+    return Cplx(scale * input.real, scale * input.imag)
 
 
 def cplx_phaseshift(input, phi=0.0):
@@ -104,7 +80,7 @@ def cplx_phaseshift(input, phi=0.0):
         \,, $$
     with $\phi$ in radians.
     """
-    return cplx_mul(input, (torch.cos(phi), torch.sin(phi)))
+    return cplx_mul(input, Cplx(torch.cos(phi), torch.sin(phi)))
 
 
 def cplx_linear(input, weight, bias=None):
@@ -112,13 +88,35 @@ def cplx_linear(input, weight, bias=None):
     data: :math:`y = x A^T + b`.
     """
     # W = U + i V,  z = u + i v, c = \Re c + i \Im c
-    x_re, x_im = input
-    w_re, w_im = weight
-    b_re, b_im = bias if bias is not None else (None, None)
-
     #  W z + c = (U + i V) (u + i v) + \Re c + i \Im c
     #          = (U u + \Re c - V v) + i (V u + \Im c + U v)
-    u = F.linear(x_re, w_re, b_re) - F.linear(x_im, w_im, None)
-    v = F.linear(x_re, w_im, b_im) + F.linear(x_im, w_re, None)
+    re = F.linear(input.real, weight.real, None) \
+        - F.linear(input.imag, weight.imag, None)
+    im = F.linear(input.real, weight.imag, None) \
+        + F.linear(input.imag, weight.real, None)
 
-    return u, v
+    output = Cplx(re, im)
+    if isinstance(bias, Cplx):
+        output += bias
+
+    return output
+
+
+def cplx_conv1d(input, weight, bias=None, stride=1,
+                padding=0, dilation=1, groups=1):
+    r"""Applies a complex 1d convolution to the incoming complex
+    tensor `B x c_in x L`: :math:`y = x \star W + b`.
+    """
+    # W = U + i V,  z = u + i v, c = \Re c + i \Im c
+    bias = bias if isinstance(bias, Cplx) else Cplx(None, None)
+
+    real = F.conv1d(input.real, weight.real, bias.real,
+                    stride, padding, dilation, groups) \
+        - F.conv1d(input.imag, weight.imag, None,
+                   stride, padding, dilation, groups)
+    imag = F.conv1d(input.real, weight.imag, bias.imag,
+                    stride, padding, dilation, groups) \
+        + F.conv1d(input.imag, weight.real, None,
+                   stride, padding, dilation, groups)
+
+    return Cplx(real, imag)

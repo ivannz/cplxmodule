@@ -1,7 +1,7 @@
 """Complex-valued modules for pytorch."""
 
+from .base import Cplx, RealToCplx, CplxToCplx, CplxToReal
 from .base import real_to_cplx, cplx_to_real
-from .base import RealToCplx, CplxToCplx, CplxToReal
 
 from .layers import CplxLinear, CplxConv1d
 
