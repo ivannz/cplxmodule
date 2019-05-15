@@ -36,7 +36,7 @@ class CplxMultichannelGainLayer(CplxToCplx):
         gain = self.gain(abs(input))
 
         # reshape gain `... x C x n_in` and input = (re, im) `... x 1 x n_in`
-        *head, n_features = input.shape
+        *head, n_features = input.real.shape
         try:
             gain = gain.reshape(*head, -1, n_features)
 
