@@ -1,7 +1,7 @@
 import torch
 
-from .base import CplxToCplx
-from .cplx import cplx_modulus
+from .base import Cplx, CplxToCplx
+from .cplx import cplx_modulus, cplx_apply
 from .utils import is_cplx_to_cplx
 
 
@@ -31,28 +31,24 @@ class CplxMultichannelGainLayer(CplxToCplx):
 
     def forward(self, input):
         """"""
-        re, im = input
-
         # compute the modulus gain
-        gain = self.gain(cplx_modulus(input))
+        gain = self.gain(abs(input))
 
-        # reshape gain `... x C x n_in` and (re, im) `... x 1 x n_in`
-        *head, n_features = re.shape
+        # reshape gain `... x C x n_in` and input = (re, im) `... x 1 x n_in`
+        *head, n_features = input.shape
         try:
             gain = gain.reshape(*head, -1, n_features)
+
         except RuntimeError as e:
             tail = tuple(gain.shape[len(head):])
             raise ValueError(f"""`gain` {tail} is incompatible with the """
                              f"""input complex tensor {n_features}.""") from e
 
         # apply the gain
-        re, im = re.unsqueeze(-2), im.unsqueeze(-2)
-        re, im = gain * re, gain * im
-
+        output = input.apply(torch.unsqueeze, -2) * gain
         if self.flatten:
-            return re.reshape(*head, -1), im.reshape(*head, -1)
-
-        return re, im
+            return output.apply(torch.reshape, (*head, -1))
+        return output
 
 
 class CplxProjectionGainLayer(CplxMultichannelGainLayer):
@@ -77,11 +73,11 @@ class CplxProjectionGainLayer(CplxMultichannelGainLayer):
         self.projection = projection
 
     def forward(self, input):
-        re_z, im_z = input
-        re_g, im_g = super().forward(input)
+        channels = super().forward(input)
 
         # concatenate and project
-        re = torch.cat([re_g, re_z], dim=-1)
-        im = torch.cat([im_g, im_z], dim=-1)
+        output = Cplx(
+            torch.cat([channels.real, input.real], dim=-1),
+            torch.cat([channels.imag, input.imag], dim=-1))
 
-        return self.projection((re, im))
+        return self.projection(output)
