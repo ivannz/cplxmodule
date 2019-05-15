@@ -1,14 +1,17 @@
+import math
 import torch
 import torch.nn
 
 import torch.nn.functional as F
 
-from .base import CplxToCplx
+from torch.nn import Parameter
+
+from .base import Cplx, CplxToCplx
 from .base import real_to_cplx
 from .base import cplx_to_real
 
 from .cplx import cplx_phaseshift
-from .cplx import cplx_linear
+from .cplx import cplx_linear, cplx_conv1d
 
 
 class CplxLinear(CplxToCplx):
@@ -25,19 +28,40 @@ class CplxLinear(CplxToCplx):
     """
     def __init__(self, in_features, out_features, bias=True):
         super().__init__()
+        self.in_features = in_features
+        self.out_features = out_features
 
-        self.re = torch.nn.Linear(in_features, out_features, bias=bias)
-        self.im = torch.nn.Linear(in_features, out_features, bias=bias)
+        self.weight = torch.nn.ParameterDict({
+            "real": Parameter(torch.Tensor(out_features, in_features)),
+            "imag": Parameter(torch.Tensor(out_features, in_features)),
+        })
+
+        if bias:
+            self.bias = torch.nn.ParameterDict({
+                "real": Parameter(torch.Tensor(out_features)),
+                "imag": Parameter(torch.Tensor(out_features)),
+            })
+        else:
+            self.register_parameter('bias', None)
+
+        self.reset_parameters()
 
     def reset_parameters(self):
-        self.re.reset_parameters()
-        self.im.reset_parameters()
+        torch.nn.init.kaiming_uniform_(self.weight.real, a=math.sqrt(5))
+        torch.nn.init.kaiming_uniform_(self.weight.imag, a=math.sqrt(5))
+        if self.bias is not None:
+            fan_in, _ = torch.nn.init._calculate_fan_in_and_fan_out(self.weight.real)
+            bound = 1 / math.sqrt(fan_in)
+            torch.nn.init.uniform_(self.bias.real, -bound, bound)
+            torch.nn.init.uniform_(self.bias.imag, -bound, bound)
 
     def forward(self, input):
-        weight = self.re.weight, self.im.weight
-        bias = self.re.bias, self.im.bias
+        return cplx_linear(input, Cplx(**self.weight), self.bias)
 
-        return cplx_linear(input, weight, bias)
+    def extra_repr(self):
+        return 'in_features={}, out_features={}, bias={}'.format(
+            self.in_features, self.out_features, self.bias is not None
+        )
 
 
 class CplxConv1d(CplxToCplx):
@@ -75,12 +99,11 @@ class CplxConv1d(CplxToCplx):
 
     def forward(self, input):
         """Complex tensor (re-im) `B x c_in x L`"""
-        re, im = input
-        u = self.re(re) - F.conv1d(im, self.im.weight, None, self.im.stride,
-                                   self.im.padding, self.im.dilation, self.im.groups)
-        v = self.im(re) + F.conv1d(im, self.re.weight, None, self.re.stride,
-                                   self.re.padding, self.re.dilation, self.re.groups)
-        return u, v
+        weight = Cplx(self.re.weight, self.im.weight)
+        bias = Cplx(self.re.bias, self.im.bias)
+
+        return cplx_conv1d(input, weight, bias, self.re.stride,
+                           self.re.padding, self.re.dilation, self.re.groups)
 
 
 class CplxDropout1d(torch.nn.Dropout2d, CplxToCplx):
@@ -104,7 +127,7 @@ class CplxAvgPool1d(torch.nn.AvgPool1d, CplxToCplx):
     """
     def forward(self, input):
         # apply parent.forward to re and im parts
-        return tuple(map(super().forward, input))
+        return input.apply(super().forward)
 
 
 class CplxPhaseShift(CplxToCplx):
@@ -125,7 +148,7 @@ class CplxPhaseShift(CplxToCplx):
     """
     def __init__(self, *dim):
         super().__init__()
-        self.phi = torch.nn.Parameter(torch.randn(*dim) * 0.02)
+        self.phi = Parameter(torch.randn(*dim) * 0.02)
 
     def forward(self, input):
         return cplx_phaseshift(input, self.phi)
