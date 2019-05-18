@@ -33,17 +33,18 @@ class Cplx():
 
     def __add__(u, v):
         if not isinstance(v, Cplx):
-            return Cplx(u.real + v, u.imag + v)
+            return Cplx(u.real + v, u.imag)
         return Cplx(u.real + v.real, u.imag + v.imag)
 
     __radd__ = __add__
 
     def __sub__(u, v):
         if not isinstance(v, Cplx):
-            return Cplx(u.real - v, u.imag - v)
+            return Cplx(u.real - v, u.imag)
         return Cplx(u.real - v.real, u.imag - v.imag)
 
-    __rsub__ = __sub__
+    def __rsub__(u, v):
+        return -u + v
 
     def __mul__(u, v):
         if not isinstance(v, Cplx):
@@ -128,16 +129,47 @@ def cplx_log(input):
     return Cplx(torch.log(abs(input)), input.angle)
 
 
+def cplx_sin(input):
+    r"""Compute the sine of the complex tensor in re-im pair."""
+    return Cplx(torch.sin(input.real) * torch.cosh(input.imag),
+                torch.cos(input.real) * torch.sinh(input.imag))
+
+
+def cplx_cos(input):
+    r"""Compute the cosine of the complex tensor in re-im pair."""
+    return Cplx(torch.cos(input.real) * torch.cosh(input.imag),
+                - torch.sin(input.real) * torch.sinh(input.imag))
+
+
+def cplx_tan(input):
+    r"""Compute the tangent of the complex tensor in re-im pair."""
+    return cplx_sin(input) / cplx_cos(input)
+
+
 def cplx_sinh(input):
-    r"""Compute the hyperbolic sine of the complex tensor in re-im pair."""
+    r"""Compute the hyperbolic sine of the complex tensor in re-im pair.
+
+    sinh(z) = - j sin(j z)
+    """
     return Cplx(torch.sinh(input.real) * torch.cos(input.imag),
                 torch.cosh(input.real) * torch.sin(input.imag))
 
 
 def cplx_cosh(input):
-    r"""Compute the hyperbolic sine of the complex tensor in re-im pair."""
+    r"""Compute the hyperbolic cosine of the complex tensor in re-im pair.
+
+    cosh(z) = cos(j z)
+    """
     return Cplx(torch.cosh(input.real) * torch.cos(input.imag),
                 torch.sinh(input.real) * torch.sin(input.imag))
+
+
+def cplx_tanh(input):
+    r"""Compute the hyperbolic tangent of the complex tensor in re-im pair.
+
+    tanh(z) = j tan(z)
+    """
+    return cplx_sinh(input) / cplx_cosh(input)
 
 
 def cplx_modrelu(input, threshold=0.5):
