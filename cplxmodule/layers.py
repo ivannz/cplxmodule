@@ -118,7 +118,8 @@ class CplxLinear(CplxToCplx):
             torch.nn.init.uniform_(self.bias.imag, -bound, bound)
 
     def forward(self, input):
-        return cplx_linear(input, Cplx(**self.weight), self.bias)
+        bias = Cplx(**self.bias) if self.bias is not None else None
+        return cplx_linear(input, Cplx(**self.weight), bias)
 
     def extra_repr(self):
         return 'in_features={}, out_features={}, bias={}'.format(
@@ -162,7 +163,9 @@ class CplxConv1d(CplxToCplx):
     def forward(self, input):
         """Complex tensor (re-im) `B x c_in x L`"""
         weight = Cplx(self.re.weight, self.im.weight)
-        bias = Cplx(self.re.bias, self.im.bias)
+        bias = None
+        if self.re.bias is not None and self.im.bias is not None:
+            bias = Cplx(self.re.bias, self.im.bias)
 
         return cplx_conv1d(input, weight, bias, self.re.stride,
                            self.re.padding, self.re.dilation, self.re.groups)

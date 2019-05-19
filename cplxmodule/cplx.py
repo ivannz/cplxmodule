@@ -203,7 +203,7 @@ def cplx_linear(input, weight, bias=None):
         + F.linear(input.imag, weight.real, None)
 
     output = Cplx(re, im)
-    if isinstance(bias, Cplx):
+    if bias is not None:
         output += bias
 
     return output
@@ -215,8 +215,6 @@ def cplx_conv1d(input, weight, bias=None, stride=1,
     tensor `B x c_in x L`: :math:`y = x \star W + b`.
     """
     # W = U + i V,  z = u + i v, c = \Re c + i \Im c
-    bias = bias if isinstance(bias, Cplx) else Cplx(None, None)
-
     re = F.conv1d(input.real, weight.real, None,
                   stride, padding, dilation, groups) \
         - F.conv1d(input.imag, weight.imag, None,
@@ -227,7 +225,7 @@ def cplx_conv1d(input, weight, bias=None, stride=1,
                    stride, padding, dilation, groups)
 
     output = Cplx(re, im)
-    if isinstance(bias, Cplx):
+    if bias is not None:
         output += bias
 
     return output
