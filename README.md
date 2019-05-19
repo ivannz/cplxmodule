@@ -37,7 +37,7 @@ from cplxmodule import RealToCplx, CplxToReal
 from cplxmodule.sequential import CplxSequential
 
 # common layers
-from cplxmodule.layers import CplxConv1d
+from cplxmodule.layers import CplxConv1d, CplxLinear
 
 # activation layers
 from cplxmodule.activation import CplxModReLU, CplxActivation
@@ -46,13 +46,15 @@ from cplxmodule.activation import CplxModReLU, CplxActivation
 from cplxmodule.signal import CplxMultichannelGainLayer
 ```
 
-After `RealToCplx` layer the intermediate inputs are pairs of tensors real and imaginary.
+After `RealToCplx` layer the intermediate inputs are Cplx objects, which are abstractions
+for complex valued tensors, represented by real and imaginary parts, and which obey complex
+arithmetic (currently no support for mixed-type arithmetic like `torch.Tensor +/-* Cplx`).
 ```python
-
 n_features, n_channels = 16, 4
 z = torch.randn(3, n_features*2)
 
-re, im = RealToCplx()(z)
+cplx = RealToCplx()(z)
+print(cplx)
 ```
 
 Stacking and constructing linear pipelines:
@@ -68,11 +70,13 @@ modulus_gain = torch.nn.Sequential(
 
 # purely complex-to-complex sequential container
 complex_model = CplxSequential(
+    CplxLinear(n_features, n_features, bias=True),
+
     # complex: batch x n_features
     CplxMultichannelGainLayer(modulus_gain, flatten=False),
 
     # complex: batch x n_channels x n_features
-    CplxConv1d(n_channels, 3 * n_channels, kernel_size=4, stride=1),
+    CplxConv1d(n_channels, 3 * n_channels, kernel_size=4, stride=1, bias=False),
 
     # complex: batch x (3 * n_channels) x (n_features - (4-1))
     CplxModReLU(threshold=0.15),
@@ -98,7 +102,7 @@ real_input_model = torch.nn.Sequential(
     # real: batch x ((3 * n_channels * (n_features - (4-1))) * 2)
 )
 
-real_input_model(z).shape
+print(real_input_model(z).shape)
 # >>> torch.Size([256, 312])
 ```
 
