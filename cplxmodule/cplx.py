@@ -1,6 +1,8 @@
 import torch
 import torch.nn.functional as F
 
+from .utils import complex_view
+
 
 class Cplx():
     __slots__ = ("_real", "_imag")
@@ -98,16 +100,10 @@ class Cplx():
         return self.real is not None or self.imag is not None
 
 
-def real_to_cplx(input, copy=True):
+def real_to_cplx(input, copy=True, dim=-1):
     """Map real tensor input `... x [D * 2]` to a pair (re, im) with dim `... x D`."""
-    *head, n_features = input.shape
-    assert (n_features & 1) == 0
-
-    if copy:
-        return Cplx(input[..., 0::2].clone(), input[..., 1::2].clone())
-
-    input = input.reshape(*head, -1, 2)
-    return Cplx(input[..., 0], input[..., 1])
+    real, imag = complex_view(input, dim, squeeze=False)
+    return Cplx(real.clone(), imag.clone()) if copy else Cplx(real, imag)
 
 
 def cplx_to_real(input, flatten=True):
