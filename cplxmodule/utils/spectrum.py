@@ -1,7 +1,7 @@
 import torch
 import numpy as np
 
-from .utils import fix_dim, window_view
+from .views import fix_dim, window_view
 
 
 def pwelch(x, dim, window, fs=1., scaling="density", n_overlap=None):

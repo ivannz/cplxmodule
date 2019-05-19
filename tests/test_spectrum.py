@@ -43,7 +43,7 @@ def test_hamming_window(random_state=None):
 
 
 def test_pwelch(random_state):
-    from cplxmodule.spectrum import pwelch
+    from cplxmodule.utils.spectrum import pwelch
     from scipy.signal import welch
 
     # https://www.mathworks.com/help/signal/ref/pwelch.html#btulskp-6

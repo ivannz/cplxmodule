@@ -8,6 +8,6 @@ setup(
     license="MIT License",
     author="Ivan Nazarov",
     author_email="ivan.nazarov@skolkovotech.ru",
-    packages=["cplxmodule"],
+    packages=["cplxmodule", "cplxmodule.utils"],
     requires=["torch", "numpy"]
 )
