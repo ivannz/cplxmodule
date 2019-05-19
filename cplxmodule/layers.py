@@ -11,6 +11,30 @@ from .cplx import cplx_linear, cplx_conv1d
 from .cplx import cplx_phaseshift
 
 
+def is_from_cplx(module):
+    if isinstance(module, (CplxToCplx, CplxToReal)):
+        return True
+
+    if isinstance(module, torch.nn.Sequential):
+        return is_from_cplx(module[0])
+
+    return False
+
+
+def is_to_cplx(module):
+    if isinstance(module, (CplxToCplx, RealToCplx)):
+        return True
+
+    if isinstance(module, torch.nn.Sequential):
+        return is_to_cplx(module[-1])
+
+    return False
+
+
+def is_cplx_to_cplx(module):
+    return is_from_cplx(module) and is_to_cplx(module)
+
+
 class RealToCplx(torch.nn.Module):
     r"""
     A layer that splits an interleaved real tensor with even number in the last
