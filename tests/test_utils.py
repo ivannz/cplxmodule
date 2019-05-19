@@ -35,13 +35,18 @@ def test_complex_view(random_state):
 
     for shape in [3, 4, 5, 6, 7, 8]:
         tr_x = torch.tensor(random_state.randn(16, 10, shape))
-        real, imag = complex_view(tr_x, -1, squeeze=False)
 
         if shape % 2:
+            with pytest.warns(RuntimeWarning, match="Odd dimension"):
+                real, imag = complex_view(tr_x, -1, squeeze=False)
+
             # odd
             assert_allclose(real, tr_x[..., 0:-1:2].clone())
             assert_allclose(imag, tr_x[..., 1:-1:2].clone())
+
         else:
+            real, imag = complex_view(tr_x, -1, squeeze=False)
+
             # slice
             assert_allclose(real, tr_x[..., 0::2].clone())
             assert_allclose(imag, tr_x[..., 1::2].clone())
