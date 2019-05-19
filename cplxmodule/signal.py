@@ -3,7 +3,7 @@ import torch
 from .cplx import Cplx
 from .layers import CplxToCplx
 
-from .utils import is_cplx_to_cplx
+from .layers import is_cplx_to_cplx
 
 
 class CplxMultichannelGainLayer(CplxToCplx):

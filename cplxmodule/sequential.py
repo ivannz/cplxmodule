@@ -5,7 +5,7 @@ from collections import OrderedDict
 
 from .layers import CplxToCplx
 
-from .utils import is_cplx_to_cplx
+from .layers import is_cplx_to_cplx
 
 
 class CplxSequential(torch.nn.Sequential, CplxToCplx):
