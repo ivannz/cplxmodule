@@ -130,7 +130,8 @@ class Cplx(tuple):
         return Cplx(self.real.reshape(*shape), self.imag.reshape(*shape))
 
     def __repr__(self):
-        return f"{self.__class__.__name__}(real={self.real}, imag={self.imag})"
+        return f"{self.__class__.__name__}(\n" \
+               f"  real={self.real},\n  imag={self.imag}\n)"
 
     def __bool__(self):
         return self.real is not None or self.imag is not None
