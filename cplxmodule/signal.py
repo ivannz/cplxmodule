@@ -14,7 +14,7 @@ class CplxMultichannelGainLayer(CplxToCplx):
         \colon \mathbb{C}^d \to \mathbb{C}^{C \times d}
         \colon z \mapsto \Bigl(z \odot G_i(\lvert z \rvert)\Bigr)_{i=1}^C
         \,, $$
-    where $G_i \colon [0, +\infty)^d \to \mathbb{R}^d$ is the complex modulus
+    where $G_i \colon [0, +\infty)^d \to \mathbb{C}^d$ is the complex modulus
     gain function of the $i$-th channel.
 
     The layer takes in `... x n_in` complex input and applies complex modulus
@@ -36,7 +36,7 @@ class CplxMultichannelGainLayer(CplxToCplx):
         gain = self.gain(abs(input))
 
         # reshape gain `... x C x n_in` and input = (re, im) `... x 1 x n_in`
-        *head, n_features = input.real.shape
+        *head, n_features = input.shape
         try:
             gain = gain.reshape(*head, -1, n_features)
 
@@ -48,7 +48,8 @@ class CplxMultichannelGainLayer(CplxToCplx):
         # apply the gain
         output = input.apply(torch.unsqueeze, -2) * gain
         if self.flatten:
-            return output.apply(torch.reshape, (*head, -1))
+            return output.reshape(*head, -1)
+
         return output
 
 
