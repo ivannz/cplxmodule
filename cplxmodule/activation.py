@@ -20,6 +20,19 @@ class CplxActivation(CplxToCplx):
     def forward(self, input):
         return input.apply(self.f, *self.a, **self.k)
 
+    def extra_repr(self):
+        body = "."
+        if len(self.a) > 1:
+            body += f", {repr(self.a)[1:-1]}"
+        elif self.a:
+            body += f", {repr(self.a[0])}"
+
+        if self.k:
+            vals = map(repr, self.k.values())
+            body += ", " + ", ".join(map("=".join, zip(self.k, vals)))
+
+        return f"{self.f.__name__}({body})"
+
 
 class CplxModReLU(CplxToCplx):
     r"""
