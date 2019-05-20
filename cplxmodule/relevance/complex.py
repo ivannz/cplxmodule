@@ -15,9 +15,9 @@ from ..layers import CplxLinear
 from ..cplx import Cplx, cplx_linear
 
 
-def cplx_kl_div_penalty(log_alpha, reduction="mean"):
+def cplx_nkldiv_apprx(log_alpha, reduction="mean"):
     r"""
-    Negative complex kl-div approximation.
+    Sofplus-sigmoid approximation of the negative complex KL divergence.
     $$
         - KL(\mathcal{CN}(w\mid \theta, \alpha \theta \bar{\theta}, 0) \|
                 \tfrac1{\lvert w \rvert^2})
@@ -31,11 +31,24 @@ def cplx_kl_div_penalty(log_alpha, reduction="mean"):
     return kldiv_approx(log_alpha, coef, reduction)
 
 
-def cplx_kl_div_penalty_exact(log_alpha, reduction="mean"):
+def cplx_nkldiv_exact(log_alpha, reduction="mean"):
+    r"""
+    Exact negative complex KL divergence
+    $$
+        - KL(\mathcal{CN}(w\mid \theta, \alpha \theta \bar{\theta}, 0) \|
+                \tfrac1{\lvert w \rvert^2})
+            = \log \alpha
+              - 2 \mathbb{E}_{\xi \sim \mathcal{CN}(1, \alpha, 0)}
+                \log{\lvert \xi \rvert} + C
+            = \log \alpha + Ei( - \tfrac1{\alpha}) + C
+        \,, $$
+    where $Ei(x) = \int_{-\infty}^x e^t t^{-1} dt$ is the exponential integral.
+    """
     if reduction is not None and reduction not in ("mean", "sum"):
         raise ValueError("""`reduction` must be either `None`, "sum" """
                          """or "mean".""")
 
+    # Ei behaves well on the -ve values, and near 0-.
     kl_div = log_alpha + torch_expi(- torch.exp(- log_alpha)) - euler_gamma
 
     if reduction == "mean":
@@ -69,10 +82,11 @@ class CplxLinearARD(CplxLinear, BaseLinearARD):
     @property
     def penalty(self):
         r"""Compute the variational penalty term."""
-        # neg kl-div must be minimized!
+        # neg KL divergence must be maximized, hence the -ve sign.
         if self.exact:
-            return -cplx_kl_div_penalty_exact(self.log_alpha, reduction="mean")
-        return -cplx_kl_div_penalty(self.log_alpha, reduction="mean")
+            return -cplx_nkldiv_exact(self.log_alpha, reduction="mean")
+
+        return -cplx_nkldiv_apprx(self.log_alpha, reduction="mean")
 
     def forward(self, input):
         if not self.training and self.is_sparse:

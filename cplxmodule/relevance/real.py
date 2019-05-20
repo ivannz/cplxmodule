@@ -9,9 +9,9 @@ from .utils import kldiv_approx
 from .utils import torch_sparse_linear, torch_sparse_tensor
 
 
-def real_kl_div_penalty(log_alpha, reduction="mean"):
+def real_nkldiv_apprx(log_alpha, reduction="mean"):
     r"""
-    Negative kl-div approximation from arxiv:1701.05369.
+    Approximation of the negative Kl divergence from arxiv:1701.05369.
     $$
         - KL(\mathcal{N}(w\mid \theta, \alpha \theta^2) \|
                 \tfrac1{\lvert w \rvert})
@@ -43,8 +43,8 @@ class LinearARD(torch.nn.Linear, BaseLinearARD):
     @property
     def penalty(self):
         r"""Compute the variational penalty term."""
-        # neg kl-div must be minimized!
-        return - real_kl_div_penalty(self.log_alpha, reduction="mean")
+        # neg KL divergence must be maximized, hence the -ve sign.
+        return - real_nkldiv_apprx(self.log_alpha, reduction="mean")
 
     def forward(self, input):
         if not self.training and self.is_sparse:

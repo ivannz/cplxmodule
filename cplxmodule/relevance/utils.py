@@ -10,6 +10,20 @@ from ..cplx import Cplx
 
 
 class ExpiFunction(torch.autograd.Function):
+    r"""Pythonic differentiable port of scipy's Exponential Integral Ei.
+
+    $$
+        Ei
+            \colon \mathbb{R} \to \mathbb{R} \cup \{\pm \infty\}
+            \colon x \mapsto \int_{-\infty}^x \tfrac{e^t}{t} dt
+        \,. $$
+
+    Notes
+    -----
+    This may potentially introduce a memory transfer and compute bottleneck
+    during the forward pass due to CPU-GPU device switch. Backward pass does
+    not suffer from this issue and is compute on-device.
+    """
     @staticmethod
     def forward(ctx, x):
         ctx.save_for_backward(x)
@@ -28,7 +42,7 @@ torch_expi = ExpiFunction.apply
 
 
 def kldiv_approx(log_alpha, coef, reduction):
-    r"""Compute the sigmoid-softmax approximation
+    r"""Sofplus-sigmoid approximation.
     $$
         \alpha \mapsto
             k_1 \sigma(k_2 + k_3 \log \alpha) + C
