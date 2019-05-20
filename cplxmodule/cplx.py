@@ -4,30 +4,46 @@ import torch.nn.functional as F
 from .utils import complex_view
 
 
-class Cplx():
-    __slots__ = ("_real", "_imag")
-
-    def __new__(cls, real=0., imag=0.):
+class Cplx(tuple):
+    """A type partially implementing complex valued tensors in torch."""
+    def __new__(cls, real, imag=None):
         if isinstance(real, cls):
             return real
 
-        re_shape = getattr(real, "shape", [])
-        im_shape = getattr(imag, "shape", [])
-        if re_shape != im_shape:
-            raise RuntimeError("""Real and imaginary parts have """
-                               """mistmatching shape.""")
+        if not isinstance(real, torch.Tensor):
+            raise TypeError("""Real part must be torch.Tensor.""")
 
-        self = super().__new__(cls)
-        self._real, self._imag = real, imag
-        return self
+        if imag is None:
+            imag = torch.zeros_like(real).requires_grad_(real.requires_grad)
+
+        elif not isinstance(imag, torch.Tensor):
+            raise TypeError("""Imaginary part must be torch.Tensor.""")
+
+        if real.shape != imag.shape:
+            raise ValueError("""Real and imaginary parts have """
+                             """mistmatching shape.""")
+
+        return super().__new__(cls, (real, imag))
 
     @property
     def real(self):
-        return self._real
+        return super().__getitem__(0)
 
     @property
     def imag(self):
-        return self._imag
+        return super().__getitem__(1)
+
+    def __getitem__(self, key):
+        return Cplx(self.real[key], self.imag[key])
+
+    def __iter__(self):
+        return map(Cplx, self.real, self.imag)
+
+    def __contains__(self, value):
+        return value in self.real or value in self.imag
+
+    def __reversed__(self):
+        return Cplx(reversed(self.real), reversed(self.imag))
 
     @property
     def conj(self):
@@ -104,6 +120,9 @@ class Cplx():
     def shape(self, *shape):
         r"""Returns the shape of the complex tensor."""
         return self.real.shape
+
+    def __len__(self):
+        return self.shape[0]
 
     def reshape(self, *shape):
         r"""Reshape the complex tensor (both real and imaginary parts)."""
