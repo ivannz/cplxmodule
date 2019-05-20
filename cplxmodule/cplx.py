@@ -11,6 +11,12 @@ class Cplx():
         if isinstance(real, cls):
             return real
 
+        re_shape = getattr(real, "shape", [])
+        im_shape = getattr(imag, "shape", [])
+        if re_shape != im_shape:
+            raise RuntimeError("""Real and imaginary parts have """
+                               """mistmatching shape.""")
+
         self = super().__new__(cls)
         self._real, self._imag = real, imag
         return self
@@ -64,7 +70,8 @@ class Cplx():
         return (u / scale) * (v.conj / scale)
 
     def __rtruediv__(u, v):
-        return Cplx(v, 0.) / u
+        scale = abs(u)
+        return (u.conj / scale) * (v / scale)
 
     def __abs__(self):
         r"""Compute the complex modulus:
@@ -92,6 +99,16 @@ class Cplx():
     def apply(self, f, *a, **k):
         r"""Applies the function to real and imaginary parts."""
         return Cplx(f(self.real, *a, **k), f(self.imag, *a, **k))
+
+    @property
+    def shape(self, *shape):
+        r"""Returns the shape of the complex tensor."""
+        return self.real.shape
+
+    def reshape(self, *shape):
+        r"""Reshape the complex tensor (both real and imaginary parts)."""
+        shape = shape[0] if shape and isinstance(shape[0], tuple) else shape
+        return Cplx(self.real.reshape(*shape), self.imag.reshape(*shape))
 
     def __repr__(self):
         return f"{self.__class__.__name__}(real={self.real}, imag={self.imag})"
