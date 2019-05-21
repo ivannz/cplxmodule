@@ -27,7 +27,7 @@ class Cplx(tuple):
             raise TypeError("""Real part must be torch.Tensor.""")
 
         if imag is None:
-            imag = torch.zeros_like(real).requires_grad_(real.requires_grad)
+            imag = torch.zeros_like(real)
 
         elif not isinstance(imag, torch.Tensor):
             raise TypeError("""Imaginary part must be torch.Tensor.""")
