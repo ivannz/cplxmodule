@@ -53,6 +53,19 @@ class RealToCplx(torch.nn.Module):
         return real_to_cplx(input)
 
 
+class AsTypeCplx(RealToCplx):
+    r"""A layer that differentibaly casts the real tensor into a complex tensor.
+    $$
+        F
+        \colon \mathbb{R}^{\ldots \times d}
+                \to \mathbb{C}^{\ldots \times d}
+        \colon x \mapsto x + 0 i
+        \,. $$
+    """
+    def forward(self, input):
+        return Cplx(input)
+
+
 class CplxToReal(torch.nn.Module):
     r"""
     A layer that interleaves the complex tensor represented by a pair of real
