@@ -10,7 +10,20 @@ class Cplx(tuple):
         if isinstance(real, cls):
             return real
 
-        if not isinstance(real, torch.Tensor):
+        if isinstance(real, complex):
+            # Silently ignore imag if real is complex
+            real, imag = torch.tensor(real.real), torch.tensor(real.imag)
+
+        elif isinstance(real, float):
+            if imag is None:
+                imag = 0.0
+
+            elif not isinstance(imag, float):
+                raise TypeError("""Imaginary part must be float.""")
+
+            real, imag = torch.tensor(real), torch.tensor(imag)
+
+        elif not isinstance(real, torch.Tensor):
             raise TypeError("""Real part must be torch.Tensor.""")
 
         if imag is None:
@@ -49,6 +62,9 @@ class Cplx(tuple):
     def conj(self):
         return Cplx(self.real, -self.imag)
 
+    def conjugate(self):
+        return self.conj
+
     def __pos__(self):
         return self
 
@@ -56,14 +72,14 @@ class Cplx(tuple):
         return Cplx(-self.real, -self.imag)
 
     def __add__(u, v):
-        if not isinstance(v, Cplx):
+        if not isinstance(v, (Cplx, complex)):
             return Cplx(u.real + v, u.imag)
         return Cplx(u.real + v.real, u.imag + v.imag)
 
     __radd__ = __add__
 
     def __sub__(u, v):
-        if not isinstance(v, Cplx):
+        if not isinstance(v, (Cplx, complex)):
             return Cplx(u.real - v, u.imag)
         return Cplx(u.real - v.real, u.imag - v.imag)
 
@@ -71,23 +87,28 @@ class Cplx(tuple):
         return -u + v
 
     def __mul__(u, v):
-        if not isinstance(v, Cplx):
+        if not isinstance(v, (Cplx, complex)):
             return Cplx(u.real * v, u.imag * v)
+
+        # (a + ib) (u + iv) = au - bv + i(av + bu)
+        # (a+u)(b+v) = ab + uv + (av + ub)
+        # (a-v)(b+u) = ab - uv + (au - vb)
         return Cplx(u.real * v.real - u.imag * v.imag,
                     u.imag * v.real + u.real * v.imag)
 
     __rmul__ = __mul__
 
     def __truediv__(u, v):
-        if not isinstance(v, Cplx):
+        if not isinstance(v, (Cplx, complex)):
             return Cplx(u.real / v, u.imag / v)
 
-        scale = abs(v)
-        return (u / scale) * (v.conj / scale)
+        denom = v.real * v.real + v.imag * v.imag
+        return u * (v.conjugate() / denom)
 
     def __rtruediv__(u, v):
-        scale = abs(u)
-        return (u.conj / scale) * (v / scale)
+        # v / u and v is not Cplx
+        denom = u.real * u.real + u.imag * u.imag
+        return (u.conjugate() / denom) * v
 
     def __abs__(self):
         r"""Compute the complex modulus:
@@ -128,6 +149,9 @@ class Cplx(tuple):
         r"""Reshape the complex tensor (both real and imaginary parts)."""
         shape = shape[0] if shape and isinstance(shape[0], tuple) else shape
         return Cplx(self.real.reshape(*shape), self.imag.reshape(*shape))
+
+    def item(self):
+        return float(self.real) + 1j * float(self.imag)
 
     def __repr__(self):
         return f"{self.__class__.__name__}(\n" \

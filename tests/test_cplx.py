@@ -34,10 +34,16 @@ def test_creation(random_state):
     assert len(a) == len(p)
     assert_allclose_cplx(a, p)
 
+    cplx.Cplx(0.0)
+    cplx.Cplx(-1 + 1j)
+
     with pytest.raises(TypeError):
         cplx.Cplx(0)
+
+    with pytest.raises(TypeError):
         cplx.Cplx(0, None)
 
+    with pytest.raises(TypeError):
         cplx.Cplx(torch.from_numpy(a.real), 0)
 
     with pytest.raises(ValueError):
@@ -51,6 +57,7 @@ def test_arithmetic_unary(random_state):
     assert_allclose_cplx(a, p)
     assert_allclose(abs(a), abs(p))
     assert_allclose(np.angle(a), p.angle)
+    assert_allclose_cplx(a.conjugate(), p.conjugate())
     assert_allclose_cplx(a.conj(), p.conj)
     assert_allclose_cplx(+a, +p)
     assert_allclose_cplx(-a, -p)
@@ -72,27 +79,34 @@ def test_arithmetic_binary(random_state):
     assert_allclose_cplx(a * b, p * q)  # __mul__ cplx-cplx
     assert_allclose_cplx(a / b, p / q)  # __div__ cplx-cplx
 
+    # okay with pythonic integer, real and complex constants
+    for z in [int(10), float(3.1415), 1e-3 + 1e3j, -10j]:
+        assert_allclose_cplx(b + z, q + z)  # __add__ cplx-other
+        assert_allclose_cplx(b - z, q - z)  # __sub__ cplx-other
+        assert_allclose_cplx(b * z, q * z)  # __mul__ cplx-other
+        assert_allclose_cplx(b / z, q / z)  # __div__ cplx-other
+
+        assert_allclose_cplx(z + b, z + q)  # __radd__ other-cplx
+        assert_allclose_cplx(z - b, z - q)  # __rsub__ other-cplx
+        assert_allclose_cplx(z * b, z * q)  # __rmul__ other-cplx
+        assert_allclose_cplx(z / b, z / q)  # __rdiv__ other-cplx
+
     assert_allclose_cplx(b + c, q + r)  # __add__ cplx-other
     assert_allclose_cplx(b - c, q - r)  # __sub__ cplx-other
     assert_allclose_cplx(b * c, q * r)  # __mul__ cplx-other
     assert_allclose_cplx(b / c, q / r)  # __div__ cplx-other
 
-    # okay with pythonic real numbers (int, float)
-    assert_allclose_cplx(3.1415 + b, 3.1415 + q)  # __radd__ other-cplx
-    assert_allclose_cplx(3.1415 - b, 3.1415 - q)  # __rsub__ other-cplx
-    assert_allclose_cplx(3.1415 * b, 3.1415 * q)  # __rmul__ other-cplx
-    assert_allclose_cplx(3.1415 / b, 3.1415 / q)  # __rdiv__ other-cplx
-
-    assert_allclose_cplx(int(10) + b, int(10) + q)  # __radd__ other-cplx
-    assert_allclose_cplx(int(10) - b, int(10) - q)  # __rsub__ other-cplx
-    assert_allclose_cplx(int(10) * b, int(10) * q)  # __rmul__ other-cplx
-    assert_allclose_cplx(int(10) / b, int(10) / q)  # __rdiv__ other-cplx
-
-    # _r*__ with more complex types raises TypeError
+    # _r*__ with types like torch.Tensor raises TypeError
     with pytest.raises(TypeError, match=r".*be Tensor, not Cplx.*"):
         assert_allclose_cplx(c + b, r + q)  # __radd__ other-cplx
+
+    with pytest.raises(TypeError, match=r".*be Tensor, not Cplx.*"):
         assert_allclose_cplx(c - b, r - q)  # __rsub__ other-cplx
+
+    with pytest.raises(TypeError, match=r".*be Tensor, not Cplx.*"):
         assert_allclose_cplx(c * b, r * q)  # __rmul__ other-cplx
+
+    with pytest.raises(TypeError, match=r".*be Tensor, not Cplx.*"):
         assert_allclose_cplx(c / b, r / q)  # __rdiv__ other-cplx
 
 
@@ -189,3 +203,10 @@ def test_type_conversion(random_state):
     # from double-real to cplx
     assert_allclose_cplx(p, q)
     assert_allclose_cplx(a, q)
+
+    assert cplx.Cplx(-1 + 1j).item() == -1 + 1j
+
+    with pytest.raises(ValueError, match="one element tensors"):
+        p.item()
+
+    assert a[0, 0, 0] == p[0, 0, 0].item()
