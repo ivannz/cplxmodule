@@ -187,53 +187,58 @@ def bandwidth_power(x, fs, bands, dim=-2, n_overlap=None,
     return ff, px, 10 * torch.log10(torch.stack(channel, dim=-1))
 
 
-def acpr_calc(signal, sample_rate, mcf, acf, mcb, acb, nperseg=None, dim=-2):
-    r"""Calculate ACPR metric using pytorch
+def acpr_calc(signal, sample_rate, mcf, mcb, acf=None, acb=None,
+              nperseg=None, dim=-2):
+    r"""Get the total power in the main and adjacent frequqency bands.
 
     Arguments
     ---------
     signal : tensor size = (..., T, 2)
         The complex signal to compute the per-channel power for.
-
     sample_rate : float
         The sampling frequency per unit time (Hz).
-
     mcf : float
         The frequency of the main channel in Hz.
-
-    acf : arraylike (n_channels,)
-        The frequency offets of adjacent channels in Hz relative
-        to the main channel.
-
     mcb : float
         The bandwidth of the main channel in Hz.
-
+    acf : arraylike (n_channels,) or None
+        The frequencies of adjacent channels in Hz.
     acb : numeric or arraylike (n_channels,)
         The bandwidths of the adjacent channels in Hz.
-
     nperseg : int, or None
         The length of the window to use for power spectrum estimation.
-
     dim : int
         The dimension of over which the signal is recorded.
 
     Returns
     -------
-    main_channel_power : tensor
-
-    adjacent_channel_power : tensor
+    main_channel_power : tensor size = (..., 1)
+        The total power in decibel measured in the main band.
+    adjacent_channel_power : tensor size = (..., len(acf))
+        The total power in decibel measured in the each adjacent bands.
     """
+    if acf is None or acb is None:
+        acf, acb = [], []
+
+    elif not isinstance(acf, (list, tuple)):
+        raise TypeError("Adjacent Channel Frequency offests must be a "
+                        "list or a tuple.")
+
     if isinstance(acb, (int, float)):
-        acb = [acb] * len(acf)
+        acb = type(acf)([acb] * len(acf))
+
+    elif not isinstance(acb, (list, tuple)):
+        raise TypeError("Adjacent Channel Bandwidth must be a list or "
+                        "a tuple.")
 
     # form the bands
     bands = [(-0.5 * mcb + mcf, +0.5 * mcb + mcf)]
     for f, b in zip(acf, acb):
-        bands.append((-0.5 * b + f + mcf, +0.5 * b + f + mcf))
+        bands.append((-0.5 * b + f, +0.5 * b + f))
 
     # compute the power in each band
     ff, px, channel = bandwidth_power(signal, sample_rate, bands,
                                       dim=dim, nperseg=nperseg,
                                       n_overlap=0, scaling="spectrum")
 
-    return channel[..., [0]], channel[..., 1:]
+    return channel[..., :1], channel[..., 1:]
