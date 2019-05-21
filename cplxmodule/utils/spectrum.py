@@ -202,7 +202,8 @@ def acpr_calc(signal, sample_rate, mcf, acf, mcb, acb, nperseg=None, dim=-2):
         The frequency of the main channel in Hz.
 
     acf : arraylike (n_channels,)
-        The frequencies of the adjacent channels in Hz.
+        The frequency offets of adjacent channels in Hz relative
+        to the main channel.
 
     mcb : float
         The bandwidth of the main channel in Hz.
