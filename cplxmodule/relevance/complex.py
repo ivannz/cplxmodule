@@ -142,8 +142,10 @@ class CplxLinearARD(CplxLinear, BaseLinearARD):
             self.register_buffer("sparse_im_weight_", im_weight)
 
         else:
-            del self.sparse_re_weight_
-            del self.sparse_im_weight_
+            if hasattr(self, "sparse_re_weight_"):
+                del self.sparse_re_weight_
+            if hasattr(self, "sparse_im_weight_"):
+                del self.sparse_im_weight_
 
         # end if
 

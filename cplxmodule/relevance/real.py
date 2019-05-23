@@ -88,7 +88,8 @@ class LinearARD(torch.nn.Linear, BaseLinearARD):
             self.register_buffer("sparse_weight_", weight)
 
         else:
-            del self.sparse_weight_
+            if hasattr(self, "sparse_weight_"):
+                del self.sparse_weight_
 
         # end if
 
