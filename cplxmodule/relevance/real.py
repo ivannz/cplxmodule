@@ -83,7 +83,8 @@ class LinearARD(torch.nn.Linear, BaseLinearARD):
                     mask.nonzero().t(), self.weight[mask], self.weight.shape)
 
             elif mode == "dense":
-                weight = torch.where(mask, self.weight, torch.tensor(0.))
+                zero = torch.tensor(0.).to(self.weight)
+                weight = torch.where(mask, self.weight, zero)
 
             self.register_buffer("sparse_weight_", weight)
 

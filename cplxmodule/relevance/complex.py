@@ -133,10 +133,9 @@ class CplxLinearARD(CplxLinear, BaseLinearARD):
                     indices, self.weight.imag[mask], self.weight.imag.shape)
 
             elif mode == "dense":
-                re_weight = torch.where(
-                    mask, self.weight.real, torch.tensor(0.))
-                im_weight = torch.where(
-                    mask, self.weight.imag, torch.tensor(0.))
+                zero = torch.tensor(0.).to(self.weight.real)
+                re_weight = torch.where(mask, self.weight.real, zero)
+                im_weight = torch.where(mask, self.weight.imag, zero)
 
             self.register_buffer("sparse_re_weight_", re_weight)
             self.register_buffer("sparse_im_weight_", im_weight)
