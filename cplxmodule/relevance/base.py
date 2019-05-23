@@ -1,22 +1,6 @@
 import torch
 
 
-def apply(module, fn, memo=None):
-    r"""Traverse the modules and iterate over generator `fn`."""
-    if memo is None:
-        # The set of visited modules to forbid reentry
-        memo = set()
-
-    if module not in memo:
-        memo.add(module)
-        yield from fn(module)
-
-        # `.children()` traverses all directly descendant modules.
-        for submod in module.children():
-            yield from apply(submod, fn, memo)
-    # end if
-
-
 class BaseARD(torch.nn.Module):
     r"""\alpha-based variational dropout."""
     @property
@@ -29,11 +13,9 @@ class BaseARD(torch.nn.Module):
 
 def penalties(module):
     # yields own penalty and penalties of all descendants
-    def get_penalty(mod):
+    for name, mod in module.named_modules():
         if isinstance(mod, BaseARD):
             yield mod.penalty
-
-    yield from apply(module, get_penalty)
 
 
 class BaseLinearARD(BaseARD):
@@ -65,15 +47,16 @@ class BaseLinearARD(BaseARD):
 
 
 def sparsity(module, threshold=1.0):
+    # traverse all parameters
     n_par = sum(par.numel()
                 for name, par in module.named_parameters()
                 if "log_sigma2" not in name)
 
-    def get_sparsity(mod):
-        if isinstance(mod, BaseLinearARD):
-            yield mod.num_zeros(threshold)
+    # query the modules about their immediate parameters
+    n_zer = sum(mod.num_zeros(threshold)
+                for name, mod in module.named_modules()
+                if isinstance(mod, BaseLinearARD))
 
-    n_zer = sum(apply(module, get_sparsity))
     return n_zer / max(n_par, 1)
 
 
