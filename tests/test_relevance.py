@@ -12,7 +12,11 @@ import torch.nn.functional as F
 from cplxmodule.layers import CplxLinear
 
 from cplxmodule.relevance import penalties, sparsity, make_sparse
-from cplxmodule.relevance import CplxLinearARD, LinearARD
+from cplxmodule.relevance import LinearARD
+
+from cplxmodule.relevance import CplxLinearARD
+from cplxmodule.relevance.complex import CplxLinearARDApprox
+from cplxmodule.relevance.complex import CplxLinearARDBogus
 
 
 @pytest.fixture
@@ -38,6 +42,7 @@ def example(cplx=False):
         from cplxmodule.layers import RealToCplx, CplxToReal
         from cplxmodule.activation import CplxModReLU
 
+        # linear = CplxLinear if not dropout else CplxLinearARDBogus
         linear = CplxLinear if not dropout else CplxLinearARD
         return torch.nn.Sequential(
             RealToCplx(),
