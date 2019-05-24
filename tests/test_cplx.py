@@ -50,9 +50,23 @@ def test_creation(random_state):
         cplx.Cplx(torch.ones(11, 10), torch.ones(10, 11))
 
 
+def test_type_tofrom_numpy(random_state):
+    a = random_state.randn(10, 32, 64) + 1j * random_state.randn(10, 32, 64)
+    b = random_state.randn(10, 64, 40) + 1j * random_state.randn(10, 64, 40)
+
+    p = cplx.Cplx(torch.from_numpy(a.real), torch.from_numpy(a.imag))
+    q = cplx.Cplx(torch.from_numpy(b.real), torch.from_numpy(b.imag))
+
+    assert_allclose_cplx(p, cplx.Cplx.from_numpy(a))
+    assert_allclose_cplx(q, cplx.Cplx.from_numpy(b))
+
+    assert_allclose_cplx(a, p.numpy())
+    assert_allclose_cplx(b, q.numpy())
+
+
 def test_arithmetic_unary(random_state):
     a = random_state.randn(10, 20, 5) + 1j * random_state.randn(10, 20, 5)
-    p = cplx.Cplx(torch.from_numpy(a.real), torch.from_numpy(a.imag))
+    p = cplx.Cplx.from_numpy(a)
 
     assert_allclose_cplx(a, p)
     assert_allclose(abs(a), abs(p))
@@ -69,8 +83,7 @@ def test_arithmetic_binary(random_state):
     b = random_state.randn(10, 20, 5) + 1j * random_state.randn(10, 20, 5)
     c = random_state.randn(10, 20, 5)
 
-    p = cplx.Cplx(torch.from_numpy(a.real), torch.from_numpy(a.imag))
-    q = cplx.Cplx(torch.from_numpy(b.real), torch.from_numpy(b.imag))
+    p, q = cplx.Cplx.from_numpy(a), cplx.Cplx.from_numpy(b)
     r = torch.from_numpy(c)
 
     # test against numpy
@@ -112,7 +125,7 @@ def test_arithmetic_binary(random_state):
 
 def test_algebraic_functions(random_state):
     a = random_state.randn(10, 20, 5) + 1j * random_state.randn(10, 20, 5)
-    p = cplx.Cplx(torch.from_numpy(a.real), torch.from_numpy(a.imag))
+    p = cplx.Cplx.from_numpy(a)
 
     assert_allclose_cplx(np.exp(a), cplx.cplx_exp(p))
     assert_allclose_cplx(np.log(a), cplx.cplx_log(p))
@@ -128,7 +141,7 @@ def test_algebraic_functions(random_state):
 
 def test_slicing(random_state):
     a = random_state.randn(10, 20, 5) + 1j * random_state.randn(10, 20, 5)
-    p = cplx.Cplx(torch.from_numpy(a.real), torch.from_numpy(a.imag))
+    p = cplx.Cplx.from_numpy(a)
 
     for i in range(a.shape[0]):
         assert_allclose_cplx(a[i], p[i])
@@ -148,7 +161,7 @@ def test_slicing(random_state):
 
 def test_iteration(random_state):
     a = random_state.randn(10, 20, 5) + 1j * random_state.randn(10, 20, 5)
-    p = cplx.Cplx(torch.from_numpy(a.real), torch.from_numpy(a.imag))
+    p = cplx.Cplx.from_numpy(a)
 
     for u, v in zip(a, p):
         assert_allclose_cplx(u, v)
@@ -167,7 +180,7 @@ def test_iteration(random_state):
 
 def test_immutability(random_state):
     a = random_state.randn(10, 20, 5) + 1j * random_state.randn(10, 20, 5)
-    p = cplx.Cplx(torch.from_numpy(a.real), torch.from_numpy(a.imag))
+    p = cplx.Cplx.from_numpy(a)
 
     with pytest.raises(TypeError, match=r"not support item"):
         p[0] += p[1]
@@ -176,14 +189,26 @@ def test_immutability(random_state):
         p.real += p.imag
 
 
+def test_linear_matmul(random_state):
+    a = random_state.randn(10, 32, 64) + 1j * random_state.randn(10, 32, 64)
+    b = random_state.randn(10, 64, 40) + 1j * random_state.randn(10, 64, 40)
+
+    p, q = cplx.Cplx.from_numpy(a), cplx.Cplx.from_numpy(b)
+
+    for i in range(len(a)):
+        assert_allclose_cplx(a[i] @ b[i], p[i] @ q[i])
+
+    assert_allclose_cplx(a @ b, p @ q)
+
+
 def test_linear_transform(random_state):
     a = random_state.randn(5, 5, 200) + 1j * random_state.randn(5, 5, 200)
     L = random_state.randn(321, 200) + 1j * random_state.randn(321, 200)
     b = random_state.randn(321) + 1j * random_state.randn(321)
 
-    p = cplx.Cplx(torch.from_numpy(a.real), torch.from_numpy(a.imag))
-    U = cplx.Cplx(torch.from_numpy(L.real), torch.from_numpy(L.imag))
-    q = cplx.Cplx(torch.from_numpy(b.real), torch.from_numpy(b.imag))
+    p = cplx.Cplx.from_numpy(a)
+    U = cplx.Cplx.from_numpy(L)
+    q = cplx.Cplx.from_numpy(b)
 
     assert_allclose_cplx(np.dot(a, L.T), cplx.cplx_linear(p, U, None))
     assert_allclose_cplx(np.dot(a, L.T) + b, cplx.cplx_linear(p, U, q))
@@ -193,7 +218,7 @@ def test_type_conversion(random_state):
     a = random_state.randn(5, 5, 200) + 1j * random_state.randn(5, 5, 200)
     b = np.stack([a.real, a.imag], axis=-1).reshape(*a.shape[:-1], -1)
 
-    p = cplx.Cplx(torch.from_numpy(a.real), torch.from_numpy(a.imag))
+    p = cplx.Cplx.from_numpy(a)
     q = cplx.real_to_cplx(torch.from_numpy(b))
 
     # from cplx to double-real

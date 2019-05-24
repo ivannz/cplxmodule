@@ -110,6 +110,11 @@ class Cplx(tuple):
         denom = u.real * u.real + u.imag * u.imag
         return (u.conjugate() / denom) * v
 
+    def __matmul__(u, v):
+        re = torch.matmul(u.real, v.real) - torch.matmul(u.imag, v.imag)
+        im = torch.matmul(u.imag, v.real) + torch.matmul(u.real, v.imag)
+        return Cplx(re, im)
+
     def __abs__(self):
         r"""Compute the complex modulus:
         $$
@@ -153,12 +158,40 @@ class Cplx(tuple):
     def item(self):
         return float(self.real) + 1j * float(self.imag)
 
+    @staticmethod
+    def from_numpy(numpy):
+        re = torch.from_numpy(numpy.real)
+        im = torch.from_numpy(numpy.imag)
+        return Cplx(re, im)
+
+    def numpy(self):
+        return self.real.numpy() + 1j * self.imag.numpy()
+
     def __repr__(self):
         return f"{self.__class__.__name__}(\n" \
                f"  real={self.real},\n  imag={self.imag}\n)"
 
     def __bool__(self):
         return self.real is not None or self.imag is not None
+
+    def detach(self):
+        return Cplx(self.real.detach(), self.imag.detach())
+
+    def requires_grad_(self, requires_grad=True):
+        return Cplx(self.real.requires_grad_(requires_grad),
+                    self.imag.requires_grad_(requires_grad))
+
+    def cuda(self, device=None, non_blocking=False):
+        re = self.real.cuda(device=device, non_blocking=non_blocking)
+        im = self.imag.cuda(device=device, non_blocking=non_blocking)
+        return Cplx(re, im)
+
+    def cpu(self):
+        return Cplx(self.real.cpu(), self.imag.cpu())
+
+    def to(self, *args, **kwargs):
+        return Cplx(self.real.to(*args, **kwargs),
+                    self.imag.to(*args, **kwargs))
 
 
 def real_to_cplx(input, copy=True, dim=-1):
