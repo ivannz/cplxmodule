@@ -8,7 +8,7 @@ from numpy import euler_gamma
 
 from .base import BaseLinearARD
 
-from .utils import kldiv_approx, torch_expi
+from .utils import kldiv_approx, torch_expi, ExpiFunction
 from .utils import torch_sparse_cplx_linear, torch_sparse_tensor
 
 from ..layers import CplxLinear
@@ -61,10 +61,9 @@ def cplx_nkldiv_exact(log_alpha, reduction="mean"):
 
 
 class CplxLinearARD(CplxLinear, BaseLinearARD):
-    def __init__(self, in_features, out_features, bias=True, exact=True):
+    def __init__(self, in_features, out_features, bias=True):
         super().__init__(in_features, out_features, bias=bias)
 
-        self.exact = exact
         self.log_sigma2 = torch.nn.Parameter(
             torch.Tensor(out_features, in_features))
         self.reset_variational_parameters()
@@ -83,10 +82,7 @@ class CplxLinearARD(CplxLinear, BaseLinearARD):
     def penalty(self):
         r"""Compute the variational penalty term."""
         # neg KL divergence must be maximized, hence the -ve sign.
-        if self.exact:
-            return -cplx_nkldiv_exact(self.log_alpha, reduction="mean")
-
-        return -cplx_nkldiv_apprx(self.log_alpha, reduction="mean")
+        return -cplx_nkldiv_exact(self.log_alpha, reduction="mean")
 
     def forward(self, input):
         if not self.training and self.is_sparse:
@@ -152,3 +148,33 @@ class CplxLinearARD(CplxLinear, BaseLinearARD):
 
     def num_zeros(self, threshold=1.0):
         return 2 * self.get_sparsity_mask(threshold).sum().item()
+
+
+class CplxLinearARDApprox(CplxLinear, BaseLinearARD):
+    @property
+    def penalty(self):
+        r"""Compute the variational penalty term."""
+        # neg KL divergence must be maximized, hence the -ve sign.
+        return -cplx_nkldiv_apprx(self.log_alpha, reduction="mean")
+
+
+class BogusExpiFunction(ExpiFunction):
+    """The Dummy Expi function, that compute bogus values on the forward pass,
+    but correct values on the backwards pass, provided there is no downstream
+    dependence on its forward-pass output.
+    """
+    @staticmethod
+    def forward(ctx, x):
+        ctx.save_for_backward(x)
+        return torch.zeros_like(x)
+
+
+bogus_expi = BogusExpiFunction.apply
+
+
+class CplxLinearARDBogus(CplxLinearARD):
+    @property
+    def penalty(self):
+        log_alpha = self.log_alpha
+        kl_div = log_alpha + bogus_expi(- torch.exp(- log_alpha))
+        return -kl_div.mean()
