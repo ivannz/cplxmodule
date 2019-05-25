@@ -11,18 +11,18 @@ class CplxMultichannelGainLayer(CplxToCplx):
     Complex modulus multichannel gain layer:
     $$
         F
-        \colon \mathbb{C}^d \to \mathbb{C}^{C \times d}
-        \colon z \mapsto \Bigl(z \odot G_i(\lvert z \rvert)\Bigr)_{i=1}^C
+        \colon \mathbb{C}^n \to \mathbb{C}^{C \times n}
+        \colon z \mapsto \Bigl( g_j(\lvert z \rvert) \odot z \Bigr)_{j=1}^C
         \,, $$
-    where $G_i \colon [0, +\infty)^d \to \mathbb{C}^d$ is the complex modulus
-    gain function of the $i$-th channel.
+    where $g_j\colon \mathbb{R}^n \to \mathbb{K}^n$ is the gain network of the
+    $j$-th channel, $\mathbb{K} = \mathbb{R}$ or $\mathbb{C}$.
 
     The layer takes in `... x n_in` complex input and applies complex modulus
-    gain defined via a real-to-real gain network, which maps `... x n_in` to
-    `... x [C * n_in]` or `... x C x n_in`.
+    gain defined via a real-to-real or real-to-complex gain network, which maps
+    `... x n_in` to `... x [C * n_in]` or `... x C x n_in`.
 
-    The output of the gain function must be a mutliple of $d$, i.e. be able
-    to be reshaped into `C \times d`.
+    The output dimension of the gain function must be a multiple of $n$, i.e.
+    be able to be reshaped into `C \times n`.
     """
     def __init__(self, gain, flatten=False):
         super().__init__()
@@ -31,11 +31,9 @@ class CplxMultichannelGainLayer(CplxToCplx):
         self.flatten = flatten
 
     def forward(self, input):
-        """"""
         # compute the modulus gain
         gain = self.gain(abs(input))
 
-        # reshape gain `... x C x n_in` and input = (re, im) `... x 1 x n_in`
         *head, n_features = input.shape
         try:
             gain = gain.reshape(*head, -1, n_features)
@@ -54,32 +52,46 @@ class CplxMultichannelGainLayer(CplxToCplx):
 
 
 class CplxProjectionGainLayer(CplxMultichannelGainLayer):
-    r"""
-    Complex modulus gain layer:
+    r"""Complex modulus gain layer.
+
+    Parameters
+    ----------
+    gain : torch.nn.Module
+        The gain network, which takes real values and returns the multipliers.
+    projection : CplxToCplx module
+        The complex-valued projection operator.
+
+    Details
+    -------
+    Let $\mathbb{K} = \mathbb{R}$ or $\mathbb{C}$. The $\mathbb{K}$-hump-gain
+    dense net has the following funcitonal form:
     $$
         F
-        \colon \mathbb{C}^d \to \mathbb{C}^d
-        \colon z \mapsto A \Bigl(
-                z ~\big \|~ \Bigl(z \odot G_i(\lvert z \rvert)\Bigr)_{i=1}^C
-            \Bigr)
+        \colon \mathbb{C}^n \to \mathbb{C}^m
+        \colon z \mapsto L \biggl(
+            \Bigl( g_j(\lvert z \rvert) \odot z \Bigr)_{j=0}^C
+        \biggr)
         \,, $$
-    where $G_i \colon [0, +\infty)^d \to \mathbb{R}^d$ is the $i$-th complex
-    modulus gain function and $A\colon \mathbb{C}^{[(1 + C) \times d]} \to
-    \mathbb{C}^d$ is the projection operator, which operates on the amplified
-    concatenated complex input.
+    with $g_j\colon \mathbb{R}^n \to \mathbb{K}^n$ being the gain networks
+    of each of $C$ channels, and $L \colon \mathbb{C}^{(1+C)\times n} \to
+    \mathbb{C}^{m}$ -- a linear map. By design $g_0$ is `pass-through`, i.e.
+    $g_0(\cdot) = \mathbf{1} \in \mathbb{K}^n$. The linear operator $L$
+    operates on the amplified concatenated complex input, but can be set to
+    pass-through mode, which makes this layer into `CplxMultichannelGainLayer`
+    with `flatten=True`.
     """
-    def __init__(self, gain, projection):
+    def __init__(self, gain, projection=None):
         super().__init__(gain, flatten=True)
 
-        assert is_cplx_to_cplx(projection)
+        assert projection is None or is_cplx_to_cplx(projection)
         self.projection = projection
 
     def forward(self, input):
         channels = super().forward(input)
 
-        # concatenate and project
+        # concatenate and project (if necessary)
         output = Cplx(
             torch.cat([channels.real, input.real], dim=-1),
             torch.cat([channels.imag, input.imag], dim=-1))
 
-        return self.projection(output)
+        return output if self.projection is None else self.projection(output)
