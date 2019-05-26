@@ -181,6 +181,12 @@ class Cplx(tuple):
         return Cplx(self.real.requires_grad_(requires_grad),
                     self.imag.requires_grad_(requires_grad))
 
+    @property
+    def grad(self):
+        """EXPERIMETNAL"""
+        re, im = self.real.grad, self.imag.grad
+        return None if re is None or im is None else Cplx(re, im)
+
     def cuda(self, device=None, non_blocking=False):
         re = self.real.cuda(device=device, non_blocking=non_blocking)
         im = self.imag.cuda(device=device, non_blocking=non_blocking)
