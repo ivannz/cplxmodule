@@ -111,6 +111,9 @@ class Cplx(tuple):
         return (u.conjugate() / denom) * v
 
     def __matmul__(u, v):
+        if not isinstance(v, Cplx):
+            return Cplx(torch.matmul(u.real, v), torch.matmul(u.imag, v))
+
         re = torch.matmul(u.real, v.real) - torch.matmul(u.imag, v.imag)
         im = torch.matmul(u.imag, v.real) + torch.matmul(u.real, v.imag)
         return Cplx(re, im)
