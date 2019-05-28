@@ -153,6 +153,12 @@ class Cplx(tuple):
     def __len__(self):
         return self.shape[0]
 
+    def t(self):
+        return Cplx(self.real.t(), self.imag.t())
+
+    def h(self):
+        return self.conj.t()  # Cplx(self.real.t(), -self.imag.t())
+
     def reshape(self, *shape):
         r"""Reshape the complex tensor (both real and imaginary parts)."""
         shape = shape[0] if shape and isinstance(shape[0], tuple) else shape
