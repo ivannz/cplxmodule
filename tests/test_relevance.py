@@ -152,6 +152,11 @@ def example(cplx=False):
     print(model_sparse)
 
     print(make_sparse(model_sparse, 1.0, mode="sparse"))
+    if not cplx:
+        print(model_sparse[0].sparse_weight_)
+    else:
+        print(model_sparse[1].sparse_re_weight_)
+        print(model_sparse[1].sparse_im_weight_)
 
     # get scores on test
     X = torch.randn(1250, n_features)
@@ -159,6 +164,7 @@ def example(cplx=False):
 
     X, y = X.to(device_), y.to(device_)
 
+    test_model(X, y, model)
     test_model(X, y, model_sparse)
 
 
