@@ -309,12 +309,16 @@ def cplx_linear(input, weight, bias=None):
     return output
 
 
-def cplx_conv1d(input, weight, bias=None, stride=1,
-                padding=0, dilation=1, groups=1):
+def cplx_conv1d(input, weight, bias=None, stride=1, padding=0,
+                dilation=1, groups=1, padding_mode="zeros"):
     r"""Applies a complex 1d convolution to the incoming complex
     tensor `B x c_in x L`: :math:`y = x \star W + b`.
     """
-    # W = U + i V,  z = u + i v, c = \Re c + i \Im c
+    if padding_mode == 'circular':
+        expanded_padding = ((padding + 1) // 2, padding // 2)
+        input = input.apply(F.pad, expanded_padding, mode="circular")
+        padding = 0
+
     re = F.conv1d(input.real, weight.real, None,
                   stride, padding, dilation, groups) \
         - F.conv1d(input.imag, weight.imag, None,
@@ -326,6 +330,6 @@ def cplx_conv1d(input, weight, bias=None, stride=1,
 
     output = Cplx(re, im)
     if bias is not None:
-        output += bias
+        output += bias.apply(torch.unsqueeze, -1)
 
     return output
