@@ -7,7 +7,7 @@ import torch.nn.functional as F
 from torch.nn import Parameter
 
 from .cplx import Cplx, real_to_cplx, cplx_to_real
-from .cplx import cplx_linear, cplx_conv1d
+from .cplx import cplx_linear
 from .cplx import cplx_phaseshift
 
 
@@ -138,50 +138,6 @@ class CplxLinear(CplxToCplx):
         return 'in_features={}, out_features={}, bias={}'.format(
             self.in_features, self.out_features, self.bias is not None
         )
-
-
-class CplxConv1d(CplxToCplx):
-    r"""
-    Complex 1D convolution:
-    $$
-        F
-        \colon \mathbb{C}^{B \times c_{in} \times L}
-                \to \mathbb{C}^{B \times c_{out} \times L'}
-        \colon u + i v \mapsto (W_\mathrm{re} \star u - W_\mathrm{im} \star v)
-                                + i (W_\mathrm{im} \star u + W_\mathrm{re} \star v)
-        \,. $$
-
-    See torch.nn.Conv1d for reference on the input dimensions.
-    """
-    def __init__(self,
-                 in_channels,
-                 out_channels,
-                 kernel_size,
-                 stride=1,
-                 padding=0,
-                 dilation=1,
-                 groups=1,
-                 bias=True):
-        super().__init__()
-
-        self.re = torch.nn.Conv1d(in_channels, out_channels, kernel_size,
-                                  stride=stride, padding=padding,
-                                  dilation=dilation, groups=groups,
-                                  bias=bias)
-        self.im = torch.nn.Conv1d(in_channels, out_channels, kernel_size,
-                                  stride=stride, padding=padding,
-                                  dilation=dilation, groups=groups,
-                                  bias=bias)
-
-    def forward(self, input):
-        """Complex tensor (re-im) `B x c_in x L`"""
-        weight = Cplx(self.re.weight, self.im.weight)
-        bias = None
-        if self.re.bias is not None and self.im.bias is not None:
-            bias = Cplx(self.re.bias, self.im.bias)
-
-        return cplx_conv1d(input, weight, bias, self.re.stride,
-                           self.re.padding, self.re.dilation, self.re.groups)
 
 
 class CplxDropout1d(torch.nn.Dropout2d, CplxToCplx):
