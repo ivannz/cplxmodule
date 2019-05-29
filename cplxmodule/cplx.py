@@ -311,23 +311,51 @@ def cplx_phaseshift(input, phi=0.0):
     return input * Cplx(torch.cos(phi), torch.sin(phi))
 
 
-def cplx_linear(input, weight, bias=None):
+def cplx_linear_slow(input, weight, bias=None):
     r"""Applies a complex linear transformation to the incoming complex
     data: :math:`y = x A^T + b`.
     """
     # W = U + i V,  z = u + i v, c = \Re c + i \Im c
     #  W z + c = (U + i V) (u + i v) + \Re c + i \Im c
     #          = (U u + \Re c - V v) + i (V u + \Im c + U v)
-    re = F.linear(input.real, weight.real, None) \
-        - F.linear(input.imag, weight.imag, None)
-    im = F.linear(input.real, weight.imag, None) \
-        + F.linear(input.imag, weight.real, None)
+    re = F.linear(input.real, weight.real) \
+        - F.linear(input.imag, weight.imag)
+    im = F.linear(input.real, weight.imag) \
+        + F.linear(input.imag, weight.real)
 
     output = Cplx(re, im)
     if bias is not None:
         output += bias
 
     return output
+
+
+def cplx_linear_fast(input, weight, bias=None):
+    r"""Applies a complex linear transformation to the incoming complex
+    data: :math:`y = x A^T + b`.
+
+    Strassen's 3M
+    http://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.118.1356&rep=rep1&type=pdf
+
+    This method
+    https://cnx.org/contents/4kChocHM@6/Efficient-FFT-Algorithm-and-Programming-Tricks
+    """
+    # W = U + i V,  z = u + i v, c = \Re c + i \Im c
+    #  W z + c = (U + i V) (u + i v) + \Re c + i \Im c
+    #          = (U u + \Re c - V v) + i (V u + \Im c + U v)
+    K1 = F.linear(input.real + input.imag,  weight.real)
+    K2 = F.linear(input.real, weight.imag - weight.real)
+    K3 = F.linear(input.imag, weight.real + weight.imag)
+
+    output = Cplx(K1 - K3, K1 + K2)
+    if bias is not None:
+        output += bias
+
+    return output
+
+
+# use fast multiplication by default
+cplx_linear = cplx_linear_fast
 
 
 def cplx_conv1d(input, weight, bias=None, stride=1, padding=0,
