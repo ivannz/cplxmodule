@@ -47,20 +47,20 @@ class Cplx(tuple):
         return super().__getitem__(1)
 
     def __getitem__(self, key):
-        return Cplx(self.real[key], self.imag[key])
+        return type(self)(self.real[key], self.imag[key])
 
     def __iter__(self):
-        return map(Cplx, self.real, self.imag)
+        return map(type(self), self.real, self.imag)
 
     def __contains__(self, value):
         return value in self.real or value in self.imag
 
     def __reversed__(self):
-        return Cplx(reversed(self.real), reversed(self.imag))
+        return type(self)(reversed(self.real), reversed(self.imag))
 
     @property
     def conj(self):
-        return Cplx(self.real, -self.imag)
+        return type(self)(self.real, -self.imag)
 
     def conjugate(self):
         return self.conj
@@ -69,38 +69,38 @@ class Cplx(tuple):
         return self
 
     def __neg__(self):
-        return Cplx(-self.real, -self.imag)
+        return type(self)(-self.real, -self.imag)
 
     def __add__(u, v):
         if not isinstance(v, (Cplx, complex)):
-            return Cplx(u.real + v, u.imag)
-        return Cplx(u.real + v.real, u.imag + v.imag)
+            return type(u)(u.real + v, u.imag)
+        return type(u)(u.real + v.real, u.imag + v.imag)
 
     __radd__ = __add__
 
     def __sub__(u, v):
         if not isinstance(v, (Cplx, complex)):
-            return Cplx(u.real - v, u.imag)
-        return Cplx(u.real - v.real, u.imag - v.imag)
+            return type(u)(u.real - v, u.imag)
+        return type(u)(u.real - v.real, u.imag - v.imag)
 
     def __rsub__(u, v):
         return -u + v
 
     def __mul__(u, v):
         if not isinstance(v, (Cplx, complex)):
-            return Cplx(u.real * v, u.imag * v)
+            return type(u)(u.real * v, u.imag * v)
 
         # (a + ib) (u + iv) = au - bv + i(av + bu)
         # (a+u)(b+v) = ab + uv + (av + ub)
         # (a-v)(b+u) = ab - uv + (au - vb)
-        return Cplx(u.real * v.real - u.imag * v.imag,
-                    u.imag * v.real + u.real * v.imag)
+        return type(u)(u.real * v.real - u.imag * v.imag,
+                       u.imag * v.real + u.real * v.imag)
 
     __rmul__ = __mul__
 
     def __truediv__(u, v):
         if not isinstance(v, (Cplx, complex)):
-            return Cplx(u.real / v, u.imag / v)
+            return type(u)(u.real / v, u.imag / v)
 
         denom = v.real * v.real + v.imag * v.imag
         return u * (v.conjugate() / denom)
@@ -112,11 +112,11 @@ class Cplx(tuple):
 
     def __matmul__(u, v):
         if not isinstance(v, Cplx):
-            return Cplx(torch.matmul(u.real, v), torch.matmul(u.imag, v))
+            return type(u)(torch.matmul(u.real, v), torch.matmul(u.imag, v))
 
         re = torch.matmul(u.real, v.real) - torch.matmul(u.imag, v.imag)
         im = torch.matmul(u.imag, v.real) + torch.matmul(u.real, v.imag)
-        return Cplx(re, im)
+        return type(u)(re, im)
 
     def __abs__(self):
         r"""Compute the complex modulus:
@@ -143,10 +143,10 @@ class Cplx(tuple):
 
     def apply(self, f, *a, **k):
         r"""Applies the function to real and imaginary parts."""
-        return Cplx(f(self.real, *a, **k), f(self.imag, *a, **k))
+        return type(self)(f(self.real, *a, **k), f(self.imag, *a, **k))
 
     @property
-    def shape(self, *shape):
+    def shape(self):
         r"""Returns the shape of the complex tensor."""
         return self.real.shape
 
@@ -154,7 +154,7 @@ class Cplx(tuple):
         return self.shape[0]
 
     def t(self):
-        return Cplx(self.real.t(), self.imag.t())
+        return type(self)(self.real.t(), self.imag.t())
 
     def h(self):
         return self.conj.t()  # Cplx(self.real.t(), -self.imag.t())
@@ -162,16 +162,16 @@ class Cplx(tuple):
     def reshape(self, *shape):
         r"""Reshape the complex tensor (both real and imaginary parts)."""
         shape = shape[0] if shape and isinstance(shape[0], tuple) else shape
-        return Cplx(self.real.reshape(*shape), self.imag.reshape(*shape))
+        return type(self)(self.real.reshape(*shape), self.imag.reshape(*shape))
 
     def item(self):
         return float(self.real) + 1j * float(self.imag)
 
-    @staticmethod
-    def from_numpy(numpy):
+    @classmethod
+    def from_numpy(cls, numpy):
         re = torch.from_numpy(numpy.real)
         im = torch.from_numpy(numpy.imag)
-        return Cplx(re, im)
+        return cls(re, im)
 
     def numpy(self):
         return self.real.numpy() + 1j * self.imag.numpy()
@@ -184,29 +184,28 @@ class Cplx(tuple):
         return self.real is not None or self.imag is not None
 
     def detach(self):
-        return Cplx(self.real.detach(), self.imag.detach())
+        return type(self)(self.real.detach(), self.imag.detach())
 
     def requires_grad_(self, requires_grad=True):
-        return Cplx(self.real.requires_grad_(requires_grad),
-                    self.imag.requires_grad_(requires_grad))
+        return type(self)(self.real.requires_grad_(requires_grad),
+                          self.imag.requires_grad_(requires_grad))
 
     @property
     def grad(self):
-        """EXPERIMETNAL"""
         re, im = self.real.grad, self.imag.grad
-        return None if re is None or im is None else Cplx(re, im)
+        return None if re is None or im is None else type(self)(re, im)
 
     def cuda(self, device=None, non_blocking=False):
         re = self.real.cuda(device=device, non_blocking=non_blocking)
         im = self.imag.cuda(device=device, non_blocking=non_blocking)
-        return Cplx(re, im)
+        return type(self)(re, im)
 
     def cpu(self):
-        return Cplx(self.real.cpu(), self.imag.cpu())
+        return type(self)(self.real.cpu(), self.imag.cpu())
 
     def to(self, *args, **kwargs):
-        return Cplx(self.real.to(*args, **kwargs),
-                    self.imag.to(*args, **kwargs))
+        return type(self)(self.real.to(*args, **kwargs),
+                          self.imag.to(*args, **kwargs))
 
 
 def real_to_cplx(input, copy=True, dim=-1):
