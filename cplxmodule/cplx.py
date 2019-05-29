@@ -207,6 +207,19 @@ class Cplx(tuple):
         return type(self)(self.real.to(*args, **kwargs),
                           self.imag.to(*args, **kwargs))
 
+    def dim(self):
+        return len(self.shape)
+
+    def permute(self, *dims):
+        return type(self)(self.real.permute(*dims), self.imag.permute(*dims))
+
+    def transpose(self, dim0, dim1):
+        return type(self)(self.real.transpose(dim0, dim1),
+                          self.imag.transpose(dim0, dim1))
+
+    def is_complex(self):
+        return True
+
 
 def real_to_cplx(input, copy=True, dim=-1):
     """Map real tensor input `... x [D * 2]` to a pair (re, im) with dim `... x D`."""
