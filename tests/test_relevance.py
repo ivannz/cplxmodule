@@ -83,7 +83,8 @@ def example(cplx=False):
             # linear(20, 10, bias=False),
         )
 
-    def train_model(X, y, model, n_steps=20000, klw=1e-3, verbose=True):
+    def train_model(X, y, model, n_steps=20000, klw=1e-3,
+                    threshold=1.0, verbose=True):
         import tqdm
 
         model.train()
@@ -102,7 +103,7 @@ def example(cplx=False):
 
                 optim.step()
 
-                sprsty = sparsity(model) if verbose else float("nan")
+                sprsty = sparsity(model, threshold) if verbose else float("nan")
                 bar.set_postfix_str(
                     f"""{sprsty:.0%} {mse.item():.3e} """
                     f"""{float(kl_d):.3e}"""
@@ -111,17 +112,22 @@ def example(cplx=False):
         # end with
         return model.eval()
 
-    def test_model(X, y, model):
+    def test_model(X, y, model, threshold=1.0):
         model.eval()
         with torch.no_grad():
             mse = F.mse_loss(model(X), y)
             kl_d = sum(penalties(model))
 
-        print(f"""{sparsity(model):.1%} {mse.item():.3e} {float(kl_d):.3e}""")
+        print(f"""{sparsity(model, threshold):.1%} """
+              f"""{mse.item():.3e} {float(kl_d):.3e}""")
         return model
 
     build_model = build_cplx_model if cplx else build_real_model
     device_ = torch.device("cpu")
+
+    tau = 0.73105  # p = a / 1 + a, a = p / (1 - p)
+    threshold = np.log(tau) - np.log(1 - tau)
+    print(f"{tau:.1%} - {threshold:.3g}")
 
     n_features = 500 if cplx else 250
     n_output = 20 if cplx else 10
@@ -136,7 +142,7 @@ def example(cplx=False):
     model = build_model(False)
     model.to(device_)
 
-    model = train_model(X, y, model, 1000)
+    model = train_model(X, y, model, 1000, threshold=threshold)
 
     # use pre-trained for automatic relevance detection
     model_sparse = build_model(True)
@@ -145,13 +151,14 @@ def example(cplx=False):
     model_sparse.to(device_)
     model_sparse.load_state_dict(model.state_dict(), strict=False)
 
-    model_sparse = train_model(X, y, model_sparse, n_steps=9000, klw=1e-1)
+    model_sparse = train_model(X, y, model_sparse, n_steps=9000,
+                               klw=1e-1, threshold=threshold)
 
     # sparsify the model
     model_sparse.eval()
     print(model_sparse)
 
-    print(make_sparse(model_sparse, 1.0, mode="sparse"))
+    print(make_sparse(model_sparse, threshold, mode="sparse"))
     if not cplx:
         print(model_sparse[0].sparse_weight_)
     else:
@@ -159,13 +166,13 @@ def example(cplx=False):
         print(model_sparse[1].sparse_im_weight_)
 
     # get scores on test
-    X = torch.randn(1250, n_features)
+    X = torch.randn(10000, n_features)
     y = X[:, :n_output].clone()
 
     X, y = X.to(device_), y.to(device_)
 
-    test_model(X, y, model)
-    test_model(X, y, model_sparse)
+    test_model(X, y, model, threshold=threshold)
+    test_model(X, y, model_sparse, threshold=threshold)
 
 
 if __name__ == '__main__':
