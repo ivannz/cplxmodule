@@ -311,7 +311,7 @@ def cplx_phaseshift(input, phi=0.0):
     return input * Cplx(torch.cos(phi), torch.sin(phi))
 
 
-def cplx_linear_slow(input, weight, bias=None):
+def cplx_linear_naive(input, weight, bias=None):
     r"""Applies a complex linear transformation to the incoming complex
     data: :math:`y = x A^T + b`.
     """
@@ -330,7 +330,7 @@ def cplx_linear_slow(input, weight, bias=None):
     return output
 
 
-def cplx_linear_fast(input, weight, bias=None):
+def cplx_linear_3m(input, weight, bias=None):
     r"""Applies a complex linear transformation to the incoming complex
     data: :math:`y = x A^T + b`.
 
@@ -354,8 +354,8 @@ def cplx_linear_fast(input, weight, bias=None):
     return output
 
 
-# use fast multiplication by default
-cplx_linear = cplx_linear_fast
+# use naive multiplication by default
+cplx_linear = cplx_linear_naive
 
 
 def cplx_conv1d(input, weight, bias=None, stride=1, padding=0,
