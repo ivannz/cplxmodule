@@ -5,7 +5,7 @@ from .utils import complex_view
 
 
 class Cplx(tuple):
-    """A type partially implementing complex valued tensors in torch."""
+    r"""A type partially implementing complex valued tensors in torch."""
     def __new__(cls, real, imag=None):
         if isinstance(real, cls):
             return real
@@ -40,38 +40,49 @@ class Cplx(tuple):
 
     @property
     def real(self):
+        r"""Real part of the complex tensor."""
         return super().__getitem__(0)
 
     @property
     def imag(self):
+        r"""Imaginary part of the complex tensor."""
         return super().__getitem__(1)
 
     def __getitem__(self, key):
+        r"""Index the complex tensor."""
         return type(self)(self.real[key], self.imag[key])
 
     def __iter__(self):
+        r"""Iterate over the zero-th dimension of the complex tensor."""
         return map(type(self), self.real, self.imag)
 
     def __contains__(self, value):
+        r"""Test if the tensor contains the specified value in it."""
         return value in self.real or value in self.imag
 
     def __reversed__(self):
+        r"""Reverse the complex tensor along the zero-th dimension."""
         return type(self)(reversed(self.real), reversed(self.imag))
 
     @property
     def conj(self):
+        r"""The complex conjugate of the complex tensor."""
         return type(self)(self.real, -self.imag)
 
     def conjugate(self):
+        r"""The complex conjugate of the complex tensor."""
         return self.conj
 
     def __pos__(self):
+        r"""Return the complex tensor as is."""
         return self
 
     def __neg__(self):
+        r"""Flip the sign of the complex tensor."""
         return type(self)(-self.real, -self.imag)
 
     def __add__(u, v):
+        r"""Sum of complex tensors."""
         if not isinstance(v, (Cplx, complex)):
             return type(u)(u.real + v, u.imag)
         return type(u)(u.real + v.real, u.imag + v.imag)
@@ -79,14 +90,17 @@ class Cplx(tuple):
     __radd__ = __add__
 
     def __sub__(u, v):
+        r"""Difference of complex tensors."""
         if not isinstance(v, (Cplx, complex)):
             return type(u)(u.real - v, u.imag)
         return type(u)(u.real - v.real, u.imag - v.imag)
 
     def __rsub__(u, v):
+        r"""Difference of complex tensors."""
         return -u + v
 
     def __mul__(u, v):
+        r"""Elementwise product of complex tensors."""
         if not isinstance(v, (Cplx, complex)):
             return type(u)(u.real * v, u.imag * v)
 
@@ -99,6 +113,7 @@ class Cplx(tuple):
     __rmul__ = __mul__
 
     def __truediv__(u, v):
+        r"""Elementwise division of complex tensors."""
         if not isinstance(v, (Cplx, complex)):
             return type(u)(u.real / v, u.imag / v)
 
@@ -106,11 +121,13 @@ class Cplx(tuple):
         return u * (v.conjugate() / denom)
 
     def __rtruediv__(u, v):
+        r"""Elementwise division something by a complex tensors."""
         # v / u and v is not Cplx
         denom = u.real * u.real + u.imag * u.imag
         return (u.conjugate() / denom) * v
 
     def __matmul__(u, v):
+        r"""Complex matrix-matrix product of complex tensors."""
         if not isinstance(v, Cplx):
             return type(u)(torch.matmul(u.real, v), torch.matmul(u.imag, v))
 
@@ -151,29 +168,35 @@ class Cplx(tuple):
         return self.real.shape
 
     def __len__(self):
+        r"""The size of the zero-th dimension of the complex tensor."""
         return self.shape[0]
 
     def t(self):
+        r"""The transpose of a 2d compelx tensor."""
         return type(self)(self.real.t(), self.imag.t())
 
     def h(self):
+        r"""The Hermitian transpose of a 2d compelx tensor."""
         return self.conj.t()  # Cplx(self.real.t(), -self.imag.t())
 
     def reshape(self, *shape):
-        r"""Reshape the complex tensor (both real and imaginary parts)."""
+        r"""Reshape the complex tensor."""
         shape = shape[0] if shape and isinstance(shape[0], tuple) else shape
         return type(self)(self.real.reshape(*shape), self.imag.reshape(*shape))
 
     def item(self):
+        r"""The scalar value of zero-dim complex tensor."""
         return float(self.real) + 1j * float(self.imag)
 
     @classmethod
     def from_numpy(cls, numpy):
+        r"""Create a complex tensor from numpy array."""
         re = torch.from_numpy(numpy.real)
         im = torch.from_numpy(numpy.imag)
         return cls(re, im)
 
     def numpy(self):
+        r"""Export a complex tensor as complex numpy array."""
         return self.real.numpy() + 1j * self.imag.numpy()
 
     def __repr__(self):
@@ -184,40 +207,50 @@ class Cplx(tuple):
         return self.real is not None or self.imag is not None
 
     def detach(self):
+        r"""Return a copy of the complex tensor detached from autograd graph."""
         return type(self)(self.real.detach(), self.imag.detach())
 
     def requires_grad_(self, requires_grad=True):
+        r"""Toggle the gradient of real and imaginary parts."""
         return type(self)(self.real.requires_grad_(requires_grad),
                           self.imag.requires_grad_(requires_grad))
 
     @property
     def grad(self):
+        r"""Collect the accumulated gradinet of the complex tensor."""
         re, im = self.real.grad, self.imag.grad
         return None if re is None or im is None else type(self)(re, im)
 
     def cuda(self, device=None, non_blocking=False):
+        r"""Move the complex tensor to a CUDA device."""
         re = self.real.cuda(device=device, non_blocking=non_blocking)
         im = self.imag.cuda(device=device, non_blocking=non_blocking)
         return type(self)(re, im)
 
     def cpu(self):
+        r"""Move the complex tensor to CPU."""
         return type(self)(self.real.cpu(), self.imag.cpu())
 
     def to(self, *args, **kwargs):
+        r"""Move / typecast the complex tensor."""
         return type(self)(self.real.to(*args, **kwargs),
                           self.imag.to(*args, **kwargs))
 
     def dim(self):
+        r"""The number of dimensions in the complex tensor."""
         return len(self.shape)
 
     def permute(self, *dims):
+        r"""Shuffle the dimensions of the complex tensor."""
         return type(self)(self.real.permute(*dims), self.imag.permute(*dims))
 
     def transpose(self, dim0, dim1):
+        r"""Transpose the specified dimensions of the complex tensor."""
         return type(self)(self.real.transpose(dim0, dim1),
                           self.imag.transpose(dim0, dim1))
 
     def is_complex(self):
+        r"""Test if the tensor indeed represents a complex number."""
         return True
 
 
