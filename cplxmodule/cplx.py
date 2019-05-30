@@ -56,10 +56,6 @@ class Cplx(tuple):
         r"""Iterate over the zero-th dimension of the complex tensor."""
         return map(type(self), self.real, self.imag)
 
-    def __contains__(self, value):
-        r"""Test if the tensor contains the specified value in it."""
-        return value in self.real or value in self.imag
-
     def __reversed__(self):
         r"""Reverse the complex tensor along the zero-th dimension."""
         return type(self)(reversed(self.real), reversed(self.imag))
@@ -202,9 +198,6 @@ class Cplx(tuple):
     def __repr__(self):
         return f"{self.__class__.__name__}(\n" \
                f"  real={self.real},\n  imag={self.imag}\n)"
-
-    def __bool__(self):
-        return self.real is not None or self.imag is not None
 
     def detach(self):
         r"""Return a copy of the complex tensor detached from autograd graph."""
