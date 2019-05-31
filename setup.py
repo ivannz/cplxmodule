@@ -2,7 +2,7 @@ from distutils.core import setup, Extension
 
 setup(
     name="cplxmodule",
-    version="0.5.7",
+    version="0.5.8",
     description="""A lightweight extension for pytorch.nn for handling """
                 """complex valued computations.""",
     license="MIT License",
