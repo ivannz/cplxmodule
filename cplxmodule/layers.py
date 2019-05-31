@@ -11,6 +11,18 @@ from .cplx import cplx_linear
 from .cplx import cplx_phaseshift
 
 
+class CplxParameter(torch.nn.ParameterDict):
+    def __init__(self, cplx):
+        if not isinstance(cplx, Cplx):
+            raise TypeError(f"""`{type(self).__name__}` accepts only """
+                            f"""Cplx tensors.""")
+
+        super().__init__({
+            "real": Parameter(cplx.real),
+            "imag": Parameter(cplx.imag),
+        })
+
+
 def is_from_cplx(module):
     if isinstance(module, (CplxToCplx, CplxToReal)):
         return True
@@ -106,16 +118,10 @@ class CplxLinear(CplxToCplx):
         self.in_features = in_features
         self.out_features = out_features
 
-        self.weight = torch.nn.ParameterDict({
-            "real": Parameter(torch.Tensor(out_features, in_features)),
-            "imag": Parameter(torch.Tensor(out_features, in_features)),
-        })
+        self.weight = CplxParameter(Cplx.empty(out_features, in_features))
 
         if bias:
-            self.bias = torch.nn.ParameterDict({
-                "real": Parameter(torch.Tensor(out_features)),
-                "imag": Parameter(torch.Tensor(out_features)),
-            })
+            self.bias = CplxParameter(Cplx.empty(out_features))
         else:
             self.register_parameter('bias', None)
 

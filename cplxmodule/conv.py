@@ -6,7 +6,7 @@ import torch.nn
 from torch.nn import Parameter
 
 from .cplx import Cplx, cplx_conv1d
-from .layers import CplxToCplx
+from .layers import CplxToCplx, CplxParameter
 
 from torch.nn.modules.utils import _single
 
@@ -32,18 +32,11 @@ class CplxConvNd(CplxToCplx):
         self.groups, self.padding_mode = groups, padding_mode
         self.groups, self.padding_mode = groups, padding_mode
 
-        self.weight = torch.nn.ParameterDict({
-            "real": Parameter(torch.Tensor(
-                out_channels, in_channels // groups, *kernel_size)),
-            "imag": Parameter(torch.Tensor(
-                out_channels, in_channels // groups, *kernel_size)),
-        })
+        self.weight = CplxParameter(Cplx.empty(
+            out_channels, in_channels // groups, *kernel_size))
 
         if bias:
-            self.bias = torch.nn.ParameterDict({
-                "real": Parameter(torch.Tensor(out_channels)),
-                "imag": Parameter(torch.Tensor(out_channels)),
-            })
+            self.bias = CplxParameter(Cplx.empty(out_channels))
         else:
             self.register_parameter("bias", None)
 
