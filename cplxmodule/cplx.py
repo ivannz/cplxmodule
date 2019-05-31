@@ -246,6 +246,27 @@ class Cplx(tuple):
         r"""Test if the tensor indeed represents a complex number."""
         return True
 
+    @classmethod
+    def empty(cls, *sizes, dtype=None, device=None, requires_grad=False):
+        r"""Create an empty complex tensor."""
+        re = torch.empty(*sizes, dtype=dtype, device=device,
+                         requires_grad=requires_grad)
+        return cls(re, torch.empty_like(re, requires_grad=requires_grad))
+
+    @classmethod
+    def zeros(cls, *sizes, dtype=None, device=None, requires_grad=False):
+        r"""Create an empty complex tensor."""
+        re = torch.zeros(*sizes, dtype=dtype, device=device,
+                         requires_grad=requires_grad)
+        return cls(re, torch.zeros_like(re, requires_grad=requires_grad))
+
+    @classmethod
+    def ones(cls, *sizes, dtype=None, device=None, requires_grad=False):
+        r"""Create an empty complex tensor."""
+        re = torch.ones(*sizes, dtype=dtype, device=device,
+                        requires_grad=requires_grad)
+        return cls(re, torch.zeros_like(re, requires_grad=requires_grad))
+
 
 def real_to_cplx(input, copy=True, dim=-1):
     """Map real tensor input `... x [D * 2]` to a pair (re, im) with dim `... x D`."""

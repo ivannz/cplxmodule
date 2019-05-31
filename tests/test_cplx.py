@@ -49,6 +49,24 @@ def test_creation(random_state):
     with pytest.raises(ValueError):
         cplx.Cplx(torch.ones(11, 10), torch.ones(10, 11))
 
+    p = cplx.Cplx.empty(10, 12, 31, dtype=torch.float64)
+    assert p.real.dtype == p.imag.dtype
+    assert p.real.requires_grad == p.imag.requires_grad
+    assert p.real.dtype == torch.float64
+    assert not p.real.requires_grad
+
+    p = cplx.Cplx.empty(10, 12, 31, requires_grad=True)
+    assert p.real.dtype == p.imag.dtype
+    assert p.real.requires_grad == p.imag.requires_grad
+    assert p.real.dtype == torch.float32
+    assert p.real.requires_grad
+
+    p = cplx.Cplx.zeros(10, 12, 31)
+    assert_allclose(p.numpy(), np.zeros(p.shape, dtype=np.complex64))
+
+    p = cplx.Cplx.ones(10, 12, 31)
+    assert_allclose(p.numpy(), np.ones(p.shape, dtype=np.complex64))
+
 
 def test_type_tofrom_numpy(random_state):
     a = random_state.randn(10, 32, 64) + 1j * random_state.randn(10, 32, 64)
