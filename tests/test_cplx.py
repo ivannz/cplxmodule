@@ -235,3 +235,31 @@ def test_type_conversion(random_state):
         p.item()
 
     assert a[0, 0, 0] == p[0, 0, 0].item()
+
+
+def test_enisum(random_state):
+    a = random_state.randn(10, 32, 64) + 1j * random_state.randn(10, 32, 64)
+    b = random_state.randn(10, 64, 32) + 1j * random_state.randn(10, 64, 32)
+    c = random_state.randn(10, 10, 10) + 1j * random_state.randn(10, 10, 10)
+
+    p, q, r = map(cplx.Cplx.from_numpy, (a, b, c))
+
+    assert_allclose(cplx.cplx_einsum("ijk", r).numpy(), np.einsum("ijk", c))
+
+    equations = ["iij", "iji", "jii", "iii"]
+    for eq in equations:
+        assert_allclose(cplx.cplx_einsum(eq, r).numpy(), np.einsum(eq, c))
+        with pytest.raises(RuntimeError, match="dimension does not match"):
+            cplx.cplx_einsum(eq, p)
+
+    equations = [
+        "ijk, ikj", "ijk, ikj -> ij", "ijk, ikj -> k",
+        "ijk, lkj", "ijk, lkj -> li", "ijk, lkj -> lji",
+        "ijk, lkp",
+        ]
+    for eq in equations:
+        assert_allclose(cplx.cplx_einsum(eq, p, q).numpy(),
+                        np.einsum(eq, a, b))
+
+    with pytest.raises(RuntimeError, match="does not support more"):
+        cplx.cplx_einsum("...", p, q, r)

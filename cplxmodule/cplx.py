@@ -408,3 +408,30 @@ def cplx_conv1d(input, weight, bias=None, stride=1, padding=0,
         output += bias.apply(torch.unsqueeze, -1)
 
     return output
+
+
+def cplx_einsum(equation, *tensors):
+    """2-tensor einstein summation."""
+    if not tensors:
+        raise RuntimeError("""`cplx_einsum()` requires """
+                           """at least one tensor.""")
+
+    cplx1, *tensors = tensors
+    if not tensors:
+        # no complex multiplication with only one tensor
+        return Cplx(torch.einsum(equation, cplx1.real),
+                    torch.einsum(equation, cplx1.imag))
+
+    cplx2, *tensors = tensors
+    if not tensors:
+        # Einsum is complex bilinear -- the logic is same here.
+        re = torch.einsum(equation, cplx1.real, cplx2.real) \
+            - torch.einsum(equation, cplx1.imag, cplx2.imag)
+
+        im = torch.einsum(equation, cplx1.real, cplx2.imag) \
+            + torch.einsum(equation, cplx1.imag, cplx2.real)
+
+        return Cplx(re, im)
+
+    raise RuntimeError(f"""`cplx_einsum()` does not support more """
+                       f"""than 2 tensors. Got {2 + len(tensors)}.""")
