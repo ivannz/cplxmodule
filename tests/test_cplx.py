@@ -141,6 +141,32 @@ def test_arithmetic_binary(random_state):
         assert_allclose_cplx(c / b, r / q)  # __rdiv__ other-cplx
 
 
+def test_arithmetic_inplace(random_state):
+    a = random_state.randn(10, 20, 5) + 1j * random_state.randn(10, 20, 5)
+    p = cplx.Cplx.from_numpy(a)
+
+    n = cplx.Cplx.zeros(*a.shape, dtype=p.real.dtype, device=p.real.device)
+    m = np.zeros_like(a)
+
+    # test inplace __i*__
+    n += p; m += a
+    assert_allclose_cplx(m, n)
+
+    n *= p; m *= a
+    assert_allclose_cplx(m, n)
+
+    n -= p; m -= a
+    assert_allclose_cplx(m, n)
+
+    n /= p; m /= a
+    assert_allclose_cplx(m, n)
+
+    with pytest.raises(RuntimeError, match=r"The expanded size of the tensor"):
+        n[1:] @= p[0].t()
+
+    assert_allclose_cplx(m[0, :5] @ a[0, 0], n[0, :5] @ p[0, 0])
+
+
 def test_algebraic_functions(random_state):
     a = random_state.randn(10, 20, 5) + 1j * random_state.randn(10, 20, 5)
     p = cplx.Cplx.from_numpy(a)
@@ -200,8 +226,8 @@ def test_immutability(random_state):
     a = random_state.randn(10, 20, 5) + 1j * random_state.randn(10, 20, 5)
     p = cplx.Cplx.from_numpy(a)
 
-    with pytest.raises(TypeError, match=r"not support item"):
-        p[0] += p[1]
+    with pytest.raises(AttributeError, match=r"can't set attribute"):
+        p.real = p.imag
 
     with pytest.raises(AttributeError, match=r"can't set attribute"):
         p.real += p.imag
