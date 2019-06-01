@@ -52,6 +52,13 @@ class Cplx(tuple):
         r"""Index the complex tensor."""
         return type(self)(self.real[key], self.imag[key])
 
+    def __setitem__(self, key, value):
+        r"""Alter the complex tensor at index inplace."""
+        if not isinstance(value, (Cplx, complex)):
+            self.real[key], self.imag[key] = value, value
+        else:
+            self.real[key], self.imag[key] = value.real, value.imag
+
     def __iter__(self):
         r"""Iterate over the zero-th dimension of the complex tensor."""
         return map(type(self), self.real, self.imag)
@@ -59,6 +66,10 @@ class Cplx(tuple):
     def __reversed__(self):
         r"""Reverse the complex tensor along the zero-th dimension."""
         return type(self)(reversed(self.real), reversed(self.imag))
+
+    def clone(self):
+        r"""Clone a complex tensor."""
+        return type(self)(self.real.clone(), self.imag.clone())
 
     @property
     def conj(self):
