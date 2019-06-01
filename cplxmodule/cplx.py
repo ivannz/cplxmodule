@@ -84,6 +84,7 @@ class Cplx(tuple):
         return type(u)(u.real + v.real, u.imag + v.imag)
 
     __radd__ = __add__
+    __iadd__ = __add__
 
     def __sub__(u, v):
         r"""Difference of complex tensors."""
@@ -94,6 +95,8 @@ class Cplx(tuple):
     def __rsub__(u, v):
         r"""Difference of complex tensors."""
         return -u + v
+
+    __isub__ = __sub__
 
     def __mul__(u, v):
         r"""Elementwise product of complex tensors."""
@@ -107,6 +110,7 @@ class Cplx(tuple):
                        u.imag * v.real + u.real * v.imag)
 
     __rmul__ = __mul__
+    __imul__ = __mul__
 
     def __truediv__(u, v):
         r"""Elementwise division of complex tensors."""
@@ -117,10 +121,12 @@ class Cplx(tuple):
         return u * (v.conjugate() / denom)
 
     def __rtruediv__(u, v):
-        r"""Elementwise division something by a complex tensors."""
+        r"""Elementwise division of something by a complex tensor."""
         # v / u and v is not Cplx
         denom = u.real * u.real + u.imag * u.imag
         return (u.conjugate() / denom) * v
+
+    __itruediv__ = __truediv__
 
     def __matmul__(u, v):
         r"""Complex matrix-matrix product of complex tensors."""
@@ -130,6 +136,13 @@ class Cplx(tuple):
         re = torch.matmul(u.real, v.real) - torch.matmul(u.imag, v.imag)
         im = torch.matmul(u.imag, v.real) + torch.matmul(u.real, v.imag)
         return type(u)(re, im)
+
+    def __rmatmul__(u, v):
+        r"""Matrix multiplication by a complex tensor from the right."""
+        # v @ u and v is not Cplx
+        return type(u)(torch.matmul(v, u.real), torch.matmul(v, u.imag))
+
+    __imatmul__ = __matmul__
 
     def __abs__(self):
         r"""Compute the complex modulus:
