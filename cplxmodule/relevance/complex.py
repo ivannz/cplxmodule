@@ -104,10 +104,11 @@ class CplxLinearARD(CplxLinear, BaseLinearARD):
 
     def forward_sparse(self, input):
         weight = Cplx(self.sparse_re_weight_, self.sparse_im_weight_)
+        bias = Cplx(**self.bias) if self.bias is not None else None
         if self.sparsity_mode_ == "dense":
-            return cplx_linear(input, weight, self.bias)
+            return cplx_linear(input, weight, bias)
 
-        return torch_sparse_cplx_linear(input, weight, self.bias)
+        return torch_sparse_cplx_linear(input, weight, bias)
 
     def sparsify(self, threshold=1.0, mode="dense"):
         if mode is not None and mode not in ("dense", "sparse"):
