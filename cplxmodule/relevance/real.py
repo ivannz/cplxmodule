@@ -57,7 +57,7 @@ class LinearARD(torch.nn.Linear, BaseLinearARD):
         # end if
 
         s2 = F.linear(input * input, torch.exp(self.log_sigma2), None)
-        return mu + torch.randn_like(s2) * torch.sqrt(s2 + 1e-12)
+        return mu + torch.randn_like(s2) * torch.sqrt(s2 + 1e-20)
 
     def forward_sparse(self, input):
         weight = self.sparse_weight_

@@ -100,7 +100,7 @@ class CplxLinearARD(CplxLinear, BaseLinearARD):
 
         # generate complex gaussian noise with proper scale
         noise = Cplx(*map(torch.rand_like, (s2, s2))) / sqrt(2)
-        return mu + noise * torch.sqrt(s2 + 1e-12)
+        return mu + noise * torch.sqrt(s2 + 1e-20)
 
     def forward_sparse(self, input):
         weight = Cplx(self.sparse_re_weight_, self.sparse_im_weight_)
