@@ -307,3 +307,33 @@ def test_enisum(random_state):
 
     with pytest.raises(RuntimeError, match="does not support more"):
         cplx.cplx_einsum("...", p, q, r)
+
+
+def test_cat_stack(random_state):
+    with pytest.raises(RuntimeError, match="a non-empty list of Tensors"):
+        cplx.cplx_stack([], dim=0)
+
+    np_tensors = 10 * [
+        random_state.randn(5, 3, 7) + 1j * random_state.randn(5, 3, 7)
+    ]
+    tr_tensors = [*map(cplx.Cplx.from_numpy, np_tensors)]
+
+    for n in [0, 1, 2]:
+        assert_allclose(cplx.cplx_cat(tr_tensors, dim=n).numpy(),
+                        np.concatenate(np_tensors, axis=n))
+
+    for n in [0, 1, 2, 3]:
+        assert_allclose(cplx.cplx_stack(tr_tensors, dim=n).numpy(),
+                        np.stack(np_tensors, axis=n))
+
+    np_tensors = [
+        random_state.randn(3, 7) + 1j * random_state.randn(3, 7),
+        random_state.randn(5, 7) + 1j * random_state.randn(5, 7),
+    ]
+
+    for n in [0, 1, 2]:
+        with pytest.raises(RuntimeError, match="Sizes of tensors must match"):
+            cplx.cplx_stack(map(cplx.Cplx.from_numpy, np_tensors), dim=n)
+
+    with pytest.raises(RuntimeError, match="Sizes of tensors must match"):
+        cplx.cplx_cat(map(cplx.Cplx.from_numpy, np_tensors), dim=1)
