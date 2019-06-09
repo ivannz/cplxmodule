@@ -1,6 +1,6 @@
 import torch
 
-from .cplx import Cplx
+from .cplx import Cplx, cplx_cat
 from .layers import CplxToCplx
 
 from .layers import is_cplx_to_cplx
@@ -91,8 +91,6 @@ class CplxProjectionGainLayer(CplxMultichannelGainLayer):
         channels = super().forward(input)
 
         # concatenate and project (if necessary)
-        output = Cplx(
-            torch.cat([channels.real, input.real], dim=-1),
-            torch.cat([channels.imag, input.imag], dim=-1))
+        output = cplx_cat([channels, input], dim=-1)
 
         return output if self.projection is None else self.projection(output)

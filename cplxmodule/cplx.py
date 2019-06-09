@@ -292,6 +292,18 @@ class Cplx(tuple):
         return cls(re, torch.zeros_like(re, requires_grad=requires_grad))
 
 
+def cplx_cat(tensors, dim):
+    tensors = [*map(Cplx, tensors)]
+    return Cplx(torch.cat([z.real for z in tensors], dim=dim),
+                torch.cat([z.imag for z in tensors], dim=dim))
+
+
+def cplx_stack(tensors, dim):
+    tensors = [*map(Cplx, tensors)]
+    return Cplx(torch.stack([z.real for z in tensors], dim=dim),
+                torch.stack([z.imag for z in tensors], dim=dim))
+
+
 def real_to_cplx(input, copy=True, dim=-1):
     """Map real tensor input `... x [D * 2]` to a pair (re, im) with dim `... x D`."""
     real, imag = complex_view(input, dim, squeeze=False)
