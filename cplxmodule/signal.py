@@ -28,7 +28,7 @@ class CplxMultichannelGainLayer(CplxToCplx):
         super().__init__()
 
         self.gain = gain
-        self.flatten, self.squared = squared, squared
+        self.flatten, self.squared = flatten, squared
 
     def forward(self, input):
         # compute the modulus gain
