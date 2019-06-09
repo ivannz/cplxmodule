@@ -24,15 +24,16 @@ class CplxMultichannelGainLayer(CplxToCplx):
     The output dimension of the gain function must be a multiple of $n$, i.e.
     be able to be reshaped into `C \times n`.
     """
-    def __init__(self, gain, flatten=False):
+    def __init__(self, gain, flatten=False, squared=False):
         super().__init__()
 
         self.gain = gain
-        self.flatten = flatten
+        self.flatten, self.squared = squared, squared
 
     def forward(self, input):
         # compute the modulus gain
-        gain = self.gain(abs(input))
+        modulus = abs(input)
+        gain = self.gain(modulus**2 if self.squared else modulus)
 
         *head, n_features = input.shape
         try:
@@ -80,8 +81,8 @@ class CplxProjectionGainLayer(CplxMultichannelGainLayer):
     pass-through mode, which makes this layer into `CplxMultichannelGainLayer`
     with `flatten=True`.
     """
-    def __init__(self, gain, projection=None):
-        super().__init__(gain, flatten=True)
+    def __init__(self, gain, projection=None, squared=False):
+        super().__init__(gain, flatten=True, squared=squared)
 
         assert projection is None or is_cplx_to_cplx(projection)
         self.projection = projection
