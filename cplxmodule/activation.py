@@ -34,6 +34,10 @@ class CplxActivation(CplxToCplx):
         return f"{self.f.__name__}({body})"
 
 
+class CplxIdentity(torch.nn.Identity, CplxToCplx):
+    pass
+
+
 class CplxModReLU(CplxToCplx):
     r"""
     Applies soft thresholding to the complex modulus:
@@ -92,11 +96,6 @@ class CplxModulus(CplxToReal):
 class CplxAngle(CplxToReal):
     def forward(self, input):
         return input.angle
-
-
-class CplxIdentity(CplxToReal):
-    def forward(self, input):
-        return input
 
 
 CplxExp = torch_module(cplx_exp, (CplxToCplx,), "CplxExp")
