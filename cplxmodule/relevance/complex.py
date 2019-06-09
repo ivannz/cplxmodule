@@ -15,22 +15,6 @@ from ..layers import CplxLinear
 from ..cplx import Cplx, cplx_linear
 
 
-def cplx_nkldiv_apprx(log_alpha, reduction="mean"):
-    r"""
-    Sofplus-sigmoid approximation of the negative complex KL divergence.
-    $$
-        - KL(\mathcal{CN}(w\mid \theta, \alpha \theta \bar{\theta}, 0) \|
-                \tfrac1{\lvert w \rvert^2})
-            = \log \alpha
-              - 2 \mathbb{E}_{\xi \sim \mathcal{CN}(1, \alpha, 0)}
-                \log{\lvert \xi \rvert} + C
-        \,. $$
-    For coef estimation and derivation c.f. the supplementary notebook.
-    """
-    coef = 0.57811, 1.46018, 1.36562, 1.  # 0.57811265, 1.4601848, 1.36561527
-    return kldiv_approx(log_alpha, coef, reduction)
-
-
 def cplx_nkldiv_exact(log_alpha, reduction="mean"):
     r"""
     Exact negative complex KL divergence
@@ -149,6 +133,22 @@ class CplxLinearARD(CplxLinear, BaseLinearARD):
 
     def num_zeros(self, threshold=1.0):
         return 2 * self.get_sparsity_mask(threshold).sum().item()
+
+
+def cplx_nkldiv_apprx(log_alpha, reduction="mean"):
+    r"""
+    Sofplus-sigmoid approximation of the negative complex KL divergence.
+    $$
+        - KL(\mathcal{CN}(w\mid \theta, \alpha \theta \bar{\theta}, 0) \|
+                \tfrac1{\lvert w \rvert^2})
+            = \log \alpha
+              - 2 \mathbb{E}_{\xi \sim \mathcal{CN}(1, \alpha, 0)}
+                \log{\lvert \xi \rvert} + C
+        \,. $$
+    For coef estimation and derivation c.f. the supplementary notebook.
+    """
+    coef = 0.57811, 1.46018, 1.36562, 1.  # 0.57811265, 1.4601848, 1.36561527
+    return kldiv_approx(log_alpha, coef, reduction)
 
 
 class CplxLinearARDApprox(CplxLinear, BaseLinearARD):
