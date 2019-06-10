@@ -32,6 +32,17 @@ def test_window_view(random_state):
 
 def test_complex_view(random_state):
     from cplxmodule.utils import complex_view
+    from cplxmodule import Cplx
+
+    # test if complex view is properly constructed
+    shape = 3, 4, 5, 7, 3
+    a = random_state.randn(*shape) + 1j * random_state.randn(*shape)
+    real, imag = map(torch.from_numpy, (a.real, a.imag))
+    for dim in range(a.ndim + 1):
+        tr_x = torch.stack([real, imag], dim=dim)
+        z = Cplx(*complex_view(tr_x, dim, squeeze=True))
+
+        assert_allclose(z.numpy(), a)
 
     for shape in [3, 4, 5, 6, 7, 8]:
         tr_x = torch.tensor(random_state.randn(16, 10, shape))
