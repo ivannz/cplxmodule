@@ -20,7 +20,7 @@ def named_penalties(module, prefix=""):
 
 def penalties(module):
     for name, penalty in named_penalties(module):
-        yield mod.penalty
+        yield penalty
 
 
 class BaseLinearARD(BaseARD):
