@@ -11,11 +11,16 @@ class BaseARD(torch.nn.Module):
                                   """variational penalty.""")
 
 
-def penalties(module):
+def named_penalties(module, prefix=""):
     # yields own penalty and penalties of all descendants
     for name, mod in module.named_modules():
         if isinstance(mod, BaseARD):
-            yield mod.penalty
+            yield name, mod.penalty
+
+
+def penalties(module):
+    for name, penalty in named_penalties(module):
+        yield mod.penalty
 
 
 class BaseLinearARD(BaseARD):
