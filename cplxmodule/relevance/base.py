@@ -13,7 +13,7 @@ class BaseARD(torch.nn.Module):
 
 def named_penalties(module, prefix=""):
     # yields own penalty and penalties of all descendants
-    for name, mod in module.named_modules():
+    for name, mod in module.named_modules(prefix=prefix):
         if isinstance(mod, BaseARD):
             yield name, mod.penalty
 
