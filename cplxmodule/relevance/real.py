@@ -8,6 +8,8 @@ from .base import BaseLinearARD
 from .utils import kldiv_approx
 from .utils import torch_sparse_linear, torch_sparse_tensor
 
+from .utils import parameter_to_buffer, buffer_to_parameter
+
 
 def real_nkldiv_apprx(log_alpha, reduction="mean"):
     r"""
@@ -47,7 +49,7 @@ class LinearARD(torch.nn.Linear, BaseLinearARD):
         return - real_nkldiv_apprx(self.log_alpha, reduction="mean")
 
     def forward(self, input):
-        if not self.training and self.is_sparse:
+        if self.is_sparse:
             return self.forward_sparse(input)
 
         mu = super().forward(input)
@@ -60,39 +62,48 @@ class LinearARD(torch.nn.Linear, BaseLinearARD):
         return mu + torch.randn_like(s2) * torch.sqrt(s2 + 1e-20)
 
     def forward_sparse(self, input):
-        weight = self.sparse_weight_
+        nonzero, weight = self.nonzero_, self.weight_
         if self.sparsity_mode_ == "dense":
-            return F.linear(input, weight, self.bias)
+            return F.linear(input, weight * nonzero, self.bias)
 
-        return torch_sparse_linear(input, weight, self.bias)
+        else:
+            weight_ = torch_sparse_tensor(nonzero, weight, self.weight.shape)
+            return torch_sparse_linear(input, weight_, self.bias)
 
     def sparsify(self, threshold=1.0, mode="dense"):
         if mode is not None and mode not in ("dense", "sparse"):
             raise ValueError(f"""`mode` must be either 'dense', 'sparse' or """
                              f"""`None` (got '{mode}').""")
 
-        if mode is not None and self.training:
-            raise RuntimeError("Cannot sparsify model while training.")
+        if self.is_sparse and self.sparsity_mode_ != mode:
+            # reinstate dropout mode and discard runtime data on mode change
+            del self.nonzero_, self.weight_
+            buffer_to_parameter(self, "log_sigma2")
+            buffer_to_parameter(self, "weight")
 
-        self.sparsity_mode_ = mode
         if mode is not None:
-            mask = ~self.get_sparsity_mask(threshold)
+            # switch off variatonal dropout and create runtime sparse data
+            parameter_to_buffer(self, "log_sigma2")
+            parameter_to_buffer(self, "weight")
 
+            mask = ~self.get_sparsity_mask(threshold)
             if mode == "sparse":
-                weight = torch_sparse_tensor(
-                    mask.nonzero().t(), self.weight[mask], self.weight.shape)
+                # truly sparse mode
+                weight = self.weight.data[mask].clone()
+                self.register_buffer("nonzero_", mask.nonzero().t())
 
             elif mode == "dense":
-                zero = torch.tensor(0.).to(self.weight)
-                weight = torch.where(mask, self.weight, zero)
+                # smiluated sparse mode
+                mask = mask.data.to(self.weight)
+                weight = self.weight.data * mask
+                self.register_buffer("nonzero_", mask)
 
-            self.register_buffer("sparse_weight_", weight)
-
-        else:
-            if hasattr(self, "sparse_weight_"):
-                del self.sparse_weight_
-
+            # make weight into a buffer (load_state dict doesn't care
+            #  about param/buffer distinction!)
+            self.register_parameter("weight_", torch.nn.Parameter(weight))
         # end if
+
+        self.sparsity_mode_ = mode
 
         return self
 

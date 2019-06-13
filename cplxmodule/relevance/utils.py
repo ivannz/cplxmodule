@@ -109,3 +109,33 @@ def torch_sparse_cplx_linear(input, weight, bias=None):
         output += bias
 
     return output
+
+
+def parameter_to_buffer(module, name):
+    """Locate a parameter by name and remove it, before registering
+    it as buffer with disabled gradient.
+    """
+    if name not in module._parameters:
+        raise KeyError(f"attribute '{name}' is not a parameter.")
+
+    par = getattr(module, name)
+    if not isinstance(par, torch.Tensor):
+        raise KeyError(f"parameter '{name}' is not a tensor.")
+
+    delattr(module, name)
+    module.register_buffer(name, par.data)
+
+
+def buffer_to_parameter(module, name):
+    """Locate a buffer by name and remove it, before registering
+    it as parameter with enabled gradient.
+    """
+    if name not in module._buffers:
+        raise KeyError(f"attribute '{name}' is not a buffer.")
+
+    buf = getattr(module, name)
+    if not isinstance(buf, torch.Tensor):
+        raise KeyError(f"buffer '{name}' is not a tensor.")
+
+    delattr(module, name)
+    module.register_parameter(name, torch.nn.Parameter(buf))

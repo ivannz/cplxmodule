@@ -160,7 +160,8 @@ def example(cplx=False):
 
     print(make_sparse(model_sparse, threshold, mode="sparse"))
     if not cplx:
-        print(model_sparse[0].sparse_weight_)
+        print(model_sparse[0].weight_)
+        print(model_sparse[0].nonzero_)
     else:
         print(model_sparse[1].sparse_re_weight_)
         print(model_sparse[1].sparse_im_weight_)
