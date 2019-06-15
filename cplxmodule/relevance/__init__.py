@@ -1,4 +1,6 @@
 from .real import LinearARD
+from .real_l0 import LinearL0ARD
+
 from .complex import CplxLinearARD
 
 from .base import penalties, named_penalties
