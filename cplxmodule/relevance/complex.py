@@ -138,7 +138,7 @@ class CplxLinearARD(CplxLinear, BaseARD, SparseModeMixin):
             weight = Cplx(**self.weight)
             if mode == "sparse":
                 # truly sparse mode: using torch sparse tensor
-                mask = mask.detach().to(weight.device)
+                mask = mask.detach().to(weight.real.device)
                 weight_ = weight.detach()[mask].apply(torch.clone)
                 nonzero_ = mask.nonzero().t()
 
