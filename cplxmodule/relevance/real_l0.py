@@ -43,8 +43,9 @@ class LinearL0ARD(torch.nn.Linear, BaseARD, SparseModeMixin):
     beta, gamma, zeta = .25, -0.25, 1.25
     # beta, gamma, zeta = 0.66, -0.1, 1.1
 
-    def __init__(self, in_features, out_features, bias=True):
+    def __init__(self, in_features, out_features, bias=True, reduction="mean"):
         super().__init__(in_features, out_features, bias=bias)
+        self.reduction = reduction
 
         self.log_alpha = Parameter(torch.Tensor(*self.weight.shape))
 
@@ -59,8 +60,16 @@ class LinearL0ARD(torch.nn.Linear, BaseARD, SparseModeMixin):
     def penalty(self):
         shift = self.beta * math.log(- self.gamma / self.zeta)
 
-        # the penalty has this expression, due to -ve log-alpha c.f. eq. (12)
-        return 1 - torch.sigmoid(self.log_alpha + shift).mean()
+        # compute P(z=0) (no minus, due to -ve log-alpha, c.f. eq. (12)).
+        p_zeq0 = torch.sigmoid(self.log_alpha + shift)
+
+        if self.reduction == "mean":
+            return 1 - p_zeq0.mean()
+
+        elif self.reduction == "sum":
+            return p_zeq0.numel() - p_zeq0.sum()
+
+        return 1 - p_zeq0
 
     def get_sparsity_mask(self, threshold):
         r"""Get the dropout mask based on the confidence level $\tau \in (0, 1)$:
