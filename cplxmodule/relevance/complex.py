@@ -1,3 +1,5 @@
+import warnings
+
 import torch
 import torch.nn
 
@@ -10,8 +12,9 @@ from .base import BaseARD, SparseModeMixin
 
 from .utils import kldiv_approx, torch_expi, ExpiFunction
 from .utils import torch_sparse_cplx_linear, torch_sparse_tensor
+from .utils import parameter_to_buffer, buffer_to_parameter
 
-from ..layers import CplxLinear
+from ..layers import CplxLinear, CplxParameter
 from ..cplx import Cplx, cplx_linear
 
 
@@ -59,7 +62,7 @@ class CplxLinearARD(CplxLinear, BaseARD, SparseModeMixin):
     def log_alpha(self):
         r"""Get $\log \alpha$ from $(\theta, \sigma^2)$ parameterization."""
         # $\alpha = \tfrac{\sigma^2}{\theta \bar{\theta}}$
-        abs_weight = abs(Cplx(**self.weight))
+        abs_weight = abs(Cplx(self.weight.real, self.weight.imag))
         return self.log_sigma2 - 2 * torch.log(abs_weight + 1e-12)
 
     @property
@@ -77,7 +80,7 @@ class CplxLinearARD(CplxLinear, BaseARD, SparseModeMixin):
         return 2 * self.get_sparsity_mask(threshold).sum().item()
 
     def forward(self, input):
-        if not self.training and self.is_sparse:
+        if self.is_sparse:
             return self.forward_sparse(input)
 
         # $\mu = \theta x$ in $\mathbb{C}$
@@ -95,48 +98,99 @@ class CplxLinearARD(CplxLinear, BaseARD, SparseModeMixin):
         return mu + noise * torch.sqrt(s2 + 1e-20)
 
     def forward_sparse(self, input):
-        weight = Cplx(self.sparse_re_weight_, self.sparse_im_weight_)
+        nonzero_, weight_ = self.nonzero_, self.weight_
         bias = Cplx(**self.bias) if self.bias is not None else None
         if self.sparsity_mode_ == "dense":
-            return cplx_linear(input, weight, bias)
+            return cplx_linear(input, Cplx(**weight_) * nonzero_, bias)
 
-        return torch_sparse_cplx_linear(input, weight, bias)
+        elif self.sparsity_mode_ == "sparse":
+            shape = self.weight.real.shape
+            weight_ = Cplx(
+                torch_sparse_tensor(nonzero_, weight_.real, shape),
+                torch_sparse_tensor(nonzero_, weight_.imag, shape))
+            return torch_sparse_cplx_linear(input, weight_, bias)
 
-    def sparsify(self, threshold=1.0, mode="dense"):
+        raise RuntimeError(f"Unrecognized sparsity mode. "
+                           f"Got `{self.sparsity_mode_}`")
+
+    def sparsify(self, mask, mode="dense"):
+        if not hasattr(self, "sparsity_mode_"):
+            self.sparsity_mode_ = None
+
         if mode is not None and mode not in ("dense", "sparse"):
-            raise ValueError(f"""`mode` must be either 'dense', 'sparse' or """
-                             f"""`None` (got '{mode}').""")
+            raise ValueError(f"`mode` must be either 'dense', 'sparse' "
+                             f"or `None`. Got '{mode}'.")
 
-        if mode is not None and self.training:
-            raise RuntimeError("Cannot sparsify model while training.")
+        if mode == "sparse":
+            warnings.warn("mode 'sparse' will likely be discontinued "
+                          "and later deprecated.", DeprecationWarning)
 
-        self.sparsity_mode_ = mode
-        if mode is not None:
-            mask = ~self.get_sparsity_mask(threshold)
+        if mask is not None and (mask.dtype not in (torch.bool, torch.uint8)
+           or mask.shape != self.weight.real.shape):
+            raise RuntimeError(f"`mask` must be None or a binary matrix "
+                               f"{self.weight.real.shape}. Got '{mask.shape}'.")
 
+        if mask is None:
+            mode = None
+
+        # None -> sparse/dense : mutate par-to-buf
+        if not self.is_sparse and mode is not None:
+            weight = Cplx(**self.weight)
             if mode == "sparse":
-                indices = mask.nonzero().t()
-                re_weight = torch_sparse_tensor(
-                    indices, self.weight.real[mask], self.weight.real.shape)
-                im_weight = torch_sparse_tensor(
-                    indices, self.weight.imag[mask], self.weight.imag.shape)
+                # truly sparse mode: using torch sparse tensor
+                mask = mask.detach().to(weight.device)
+                weight_ = weight.detach()[mask].apply(torch.clone)
+                nonzero_ = mask.nonzero().t()
 
             elif mode == "dense":
-                zero = torch.tensor(0.).to(self.weight.real)
-                re_weight = torch.where(mask, self.weight.real, zero)
-                im_weight = torch.where(mask, self.weight.imag, zero)
+                # simulated sparse mode: using dense matrices with hard zeros
+                nonzero_ = mask.detach().to(weight.real)
+                weight_ = weight.detach() * nonzero_
 
-            self.register_buffer("sparse_re_weight_", re_weight)
-            self.register_buffer("sparse_im_weight_", im_weight)
+            # .register_parameter() doesn't register parameter containers.
+            self.weight_ = CplxParameter(weight_)
+            self.register_buffer("nonzero_", nonzero_)
 
-        else:
-            if hasattr(self, "sparse_re_weight_"):
-                del self.sparse_re_weight_
-            if hasattr(self, "sparse_im_weight_"):
-                del self.sparse_im_weight_
+            # lastly, mutate the original parameter into a no-grad buffer
+            parameter_to_buffer(self, "weight")
+            parameter_to_buffer(self, "log_sigma2")
 
-        # end if
+        # sparse/dense -> None : mutate buf-to-par
+        elif self.is_sparse and mode is None:
+            # some copying on new learnt weights could take place here.
+            pass
 
+            del self.nonzero_, self.weight_
+            buffer_to_parameter(self, "weight")
+            buffer_to_parameter(self, "log_sigma2")
+
+        # sparse / dense -> dense / sparse : re-mutatation
+        elif self.is_sparse and mode is not None:
+            # sparse -> sparse or dense -> dense : check mask
+            if self.sparsity_mode_ == mode:
+                # binary masks or nonzero indices are exactly equal : nothing
+                if mode == "sparse":
+                    nonzero_ = mask.nonzero().t()
+                    if torch.equal(nonzero_.to(self.nonzero_), self.nonzero_):
+                        return self
+
+                elif mode == "dense":
+                    if torch.equal(mask.to(self.nonzero_), self.nonzero_):
+                        return self
+
+            # sparse -> dense or dense -> sparse : re-mutate
+            else:
+                pass
+
+            # perform "sparse/dense -> None -> sparse/dense" : discards data
+            self.sparsify(mask, mode=None)
+            return self.sparsify(mask, mode=mode)
+
+        # None -> None : nothing
+        elif not self.is_sparse and mode is None:
+            pass
+
+        self.sparsity_mode_ = mode
         return self
 
 
