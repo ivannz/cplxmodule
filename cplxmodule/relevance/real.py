@@ -24,8 +24,9 @@ def real_nkldiv_apprx(log_alpha, reduction="mean"):
 
 
 class LinearARD(torch.nn.Linear, BaseARD, SparseModeMixin):
-    def __init__(self, in_features, out_features, bias=True):
+    def __init__(self, in_features, out_features, bias=True, reduction="mean"):
         super().__init__(in_features, out_features, bias=bias)
+        self.reduction = reduction
 
         self.log_sigma2 = torch.nn.Parameter(torch.Tensor(*self.weight.shape))
         self.reset_variational_parameters()
@@ -43,7 +44,7 @@ class LinearARD(torch.nn.Linear, BaseARD, SparseModeMixin):
     def penalty(self):
         r"""Compute the variational penalty term."""
         # neg KL divergence must be maximized, hence the -ve sign.
-        return - real_nkldiv_apprx(self.log_alpha, reduction="mean")
+        return - real_nkldiv_apprx(self.log_alpha, reduction=self.reduction)
 
     def get_sparsity_mask(self, threshold):
         r"""Get the dropout mask based on the log-relevance."""

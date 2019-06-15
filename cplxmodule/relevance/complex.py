@@ -48,8 +48,9 @@ def cplx_nkldiv_exact(log_alpha, reduction="mean"):
 
 
 class CplxLinearARD(CplxLinear, BaseARD, SparseModeMixin):
-    def __init__(self, in_features, out_features, bias=True):
+    def __init__(self, in_features, out_features, bias=True, reduction="mean"):
         super().__init__(in_features, out_features, bias=bias)
+        self.reduction = reduction
 
         self.log_sigma2 = torch.nn.Parameter(
             torch.Tensor(out_features, in_features))
@@ -69,7 +70,7 @@ class CplxLinearARD(CplxLinear, BaseARD, SparseModeMixin):
     def penalty(self):
         r"""Compute the variational penalty term."""
         # neg KL divergence must be maximized, hence the -ve sign.
-        return -cplx_nkldiv_exact(self.log_alpha, reduction="mean")
+        return -cplx_nkldiv_exact(self.log_alpha, reduction=self.reduction)
 
     def get_sparsity_mask(self, threshold):
         r"""Get the dropout mask based on the log-relevance."""
@@ -215,7 +216,7 @@ class CplxLinearARDApprox(CplxLinearARD):
     def penalty(self):
         r"""Compute the variational penalty term."""
         # neg KL divergence must be maximized, hence the -ve sign.
-        return -cplx_nkldiv_apprx(self.log_alpha, reduction="mean")
+        return -cplx_nkldiv_apprx(self.log_alpha, reduction=self.reduction)
 
 
 class BogusExpiFunction(ExpiFunction):
@@ -235,6 +236,14 @@ bogus_expi = BogusExpiFunction.apply
 class CplxLinearARDBogus(CplxLinearARD):
     @property
     def penalty(self):
+        r"""-ve KL-div with bogus forward output, but correct gradient."""
         log_alpha = self.log_alpha
         kl_div = log_alpha + bogus_expi(- torch.exp(- log_alpha))
-        return -kl_div.mean()
+
+        if self.reduction == "mean":
+            return -kl_div.mean()
+
+        elif self.reduction == "sum":
+            return -kl_div.sum()
+
+        return -kl_div
