@@ -112,30 +112,44 @@ def torch_sparse_cplx_linear(input, weight, bias=None):
 
 
 def parameter_to_buffer(module, name):
-    """Locate a parameter by name and remove it, before registering
-    it as buffer with disabled gradient.
-    """
-    if name not in module._parameters:
-        raise KeyError(f"attribute '{name}' is not a parameter.")
-
+    # par could be a solo parameter or a container (essentially a submodule)
     par = getattr(module, name)
-    if not isinstance(par, torch.Tensor):
+    if isinstance(par, (torch.nn.ParameterDict, torch.nn.ParameterList)):
+        # parameter containers no not use buffers and aren't expected to.
+        #  So we hide parameters there. This precludes acces via __getitem__
+        #  though. Not via __getattr__
+
+        # create a copy of the container's master parameter dict's keys and mutate
+        for name in list(par._parameters):
+            # By design of Parameter containers this never recurses deeper
+            parameter_to_buffer(par, name)
+        return
+
+    # a solo parameter
+    if par is not None and not isinstance(par, torch.nn.Parameter):
         raise KeyError(f"parameter '{name}' is not a tensor.")
 
+    # remove the parameter and mutate into a grad-detached buffer
     delattr(module, name)
-    module.register_buffer(name, par.data)
+    par = par.detach() if par is not None else None
+    module.register_buffer(name, par)
 
 
 def buffer_to_parameter(module, name):
-    """Locate a buffer by name and remove it, before registering
-    it as parameter with enabled gradient.
-    """
-    if name not in module._buffers:
-        raise KeyError(f"attribute '{name}' is not a buffer.")
-
+    # a buffer here can be a buffer or a former mutated parameter container
     buf = getattr(module, name)
-    if not isinstance(buf, torch.Tensor):
+    if isinstance(buf, (torch.nn.ParameterDict, torch.nn.ParameterList)):
+        # create a copy of the container's master buffer dict's keys and restore
+        for name in list(buf._buffers):
+            # By design of Parameter containers this never goes deeper
+            #  than this call
+            buffer_to_parameter(buf, name)
+        return
+
+    if buf is not None and not isinstance(buf, torch.Tensor):
         raise KeyError(f"buffer '{name}' is not a tensor.")
 
+    # remove the buffer and mutate back into a proper parameter
     delattr(module, name)
-    module.register_parameter(name, torch.nn.Parameter(buf))
+    buf = torch.nn.Parameter(buf) if buf is not None else None
+    module.register_parameter(name, buf)
