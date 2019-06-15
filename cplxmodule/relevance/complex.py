@@ -6,7 +6,7 @@ import torch.nn.functional as F
 from math import sqrt
 from numpy import euler_gamma
 
-from .base import BaseLinearARD
+from .base import BaseARD, SparseModeMixin
 
 from .utils import kldiv_approx, torch_expi, ExpiFunction
 from .utils import torch_sparse_cplx_linear, torch_sparse_tensor
@@ -44,7 +44,7 @@ def cplx_nkldiv_exact(log_alpha, reduction="mean"):
     return kl_div
 
 
-class CplxLinearARD(CplxLinear, BaseLinearARD):
+class CplxLinearARD(CplxLinear, BaseARD, SparseModeMixin):
     def __init__(self, in_features, out_features, bias=True):
         super().__init__(in_features, out_features, bias=bias)
 
@@ -67,6 +67,14 @@ class CplxLinearARD(CplxLinear, BaseLinearARD):
         r"""Compute the variational penalty term."""
         # neg KL divergence must be maximized, hence the -ve sign.
         return -cplx_nkldiv_exact(self.log_alpha, reduction="mean")
+
+    def get_sparsity_mask(self, threshold):
+        r"""Get the dropout mask based on the log-relevance."""
+        with torch.no_grad():
+            return torch.ge(self.log_alpha, threshold)
+
+    def num_zeros(self, threshold=1.0):
+        return 2 * self.get_sparsity_mask(threshold).sum().item()
 
     def forward(self, input):
         if not self.training and self.is_sparse:
@@ -131,9 +139,6 @@ class CplxLinearARD(CplxLinear, BaseLinearARD):
 
         return self
 
-    def num_zeros(self, threshold=1.0):
-        return 2 * self.get_sparsity_mask(threshold).sum().item()
-
 
 def cplx_nkldiv_apprx(log_alpha, reduction="mean"):
     r"""
@@ -151,7 +156,7 @@ def cplx_nkldiv_apprx(log_alpha, reduction="mean"):
     return kldiv_approx(log_alpha, coef, reduction)
 
 
-class CplxLinearARDApprox(CplxLinear, BaseLinearARD):
+class CplxLinearARDApprox(CplxLinearARD):
     @property
     def penalty(self):
         r"""Compute the variational penalty term."""
