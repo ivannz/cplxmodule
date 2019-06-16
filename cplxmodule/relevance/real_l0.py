@@ -125,7 +125,7 @@ class LinearL0ARD(torch.nn.Linear, BaseARD, SparseModeMixin):
         s = torch.sigmoid((logit - self.log_alpha) / self.beta)
         return torch.clamp((self.zeta - self.gamma) * s + self.gamma, 0, 1)
 
-    def sparsify(self, tau, mode="dense"):
+    def sparsify(self, mask, mode="dense"):
         # None -> sparse/dense : mutate par-to-buf
         if not self.is_sparse and mode is not None:
             # switch off l0 dropout and create runtime sparse data
@@ -136,4 +136,4 @@ class LinearL0ARD(torch.nn.Linear, BaseARD, SparseModeMixin):
             # reinstate l0 dropout mode and discard runtime data on mode change
             buffer_to_parameter(self, "log_alpha")
 
-        return super().sparsify(tau, mode)
+        return super().sparsify(mask, mode=mode)
