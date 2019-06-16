@@ -67,7 +67,7 @@ class LinearARD(torch.nn.Linear, BaseARD, SparseModeMixin):
         s2 = F.linear(input * input, torch.exp(self.log_sigma2), None)
         return mu + torch.randn_like(s2) * torch.sqrt(s2 + 1e-20)
 
-    def sparsify(self, threshold, mode="dense"):
+    def sparsify(self, mask, mode="dense"):
         # None -> sparse/dense : mutate par-to-buf
         if not self.is_sparse and mode is not None:
             # switch off variatonal dropout and create runtime sparse data
@@ -78,4 +78,4 @@ class LinearARD(torch.nn.Linear, BaseARD, SparseModeMixin):
             # reinstate dropout mode and discard runtime data on mode change
             buffer_to_parameter(self, "log_sigma2")
 
-        return super().sparsify(threshold, mode)
+        return super().sparsify(mask, mode=mode)
