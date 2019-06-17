@@ -137,8 +137,11 @@ class CplxLinear(CplxToCplx):
             torch.nn.init.uniform_(self.bias.imag, -bound, bound)
 
     def forward(self, input):
-        bias = Cplx(**self.bias) if self.bias is not None else None
-        return cplx_linear(input, Cplx(**self.weight), bias)
+        weight, bias = Cplx(self.weight.real, self.weight.imag), None
+        if self.bias is not None:
+            bias = Cplx(self.bias.real, self.bias.imag)
+
+        return cplx_linear(input, weight, bias)
 
     def extra_repr(self):
         return 'in_features={}, out_features={}, bias={}'.format(
