@@ -15,6 +15,8 @@ from torch.nn import Linear
 from cplxmodule.layers import CplxLinear
 
 from cplxmodule.relevance import LinearARD
+from cplxmodule.relevance import LinearL0ARD
+from cplxmodule.relevance import LinearLASSO
 from cplxmodule.relevance import CplxLinearARD
 
 from cplxmodule.masked import LinearMasked
@@ -42,7 +44,7 @@ def test_torch_expi(random_state):
     assert torch.autograd.gradcheck(torch_expi, trx.requires_grad_(True))
 
 
-def example(cplx=False):
+def example(kind="cplx"):
     r"""An example, illustrating pre-training."""
 
     def train_model(X, y, model, n_steps=20000, threshold=1.0,
@@ -116,29 +118,48 @@ def example(cplx=False):
         ]))
 
     device_ = torch.device("cpu")
-    if cplx:
+    if kind == "cplx":
         layers = [CplxLinear, CplxLinearARD, CplxLinearMasked]
         construct = construct_cplx
         phases = {
-            "CplxLinear": 1000,
-            "CplxLinearARD": 4000,
-            "CplxLinearMasked": 500
+            "CplxLinear": (1000, 0.0),
+            "CplxLinearARD": (4000, 1e-1),
+            "CplxLinearMasked": (500, 0.0)
         }
-    else:
+    elif kind == "real-ard":
         layers = [Linear, LinearARD, LinearMasked]
         construct = construct_real
         phases = {
-            "Linear": 1000,
-            "LinearARD": 4000,
-            "LinearMasked": 500
+            "Linear": (1000, 0.0),
+            "LinearARD": (4000, 1e-1),
+            "LinearMasked": (500, 0.0)
+        }
+    elif kind == "real-l0":
+        layers = [Linear, LinearL0ARD, LinearMasked]
+        construct = construct_real
+        phases = {
+            "Linear": (1000, 0.0),
+            "LinearL0ARD": (4000, 1e1),
+            "LinearMasked": (500, 0.0)
+        }
+    elif kind == "real-lasso":
+        layers = [Linear, LinearLASSO, LinearMasked]
+        construct = construct_real
+        phases = {
+            "Linear": (1000, 0.0),
+            "LinearLASSO": (4000, 1e-1),
+            "LinearMasked": (500, 0.0)
         }
 
-    tau = 0.73105  # p = a / 1 + a, a = p / (1 - p)
+    if kind == "real-lasso":
+        tau = 0.25
+    else:
+        tau = 0.73105  # p = a / 1 + a, a = p / (1 - p)
     threshold = np.log(tau) - np.log(1 - tau)
     print(f"{tau:.1%} - {threshold:.3g}")
 
-    n_features = 500 if cplx else 250
-    n_output = 20 if cplx else 10
+    n_features = 500 if "cplx" in kind else 250
+    n_output = 20 if "cplx" in kind else 10
 
     # a simple dataset
     X = torch.randn(100, n_features)
@@ -155,6 +176,7 @@ def example(cplx=False):
     # train a sequence of models
     names, losses = list(models.keys()), {}
     for src, dst in zip(names[:-1], names[1:]):
+        n_steps, klw = phases[dst]
 
         # load the current model with the last one's weights
         model = models[dst]
@@ -169,8 +191,8 @@ def example(cplx=False):
         # conditionally deploy the computed dropout masks
         model = deploy_masks(model, state_dict=masks)
 
-        model, losses[dst] = train_model(X, y, model, n_steps=phases[dst],
-                                         threshold=threshold, klw=1e-1)
+        model, losses[dst] = train_model(X, y, model, n_steps=n_steps,
+                                         threshold=threshold, klw=klw)
     # end for
 
     # get scores on test
@@ -191,5 +213,7 @@ def example(cplx=False):
 
 
 if __name__ == '__main__':
-    example(False)
-    example(True)
+    example("real-ard")
+    example("real-l0")
+    example("real-lasso")
+    example("cplx")
