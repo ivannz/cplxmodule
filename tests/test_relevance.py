@@ -160,7 +160,7 @@ def example(cplx=False):
         masks = compute_ard_masks(models[src], threshold=threshold)
 
         # conditionally deploy the computed dropout masks
-        model = deploy_masks(model=model, masks=masks)
+        model = deploy_masks(model, masks=masks)
 
         model, losses[dst] = train_model(X, y, model, n_steps=phases[dst],
                                          threshold=threshold, klw=1e-1)
