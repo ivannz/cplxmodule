@@ -4,6 +4,7 @@ import torch.nn
 import torch.nn.functional as F
 
 from .utils import kldiv_approx
+from .base import BaseARD
 
 
 def real_nkldiv_apprx(log_alpha, reduction="mean"):
