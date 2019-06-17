@@ -1,4 +1,5 @@
 import torch
+from ..relevance.base import BaseARD
 
 
 class BaseMasked(torch.nn.Module):
@@ -20,10 +21,41 @@ class BaseMasked(torch.nn.Module):
         self.mask_(value)
 
 
-def apply_masks(masks, *, source, target=None):
-    assert False, """BAD DESIGN: Use a state-dict transformer interface."""
-#     def do_sparsify(mod):
-#         if isinstance(mod, BaseMasked):
-#             mod.sparsify(~mod.get_sparsity_mask(threshold), mode=mode)
+def is_sparse(module):
+    if isinstance(module, BaseMasked):
+        return module.is_sparse
 
-#     return module.apply(do_sparsify)
+    return False
+
+
+def named_masks(module, prefix=""):
+    # yields own mask and masks of every descendant
+    for name, mod in module.named_modules(prefix=prefix):
+        if isinstance(mod, BaseMasked):
+            yield name, getattr(mod, "mask", None)
+
+
+def deploy_masks(model, *, masks=None, prefix=""):
+    if not isinstance(masks, dict) \
+       or not isinstance(model, torch.nn.Module):
+        return model
+
+    for name, mod in model.named_modules(prefix=prefix):
+        if isinstance(mod, BaseMasked):
+            mod.mask = masks.get(name, None)
+
+    return model
+
+
+def compute_ard_masks(model, *, threshold=None, prefix=""):
+    if not isinstance(threshold, (float, int)) \
+       or not isinstance(model, torch.nn.Module):
+        return {}
+
+    masks = {}
+    for name, mod in model.named_modules(prefix=prefix):
+        if isinstance(mod, BaseARD):
+            mask = mod.get_sparsity_mask(threshold).detach().clone()
+            masks[name] = ~mask
+
+    return masks
