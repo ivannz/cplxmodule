@@ -4,8 +4,6 @@ import torch.nn
 import torch.nn.functional as F
 
 from .utils import kldiv_approx
-from .utils import parameter_to_buffer, buffer_to_parameter
-from .base import BaseARD, SparseModeMixin
 
 
 def real_nkldiv_apprx(log_alpha, reduction="mean"):
@@ -23,7 +21,7 @@ def real_nkldiv_apprx(log_alpha, reduction="mean"):
     return kldiv_approx(log_alpha, coef, reduction)
 
 
-class LinearARD(torch.nn.Linear, BaseARD, SparseModeMixin):
+class LinearARD(torch.nn.Linear, BaseARD):
     def __init__(self, in_features, out_features, bias=True, reduction="mean"):
         super().__init__(in_features, out_features, bias=bias)
         self.reduction = reduction
@@ -55,9 +53,6 @@ class LinearARD(torch.nn.Linear, BaseARD, SparseModeMixin):
         return self.get_sparsity_mask(threshold).sum().item()
 
     def forward(self, input):
-        if self.is_sparse:
-            return self.forward_sparse(input)
-
         mu = super().forward(input)
         # mu = F.linear(input, self.weight, self.bias)
         if not self.training:
@@ -66,16 +61,3 @@ class LinearARD(torch.nn.Linear, BaseARD, SparseModeMixin):
 
         s2 = F.linear(input * input, torch.exp(self.log_sigma2), None)
         return mu + torch.randn_like(s2) * torch.sqrt(s2 + 1e-20)
-
-    def sparsify(self, mask, mode="dense"):
-        # None -> sparse/dense : mutate par-to-buf
-        if not self.is_sparse and mode is not None:
-            # switch off variatonal dropout and create runtime sparse data
-            parameter_to_buffer(self, "log_sigma2")
-
-        # sparse/dense -> None : mutate buf-to-par
-        elif self.is_sparse and mode is None:
-            # reinstate dropout mode and discard runtime data on mode change
-            buffer_to_parameter(self, "log_sigma2")
-
-        return super().sparsify(mask, mode=mode)
