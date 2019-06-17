@@ -3,13 +3,11 @@ import torch
 import torch.nn
 
 import torch.nn.functional as F
-from torch.nn import Parameter
 
-from .base import BaseARD, SparseModeMixin
-from .utils import parameter_to_buffer, buffer_to_parameter
+from .base import BaseARD
 
 
-class LinearL0ARD(torch.nn.Linear, BaseARD, SparseModeMixin):
+class LinearL0ARD(torch.nn.Linear, BaseARD):
     """L0 regularized linear layer according to [1]_.
 
     Details
@@ -47,7 +45,7 @@ class LinearL0ARD(torch.nn.Linear, BaseARD, SparseModeMixin):
         super().__init__(in_features, out_features, bias=bias)
         self.reduction = reduction
 
-        self.log_alpha = Parameter(torch.Tensor(*self.weight.shape))
+        self.log_alpha = torch.nn.Parameter(torch.Tensor(*self.weight.shape))
 
         self.reset_variational_parameters()
 
@@ -92,9 +90,6 @@ class LinearL0ARD(torch.nn.Linear, BaseARD, SparseModeMixin):
         return self.get_sparsity_mask(threshold).sum().item()
 
     def forward(self, input):
-        if self.is_sparse:
-            return self.forward_sparse(input)
-
         if self.training:
             # a single mask sample for the whole batch!
             u = torch.rand_like(self.log_alpha)
@@ -124,16 +119,3 @@ class LinearL0ARD(torch.nn.Linear, BaseARD, SparseModeMixin):
         # on inference in eq. (13) beta is fixed at 1.0, but not in their code
         s = torch.sigmoid((logit - self.log_alpha) / self.beta)
         return torch.clamp((self.zeta - self.gamma) * s + self.gamma, 0, 1)
-
-    def sparsify(self, mask, mode="dense"):
-        # None -> sparse/dense : mutate par-to-buf
-        if not self.is_sparse and mode is not None:
-            # switch off l0 dropout and create runtime sparse data
-            parameter_to_buffer(self, "log_alpha")
-
-        # sparse/dense -> None : mutate buf-to-par
-        elif self.is_sparse and mode is None:
-            # reinstate l0 dropout mode and discard runtime data on mode change
-            buffer_to_parameter(self, "log_alpha")
-
-        return super().sparsify(mask, mode=mode)
