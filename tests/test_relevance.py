@@ -10,14 +10,18 @@ import torch.sparse
 import torch.nn.functional as F
 
 from cplxmodule import Cplx
+
+from torch.nn import Linear
 from cplxmodule.layers import CplxLinear
 
-from cplxmodule.relevance import penalties, sparsity, make_sparse
 from cplxmodule.relevance import LinearARD
-
 from cplxmodule.relevance import CplxLinearARD
-from cplxmodule.relevance.complex import CplxLinearARDApprox
-from cplxmodule.relevance.complex import CplxLinearARDBogus
+
+from cplxmodule.masked import LinearMasked
+from cplxmodule.masked import CplxLinearMasked
+
+from cplxmodule.relevance import penalties, sparsity
+from cplxmodule.masked import deploy_masks, compute_ard_masks
 
 
 @pytest.fixture
@@ -39,57 +43,14 @@ def test_torch_expi(random_state):
 
 def example(cplx=False):
     r"""An example, illustrating pre-training."""
-    def build_cplx_model(dropout=True):
-        from cplxmodule.layers import RealToCplx, CplxToReal
-        from cplxmodule.activation import CplxModReLU
 
-        # linear = CplxLinear if not dropout else CplxLinearARDBogus
-        linear = CplxLinear if not dropout else CplxLinearARD
-        return torch.nn.Sequential(
-            RealToCplx(),
-            linear(250, 10, bias=False),
-
-            # linear(250, 500, bias=True),
-            # CplxModReLU(threshold=0.05),
-            # linear(500, 10, bias=False),
-
-            CplxToReal()
-        )
-
-    def build_real_model(dropout=True):
-        linear = torch.nn.Linear if not dropout else LinearARD
-        return torch.nn.Sequential(
-            linear(250, 10, bias=False),
-
-            # linear(250, 20, bias=True),
-            # torch.nn.LeakyReLU(negative_slope=0.05),
-            # linear(20, 10, bias=False),
-
-            # linear(250, 100, bias=True),
-            # torch.nn.LeakyReLU(negative_slope=0.05),
-            # linear(100, 50, bias=True),
-            # torch.nn.LeakyReLU(negative_slope=0.05),
-            # linear(50, 10, bias=False),
-
-            # linear(250, 500, bias=True),
-            # torch.nn.LeakyReLU(negative_slope=0.05),
-            # linear(500, 10, bias=False),
-
-            # linear(250, 100, bias=True),
-            # torch.nn.LeakyReLU(negative_slope=0.05),
-            # linear(100, 50, bias=True),
-            # torch.nn.LeakyReLU(negative_slope=0.05),
-            # linear(50, 20, bias=True),
-            # torch.nn.LeakyReLU(negative_slope=0.05),
-            # linear(20, 10, bias=False),
-        )
-
-    def train_model(X, y, model, n_steps=20000, klw=1e-3,
-                    threshold=1.0, verbose=True):
+    def train_model(X, y, model, n_steps=20000, threshold=1.0, klw=1e-3):
         import tqdm
 
         model.train()
         optim = torch.optim.Adam(model.parameters())
+
+        losses = []
         with tqdm.tqdm(range(n_steps)) as bar:
             for i in bar:
                 optim.zero_grad()
@@ -104,14 +65,12 @@ def example(cplx=False):
 
                 optim.step()
 
-                sprsty = sparsity(model, threshold) if verbose else float("nan")
-                bar.set_postfix_str(
-                    f"""{sprsty:.0%} {mse.item():.3e} """
-                    f"""{float(kl_d):.3e}"""
-                )
+                losses.append(float(loss))
+                f_sparsity = sparsity(model, threshold)
+                bar.set_postfix_str(f"{f_sparsity:.1%} {float(mse):.3e} {float(kl_d):.3e}")
             # end for
         # end with
-        return model.eval()
+        return model.eval(), losses
 
     def test_model(X, y, model, threshold=1.0):
         model.eval()
@@ -119,12 +78,53 @@ def example(cplx=False):
             mse = F.mse_loss(model(X), y)
             kl_d = sum(penalties(model))
 
-        print(f"""{sparsity(model, threshold):.1%} """
-              f"""{mse.item():.3e} {float(kl_d):.3e}""")
+        print(f"{sparsity(model, threshold):.1%} "
+              f"{mse.item():.3e} {float(kl_d):.3e}")
         return model
 
-    build_model = build_cplx_model if cplx else build_real_model
+    def construct_real(linear):
+        from collections import OrderedDict
+
+        return torch.nn.Sequential(OrderedDict([
+            ("body", torch.nn.Sequential(OrderedDict([
+                # ("linear", linear(n_features, n_features, bias=True)),
+                # ("relu", torch.nn.LeakyReLU()),
+            ]))),
+            ("final", linear(n_features, n_output, bias=False)),
+        ]))
+
+    def construct_cplx(linear):
+        from collections import OrderedDict
+        from cplxmodule.layers import RealToCplx, CplxToReal
+        from cplxmodule.activation import CplxAdaptiveModReLU
+
+        return torch.nn.Sequential(OrderedDict([
+            ("cplx", RealToCplx()),
+            ("body", torch.nn.Sequential(OrderedDict([
+                # ("linear", linear(n_features // 2, n_features // 2, bias=True)),
+                # ("relu", CplxAdaptiveModReLU(n_features // 2)),
+            ]))),
+            ("final", linear(n_features // 2, n_output // 2, bias=False)),
+            ("real", CplxToReal()),
+        ]))
+
     device_ = torch.device("cpu")
+    if cplx:
+        layers = [CplxLinear, CplxLinearARD, CplxLinearMasked]
+        construct = construct_cplx
+        phases = {
+            "CplxLinear": 1000,
+            "CplxLinearARD": 4000,
+            "CplxLinearMasked": 500
+        }
+    else:
+        layers = [Linear, LinearARD, LinearMasked]
+        construct = construct_real
+        phases = {
+            "Linear": 1000,
+            "LinearARD": 4000,
+            "LinearMasked": 500
+        }
 
     tau = 0.73105  # p = a / 1 + a, a = p / (1 - p)
     threshold = np.log(tau) - np.log(1 - tau)
@@ -139,36 +139,32 @@ def example(cplx=False):
 
     X, y = X.to(device_), y.to(device_)
 
-    # train simple dense net
-    model = build_model(False)
-    model.to(device_)
+    # construct models
+    models = {"none": None}
+    models.update({
+        l.__name__: construct(l) for l in layers
+    })
 
-    model = train_model(X, y, model, 1000, threshold=threshold)
+    # train a sequence of models
+    names, losses = list(models.keys()), {}
+    for src, dst in zip(names[:-1], names[1:]):
 
-    # use pre-trained for automatic relevance detection
-    model_sparse = build_model(True)
-    # if cplx:
-    #     model_sparse[1].exact = False
-    model_sparse.to(device_)
-    model_sparse.load_state_dict(model.state_dict(), strict=False)
+        # load the current model with the last one's weights
+        model = models[dst]
+        if models[src] is not None:
+            model.load_state_dict(models[src].state_dict(), strict=False)
 
-    model_sparse = train_model(X, y, model_sparse, n_steps=9000,
-                               klw=1e-1, threshold=threshold)
+        model.to(device_)
 
-    # sparsify the model
-    model_sparse.eval()
-    print(model_sparse)
+        # compute the dropout masks and
+        masks = compute_ard_masks(models[src], threshold=threshold)
 
-    print(make_sparse(model_sparse, threshold, mode="sparse"))
+        # conditionally deploy the computed dropout masks
+        model = deploy_masks(model=model, masks=masks)
 
-    model_sparse = train_model(X, y, model_sparse, 500, threshold=threshold)
-
-    if not cplx:
-        print(model_sparse[0].weight_)
-        print(model_sparse[0].nonzero_)
-    else:
-        print(Cplx(**model_sparse[1].weight_))
-        print(model_sparse[1].nonzero_)
+        model, losses[dst] = train_model(X, y, model, n_steps=phases[dst],
+                                         threshold=threshold, klw=1e-1)
+    # end for
 
     # get scores on test
     X = torch.randn(10000, n_features)
@@ -176,8 +172,17 @@ def example(cplx=False):
 
     X, y = X.to(device_), y.to(device_)
 
-    test_model(X, y, model, threshold=threshold)
-    test_model(X, y, model_sparse, threshold=threshold)
+    for key, model in models.items():
+        if model is None:
+            continue
+
+        test_model(X, y, model, threshold=threshold)
+        # print([*model.named_parameters()])
+        if cplx:
+            weight = model.final.weight
+            print(Cplx(weight.real, weight.imag))
+        else:
+            print(model.final.weight)
 
 
 if __name__ == '__main__':
