@@ -1,5 +1,3 @@
-import warnings
-
 import torch
 import torch.nn
 
@@ -8,14 +6,12 @@ import torch.nn.functional as F
 from math import sqrt
 from numpy import euler_gamma
 
-from .base import BaseARD, SparseModeMixin
+from .base import BaseARD
 
 from .utils import kldiv_approx, torch_expi, ExpiFunction
-from .utils import torch_sparse_cplx_linear, torch_sparse_tensor
-from .utils import parameter_to_buffer, buffer_to_parameter
 
-from ..layers import CplxLinear, CplxParameter
-from ..cplx import Cplx, cplx_linear
+from ..layers import CplxLinear
+from ..cplx import Cplx
 
 
 def cplx_nkldiv_exact(log_alpha, reduction="mean"):
@@ -47,7 +43,7 @@ def cplx_nkldiv_exact(log_alpha, reduction="mean"):
     return kl_div
 
 
-class CplxLinearARD(CplxLinear, BaseARD, SparseModeMixin):
+class CplxLinearARD(CplxLinear, BaseARD):
     def __init__(self, in_features, out_features, bias=True, reduction="mean"):
         super().__init__(in_features, out_features, bias=bias)
         self.reduction = reduction
@@ -81,9 +77,6 @@ class CplxLinearARD(CplxLinear, BaseARD, SparseModeMixin):
         return 2 * self.get_sparsity_mask(threshold).sum().item()
 
     def forward(self, input):
-        if self.is_sparse:
-            return self.forward_sparse(input)
-
         # $\mu = \theta x$ in $\mathbb{C}$
         mu = super().forward(input)
         # mu = cplx_linear(input, Cplx(**self.weight), self.bias)
@@ -97,102 +90,6 @@ class CplxLinearARD(CplxLinear, BaseARD, SparseModeMixin):
         # generate complex gaussian noise with proper scale
         noise = Cplx(*map(torch.rand_like, (s2, s2))) / sqrt(2)
         return mu + noise * torch.sqrt(s2 + 1e-20)
-
-    def forward_sparse(self, input):
-        nonzero_, weight_ = self.nonzero_, self.weight_
-        bias = Cplx(**self.bias) if self.bias is not None else None
-        if self.sparsity_mode_ == "dense":
-            return cplx_linear(input, Cplx(**weight_) * nonzero_, bias)
-
-        elif self.sparsity_mode_ == "sparse":
-            shape = self.weight.real.shape
-            weight_ = Cplx(
-                torch_sparse_tensor(nonzero_, weight_.real, shape),
-                torch_sparse_tensor(nonzero_, weight_.imag, shape))
-            return torch_sparse_cplx_linear(input, weight_, bias)
-
-        raise RuntimeError(f"Unrecognized sparsity mode. "
-                           f"Got `{self.sparsity_mode_}`")
-
-    def sparsify(self, mask, mode="dense"):
-        if not hasattr(self, "sparsity_mode_"):
-            self.sparsity_mode_ = None
-
-        if mode is not None and mode not in ("dense", "sparse"):
-            raise ValueError(f"`mode` must be either 'dense', 'sparse' "
-                             f"or `None`. Got '{mode}'.")
-
-        if mode == "sparse":
-            warnings.warn("mode 'sparse' will likely be discontinued "
-                          "and later deprecated.", DeprecationWarning)
-
-        if mask is not None and (mask.dtype not in (torch.bool, torch.uint8)
-           or mask.shape != self.weight.real.shape):
-            raise RuntimeError(f"`mask` must be None or a binary matrix "
-                               f"{self.weight.real.shape}. Got '{mask.shape}'.")
-
-        if mask is None:
-            mode = None
-
-        # None -> sparse/dense : mutate par-to-buf
-        if not self.is_sparse and mode is not None:
-            weight = Cplx(**self.weight)
-            if mode == "sparse":
-                # truly sparse mode: using torch sparse tensor
-                mask = mask.detach().to(weight.real.device)
-                weight_ = weight.detach()[mask].apply(torch.clone)
-                nonzero_ = mask.nonzero().t()
-
-            elif mode == "dense":
-                # simulated sparse mode: using dense matrices with hard zeros
-                nonzero_ = mask.detach().to(weight.real)
-                weight_ = weight.detach() * nonzero_
-
-            # .register_parameter() doesn't register parameter containers.
-            self.weight_ = CplxParameter(weight_)
-            self.register_buffer("nonzero_", nonzero_)
-
-            # lastly, mutate the original parameter into a no-grad buffer
-            parameter_to_buffer(self, "weight")
-            parameter_to_buffer(self, "log_sigma2")
-
-        # sparse/dense -> None : mutate buf-to-par
-        elif self.is_sparse and mode is None:
-            # some copying on new learnt weights could take place here.
-            pass
-
-            del self.nonzero_, self.weight_
-            buffer_to_parameter(self, "weight")
-            buffer_to_parameter(self, "log_sigma2")
-
-        # sparse / dense -> dense / sparse : re-mutatation
-        elif self.is_sparse and mode is not None:
-            # sparse -> sparse or dense -> dense : check mask
-            if self.sparsity_mode_ == mode:
-                # binary masks or nonzero indices are exactly equal : nothing
-                if mode == "sparse":
-                    nonzero_ = mask.nonzero().t()
-                    if torch.equal(nonzero_.to(self.nonzero_), self.nonzero_):
-                        return self
-
-                elif mode == "dense":
-                    if torch.equal(mask.to(self.nonzero_), self.nonzero_):
-                        return self
-
-            # sparse -> dense or dense -> sparse : re-mutate
-            else:
-                pass
-
-            # perform "sparse/dense -> None -> sparse/dense" : discards data
-            self.sparsify(mask, mode=None)
-            return self.sparsify(mask, mode=mode)
-
-        # None -> None : nothing
-        elif not self.is_sparse and mode is None:
-            pass
-
-        self.sparsity_mode_ = mode
-        return self
 
 
 def cplx_nkldiv_apprx(log_alpha, reduction="mean"):
