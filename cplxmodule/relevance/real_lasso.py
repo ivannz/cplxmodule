@@ -1,19 +1,12 @@
 import torch
-from torch.nn import Linear
 
-from cplxmodule.relevance.base import BaseARD, SparseModeMixin
+from ..relevance.base import BaseARD
 
 
-class LinearLASSO(Linear, BaseARD, SparseModeMixin):
+class LinearLASSO(torch.nn.Linear, BaseARD):
     def __init__(self, in_features, out_features, bias=True, reduction="mean"):
         super().__init__(in_features, out_features, bias=bias)
         self.reduction = reduction
-
-    def forward(self, input):
-        if self.is_sparse:
-            return self.forward_sparse(input)
-
-        return super().forward(input)
 
     @property
     def penalty(self):
