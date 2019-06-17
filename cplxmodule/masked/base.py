@@ -35,14 +35,15 @@ def named_masks(module, prefix=""):
             yield name, getattr(mod, "mask", None)
 
 
-def deploy_masks(module, *, masks=None, prefix=""):
-    if not isinstance(masks, dict) \
+def deploy_masks(module, *, state_dict=None, prefix=""):
+    if not isinstance(state_dict, dict) \
        or not isinstance(module, torch.nn.Module):
         return module
 
     for name, mod in module.named_modules(prefix=prefix):
         if isinstance(mod, BaseMasked):
-            mod.mask = masks.get(name, None)
+            name = name + ("." if name else "") + "mask"
+            mod.mask = state_dict.get(name, None)
 
     return module
 
@@ -56,15 +57,7 @@ def compute_ard_masks(module, *, threshold=None, prefix=""):
     for name, mod in module.named_modules(prefix=prefix):
         if isinstance(mod, BaseARD):
             mask = mod.get_sparsity_mask(threshold).detach().clone()
+            name = name + ("." if name else "") + "mask"
             masks[name] = ~mask
 
     return masks
-
-
-def load_masks_from_state_dict(module, *, state_dict=None, prefix=""):
-    for name, mod in module.named_modules(prefix=prefix):
-        if isinstance(mod, BaseMasked):
-            name = name + ("." if name else "") + "mask"
-            mod.mask = state_dict.get(name, None)
-
-    return module
