@@ -22,7 +22,7 @@ class LinearLASSO(torch.nn.Linear, BaseARD):
     def get_sparsity_mask(self, threshold):
         with torch.no_grad():
             # the mask is $\tau \mapsto \lvert w_{ij} \rvert \leq \tau$
-            return torch.le(abs(self.weight), threshold)
+            return torch.le(torch.log(abs(self.weight) + 1e-20), threshold)
 
     def num_zeros(self, threshold):
         return self.get_sparsity_mask(threshold).sum().item()
