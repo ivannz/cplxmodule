@@ -59,3 +59,12 @@ def compute_ard_masks(module, *, threshold=None, prefix=""):
             masks[name] = ~mask
 
     return masks
+
+
+def load_masks_from_state_dict(module, *, state_dict=None, prefix=""):
+    for name, mod in module.named_modules(prefix=prefix):
+        if isinstance(mod, BaseMasked):
+            name = name + ("." if name else "") + "mask"
+            mod.mask = state_dict.get(name, None)
+
+    return module
