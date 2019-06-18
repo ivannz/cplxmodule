@@ -105,7 +105,7 @@ class LinearL0ARD(torch.nn.Linear, BaseARD):
         n, m = mask.shape
         n_zer = mask.sum().item()
         if n == 1:
-            return n_zer * self.weight.shape[0]
+            return self.weight.shape[0] * n_zer
 
         elif m == 1:
             return n_zer * self.weight.shape[1]
@@ -113,41 +113,39 @@ class LinearL0ARD(torch.nn.Linear, BaseARD):
         return n_zer
 
     def forward(self, input):
+        # draw uniform rv for the hard-concrete
         n, m = self.log_alpha.shape
-        if n == 1 or m == 1:
-            if self.training:
-                u = torch.rand(*input.shape[:-1], n, m)
-                logit = torch.log(u) - torch.log(1 - u)
-            else:
-                logit = 0.
-
-            z = self.gate(logit)
-
-            # group - input : premultiply y = W (x \cdot z) + b
-            if n == 1:
-                output = F.linear(input * z.squeeze(-2), self.weight, None)
-
-            # group - output : postmultiply y = (W x) \cdot z + b
-            elif m == 1:
-                output = F.linear(input, self.weight, None) * z.squeeze(-1)
-
-            if self.bias is not None:
-                output += self.bias
-
-            return output
-
-        if self.training:
-            # group - None : y = (W \cdot z) x + b
-            # a single mask sample for the whole batch!
-            u = torch.rand_like(self.log_alpha)
-
-            # The distribution of $\log \tfrac{u}{1-u}$ for $u\sim U(0, 1)$ is
-            # sigmoid: $\{u \leq \sigma(x)\} = \{\log \tfrac{u}{1-u} \leq x\}$.
-            logit = torch.log(u) - torch.log(1 - u)
+        if not self.training:
+            # eval : let `u` be its mean
+            u = torch.tensor(0.5).to(input)
+        elif n == 1 or m == 1:
+            # this is a relatively "small" batch of unform rv.
+            u = torch.rand(*input.shape[:-1], n, m)
         else:
-            logit = 0.
+            # one unform sample for the whole batch! Very high gradient var.
+            u = torch.rand_like(self.log_alpha)
+            # u = torch.rand_like(*input.shape[:-1], n, m)
 
-        return F.linear(input, self.weight * self.gate(logit), self.bias)
+        # compute the mask (broadcasting applies!)
+        mask = self.gate(torch.log(u) - torch.log(1 - u))
+        # The distribution of $\log \tfrac{u}{1-u}$ for $u\sim U(0, 1)$ is
+        # sigmoid: $\{u \leq \sigma(x)\} = \{\log \tfrac{u}{1-u} \leq x\}$.
+
+        if n == 1:
+            # group = input : "premultiply" `y = W (x \cdot mask) + b`
+            output = F.linear(input * mask.squeeze(-2), self.weight)
+        elif m == 1:
+            # group = output : "postmultiply" `y = (W x) \cdot mask + b`
+            output = F.linear(input, self.weight) * mask.squeeze(-1)
+        else:
+            # group = None : "elementwise" `y = (W \cdot z) x + b`
+            output = F.linear(input, self.weight * mask)
+            # torch.matmul(input.unsqueeze(-2), mask * self.weight).squeeze(-2)
+
+        if self.bias is not None:
+            output += self.bias
+
+        return output
 
     def gate(self, logit):
         r"""Implements the binary concrete hard-sigmoid transformation:
