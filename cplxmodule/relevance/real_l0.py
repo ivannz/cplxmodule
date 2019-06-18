@@ -41,11 +41,25 @@ class LinearL0ARD(torch.nn.Linear, BaseARD):
     beta, gamma, zeta = .25, -0.25, 1.25
     # beta, gamma, zeta = 0.66, -0.1, 1.1
 
-    def __init__(self, in_features, out_features, bias=True, reduction="mean"):
+    def __init__(self, in_features, out_features, bias=True,
+                 reduction="mean", group=None):
         super().__init__(in_features, out_features, bias=bias)
         self.reduction = reduction
 
-        self.log_alpha = torch.nn.Parameter(torch.Tensor(*self.weight.shape))
+        # weight is out_features, in_features
+        if group == "input":
+            # thats' what they do in l0_layers.py#L99
+            shape = 1, in_features
+
+        elif group == "output":
+            # sparsifying outout s is worse than inputs
+            shape = out_features, 1
+
+        else:
+            # thay do this in l0_layers.py#L107
+            shape = out_features, in_features
+
+        self.log_alpha = torch.nn.Parameter(torch.Tensor(*shape))
 
         self.reset_variational_parameters()
 
@@ -87,10 +101,43 @@ class LinearL0ARD(torch.nn.Linear, BaseARD):
             return torch.ge(self.log_alpha, threshold)
 
     def num_zeros(self, threshold=1.0):
-        return self.get_sparsity_mask(threshold).sum().item()
+        mask = self.get_sparsity_mask(threshold)
+        n, m = mask.shape
+        n_zer = mask.sum().item()
+        if n == 1:
+            return n_zer * self.weight.shape[0]
+
+        elif m == 1:
+            return n_zer * self.weight.shape[1]
+
+        return n_zer
 
     def forward(self, input):
+        n, m = self.log_alpha.shape
+        if n == 1 or m == 1:
+            if self.training:
+                u = torch.rand(*input.shape[:-1], n, m)
+                logit = torch.log(u) - torch.log(1 - u)
+            else:
+                logit = 0.
+
+            z = self.gate(logit)
+
+            # group - input : premultiply y = W (x \cdot z) + b
+            if n == 1:
+                output = F.linear(input * z.squeeze(-2), self.weight, None)
+
+            # group - output : postmultiply y = (W x) \cdot z + b
+            elif m == 1:
+                output = F.linear(input, self.weight, None) * z.squeeze(-1)
+
+            if self.bias is not None:
+                output += self.bias
+
+            return output
+
         if self.training:
+            # group - None : y = (W \cdot z) x + b
             # a single mask sample for the whole batch!
             u = torch.rand_like(self.log_alpha)
 
