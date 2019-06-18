@@ -22,6 +22,7 @@ from cplxmodule.masked import CplxLinearMasked
 
 from cplxmodule.relevance import penalties, sparsity
 from cplxmodule.masked import deploy_masks, compute_ard_masks
+from cplxmodule.masked import named_masks
 
 
 @pytest.fixture
@@ -183,6 +184,7 @@ def example(cplx=False):
             print(Cplx(weight.real, weight.imag))
         else:
             print(model.final.weight)
+        print([*named_masks(model)])
 
 
 if __name__ == '__main__':
