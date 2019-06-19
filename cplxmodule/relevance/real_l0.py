@@ -83,7 +83,7 @@ class LinearL0ARD(torch.nn.Linear, BaseARD):
 
         return 1 - p_zeq0
 
-    def get_sparsity_mask(self, threshold):
+    def get_sparsity_mask(self, threshold=None):
         r"""Get the dropout mask based on the confidence level $\tau \in (0, 1)$:
         $$
             \Pr(\lvert w_i \rvert > 0)
@@ -95,10 +95,8 @@ class LinearL0ARD(torch.nn.Linear, BaseARD):
             \,. $$
         For $\tau=0.25$ and $\beta=0.66$ we have `threshold=2.96`.
         """
-        # threshold = math.log(1 - tau) - math.log(tau)
-        threshold -= self.beta * math.log(- self.gamma / self.zeta)
         with torch.no_grad():
-            return torch.ge(self.log_alpha, threshold)
+            return torch.eq(self.gate(None), 0.)
 
     def num_zeros(self, threshold=1.0):
         mask = self.get_sparsity_mask(threshold)
@@ -115,22 +113,24 @@ class LinearL0ARD(torch.nn.Linear, BaseARD):
     def forward(self, input):
         # draw uniform rv for the hard-concrete
         n, m = self.log_alpha.shape
-        if not self.training:
-            # eval : let `u` be its mean
-            u = torch.tensor(0.5, dtype=input.dtype, device=input.device)
-        elif n == 1 or m == 1:
-            # this is a relatively "small" batch of unform rv.
-            u = torch.rand(*input.shape[:-1], n, m,
-                           dtype=input.dtype, device=input.device)
-        else:
-            # one unform sample for the whole batch! Very high gradient var.
-            u = torch.rand_like(self.log_alpha)
-            # u = torch.rand_like(*input.shape[:-1], n, m)
+        if self.training:
+            if n == 1 or m == 1:
+                # this is a relatively "small" batch of unform rv.
+                u = torch.rand(*input.shape[:-1], n, m,
+                               dtype=input.dtype, device=input.device)
+            else:
+                # one unform sample for the whole batch! Very high gradient var.
+                u = torch.rand_like(self.log_alpha)
+                # u = torch.rand_like(*input.shape[:-1], n, m)
 
-        # compute the mask (broadcasting applies!)
-        mask = self.gate(torch.log(u) - torch.log(1 - u))
-        # The distribution of $\log \tfrac{u}{1-u}$ for $u\sim U(0, 1)$ is
-        # sigmoid: $\{u \leq \sigma(x)\} = \{\log \tfrac{u}{1-u} \leq x\}$.
+            # compute the mask (broadcasting applies!)
+            # The distribution of $\log \tfrac{u}{1-u}$ for $u\sim U(0, 1)$ is
+            # sigmoid: $\{u \leq \sigma(x)\} = \{\log \tfrac{u}{1-u} \leq x\}$.
+            mask = self.gate(torch.log(u) - torch.log(1 - u))
+        else:
+            # eval : let `u` be its mean
+            mask = self.gate(None)
+        # end if
 
         if n == 1:
             # group = input : "premultiply" `y = W (x \cdot mask) + b`
@@ -148,7 +148,7 @@ class LinearL0ARD(torch.nn.Linear, BaseARD):
 
         return output
 
-    def gate(self, logit):
+    def gate(self, logit=None):
         r"""Implements the binary concrete hard-sigmoid transformation:
         $$
             F
@@ -168,7 +168,12 @@ class LinearL0ARD(torch.nn.Linear, BaseARD):
         On eval
         https://github.com/AMLab-Amsterdam/L0_regularization/blob/master/l0_layers.py#L103
         """
-        # on inference in eq. (13) beta is fixed at 1.0, but not in their code
-        # It seems that this beta is very important!
-        s = torch.sigmoid((logit - self.log_alpha) / self.beta)
+        if logit is not None:
+            s = torch.sigmoid((logit - self.log_alpha) / self.beta)
+
+        else:
+            # on inference in eq. (13) beta is fixed at 1.0, but not in their code
+            s = torch.sigmoid(- self.log_alpha)
+            # It seems that this beta is very important! But why?
+
         return torch.clamp((self.zeta - self.gamma) * s + self.gamma, 0, 1)
