@@ -96,7 +96,7 @@ class LinearL0ARD(torch.nn.Linear, BaseARD):
         For $\tau=0.25$ and $\beta=0.66$ we have `threshold=2.96`.
         """
         with torch.no_grad():
-            return torch.eq(self.gate(None), 0.)
+            return 1 - self.gate(None)
 
     def num_zeros(self, threshold=1.0):
         mask = self.get_sparsity_mask(threshold)
