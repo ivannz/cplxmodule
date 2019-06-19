@@ -33,7 +33,7 @@ class CplxLinearMasked(CplxLinear, BaseMasked):
 
         elif self.is_sparse and value is not None:
             # sparse -> sparse : mask update
-            self.mask.copy_(value.detach())
+            self.mask.data = value.detach().to(self.mask)
 
         elif self.is_sparse and value is None:
             # sparse -> None : remove the mask
