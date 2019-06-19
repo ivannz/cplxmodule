@@ -117,10 +117,11 @@ class LinearL0ARD(torch.nn.Linear, BaseARD):
         n, m = self.log_alpha.shape
         if not self.training:
             # eval : let `u` be its mean
-            u = torch.tensor(0.5).to(input)
+            u = torch.tensor(0.5, dtype=input.dtype, device=input.device)
         elif n == 1 or m == 1:
             # this is a relatively "small" batch of unform rv.
-            u = torch.rand(*input.shape[:-1], n, m)
+            u = torch.rand(*input.shape[:-1], n, m,
+                           dtype=input.dtype, device=input.device)
         else:
             # one unform sample for the whole batch! Very high gradient var.
             u = torch.rand_like(self.log_alpha)
