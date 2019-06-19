@@ -161,7 +161,14 @@ class LinearL0ARD(torch.nn.Linear, BaseARD):
         where $g(x) = \min\{1, \max\{0, x\}\}$ is the hard-sigmoid, $\gamma <
         0 < \zeta$ are the stretch parameters, $\beta$ is the temperature and
         $\sigma(z) = (1+e^{-z})^{-1}$.
+
+        On train
+        https://github.com/AMLab-Amsterdam/L0_regularization/blob/master/l0_layers.py#L64
+
+        On eval
+        https://github.com/AMLab-Amsterdam/L0_regularization/blob/master/l0_layers.py#L103
         """
         # on inference in eq. (13) beta is fixed at 1.0, but not in their code
+        # It seems that this beta is very important!
         s = torch.sigmoid((logit - self.log_alpha) / self.beta)
         return torch.clamp((self.zeta - self.gamma) * s + self.gamma, 0, 1)
