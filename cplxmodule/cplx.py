@@ -253,6 +253,16 @@ class Cplx(tuple):
         return type(self)(self.real.to(*args, **kwargs),
                           self.imag.to(*args, **kwargs))
 
+    @property
+    def device(self):
+        r"""The hosting device of the complex tensor."""
+        return self.real.device
+
+    @property
+    def dtype(self):
+        r"""The base dtype of the complex tensor."""
+        return self.real.dtype
+
     def dim(self):
         r"""The number of dimensions in the complex tensor."""
         return len(self.shape)
