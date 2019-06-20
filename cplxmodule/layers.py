@@ -97,7 +97,7 @@ class CplxToReal(torch.nn.Module):
         return cplx_to_real(input, self.flatten)
 
 
-class CplxWeightMixin(torch.nn.Module):
+class CplxWeightMixin():
     """Cosmetic complex parameter accessor.
 
     Details
@@ -108,13 +108,15 @@ class CplxWeightMixin(torch.nn.Module):
     """
     @property
     def weight(self):
-        # can we cache this? Cause what if creating Cplx(..) is costly?
-        weight = super().__getattr__("weight")
+        # bypass default attr lookup straight to own __getattr__
+        weight = self.__getattr__("weight")
+
+        # can we cache this? Cause what if creating `Cplx` is costly?
         return Cplx(weight.real, weight.imag)
 
     @property
     def bias(self):
-        bias = super().__getattr__("bias")
+        bias = self.__getattr__("bias")
         if bias is None:
             return None
         return Cplx(bias.real, bias.imag)
@@ -124,7 +126,7 @@ class CplxToCplx(torch.nn.Module):
     pass
 
 
-class CplxLinear(CplxToCplx, CplxWeightMixin):
+class CplxLinear(CplxWeightMixin, CplxToCplx):
     r"""
     Complex linear transform:
     $$
