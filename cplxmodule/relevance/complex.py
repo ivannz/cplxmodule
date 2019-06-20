@@ -43,7 +43,7 @@ def cplx_nkldiv_exact(log_alpha, reduction="mean"):
     return kl_div
 
 
-class CplxLinearARD(BaseARD, CplxLinear):
+class CplxLinearARD(CplxLinear, BaseARD):
     def __init__(self, in_features, out_features, bias=True, reduction="mean"):
         super().__init__(in_features, out_features, bias=bias)
         self.reduction = reduction
