@@ -22,7 +22,7 @@ def real_nkldiv_apprx(log_alpha, reduction="mean"):
     return kldiv_approx(log_alpha, coef, reduction)
 
 
-class LinearARD(torch.nn.Linear, BaseARD):
+class LinearARD(BaseARD, torch.nn.Linear):
     def __init__(self, in_features, out_features, bias=True, reduction="mean"):
         super().__init__(in_features, out_features, bias=bias)
         self.reduction = reduction

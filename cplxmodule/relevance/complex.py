@@ -43,7 +43,7 @@ def cplx_nkldiv_exact(log_alpha, reduction="mean"):
     return kl_div
 
 
-class CplxLinearARD(CplxLinear, BaseARD):
+class CplxLinearARD(BaseARD, CplxLinear):
     def __init__(self, in_features, out_features, bias=True, reduction="mean"):
         super().__init__(in_features, out_features, bias=bias)
         self.reduction = reduction
@@ -59,8 +59,7 @@ class CplxLinearARD(CplxLinear, BaseARD):
     def log_alpha(self):
         r"""Get $\log \alpha$ from $(\theta, \sigma^2)$ parameterization."""
         # $\alpha = \tfrac{\sigma^2}{\theta \bar{\theta}}$
-        abs_weight = abs(Cplx(self.weight.real, self.weight.imag))
-        return self.log_sigma2 - 2 * torch.log(abs_weight + 1e-12)
+        return self.log_sigma2 - 2 * torch.log(abs(self.weight) + 1e-12)
 
     @property
     def penalty(self):
