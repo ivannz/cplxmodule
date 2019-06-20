@@ -6,12 +6,12 @@ import torch.nn
 from torch.nn import Parameter
 
 from .cplx import Cplx, cplx_conv1d
-from .layers import CplxToCplx, CplxParameter
+from .layers import CplxToCplx, CplxParameter, CplxWeightMixin
 
 from torch.nn.modules.utils import _single
 
 
-class CplxConvNd(CplxToCplx):
+class CplxConvNd(CplxToCplx, CplxWeightMixin):
     r"""An almost verbatim copy of `_ConvNd` from torch/nn/modules/conv.py"""
     def __init__(self, in_channels, out_channels, kernel_size, stride,
                  padding, dilation, groups, bias, padding_mode):
@@ -101,7 +101,6 @@ class CplxConv1d(CplxConvNd):
             _single(padding), _single(dilation), groups, bias, padding_mode)
 
     def forward(self, input):
-        bias = Cplx(**self.bias) if self.bias is not None else None
-        return cplx_conv1d(input, Cplx(**self.weight), bias,
+        return cplx_conv1d(input, self.weight, self.bias,
                            self.stride[0], self.padding[0], self.dilation[0],
                            self.groups, self.padding_mode)

@@ -97,11 +97,34 @@ class CplxToReal(torch.nn.Module):
         return cplx_to_real(input, self.flatten)
 
 
+class CplxWeightMixin(torch.nn.Module):
+    """Cosmetic complex parameter accessor.
+
+    Details
+    -------
+    This works both for the default `forward()` inherited from Linear,
+    and for what the user expects to see when they request weight from
+    the layer (masked zero values).
+    """
+    @property
+    def weight(self):
+        # can we cache this? Cause what if creating Cplx(..) is costly?
+        weight = super().__getattr__("weight")
+        return Cplx(weight.real, weight.imag)
+
+    @property
+    def bias(self):
+        bias = super().__getattr__("bias")
+        if bias is None:
+            return None
+        return Cplx(bias.real, bias.imag)
+
+
 class CplxToCplx(torch.nn.Module):
     pass
 
 
-class CplxLinear(CplxToCplx):
+class CplxLinear(CplxToCplx, CplxWeightMixin):
     r"""
     Complex linear transform:
     $$
@@ -128,20 +151,17 @@ class CplxLinear(CplxToCplx):
         self.reset_parameters()
 
     def reset_parameters(self):
-        torch.nn.init.kaiming_uniform_(self.weight.real, a=math.sqrt(5))
-        torch.nn.init.kaiming_uniform_(self.weight.imag, a=math.sqrt(5))
-        if self.bias is not None:
-            fan_in, _ = torch.nn.init._calculate_fan_in_and_fan_out(self.weight.real)
+        weight, bias = self.weight, self.bias  # inplace acessors
+        torch.nn.init.kaiming_uniform_(weight.real, a=math.sqrt(5))
+        torch.nn.init.kaiming_uniform_(weight.imag, a=math.sqrt(5))
+        if bias is not None:
+            fan_in, _ = torch.nn.init._calculate_fan_in_and_fan_out(weight.real)
             bound = 1 / math.sqrt(fan_in)
-            torch.nn.init.uniform_(self.bias.real, -bound, bound)
-            torch.nn.init.uniform_(self.bias.imag, -bound, bound)
+            torch.nn.init.uniform_(bias.real, -bound, bound)
+            torch.nn.init.uniform_(bias.imag, -bound, bound)
 
     def forward(self, input):
-        weight, bias = Cplx(self.weight.real, self.weight.imag), None
-        if self.bias is not None:
-            bias = Cplx(self.bias.real, self.bias.imag)
-
-        return cplx_linear(input, weight, bias)
+        return cplx_linear(input, self.weight, self.bias)
 
     def extra_repr(self):
         return 'in_features={}, out_features={}, bias={}'.format(
