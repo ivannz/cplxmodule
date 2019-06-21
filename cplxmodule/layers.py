@@ -101,7 +101,7 @@ class CplxToReal(torch.nn.Module):
         return cplx_to_real(input, self.flatten)
 
 
-class CplxWeightMixin():
+class CplxWeightMixin(torch.nn.Module):
     """Cosmetic complex parameter accessor.
 
     Details
@@ -109,6 +109,13 @@ class CplxWeightMixin():
     This works both for the default `forward()` inherited from Linear,
     and for what the user expects to see when they request weight from
     the layer (masked zero values).
+
+    Warning
+    -------
+    This hacky property works only because torch.nn.Module implements
+    its own special attribute access mechanism via `__getattr__`. This
+    is why `SparseWeightMixin` in .masked couldn't work with 'weight'
+    as a read-only @property.
     """
     @property
     def weight(self):
