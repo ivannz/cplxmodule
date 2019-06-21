@@ -19,7 +19,7 @@ class LinearLASSO(torch.nn.Linear, BaseARD):
 
         return w_norm
 
-    def relevance(self, threshold):
+    def relevance(self, threshold, hard=None):
         with torch.no_grad():
             # the mask is $\tau \mapsto \lvert w_{ij} \rvert \geq \tau$
             return torch.ge(torch.log(abs(self.weight) + 1e-20), threshold)

@@ -85,7 +85,7 @@ class LinearL0ARD(torch.nn.Linear, BaseARD):
 
         return 1 - p_zeq0
 
-    def relevance(self, threshold=None):
+    def relevance(self, threshold=None, hard=False):
         r"""Get the dropout mask based on the confidence level $\tau \in (0, 1)$:
         $$
             \Pr(\lvert w_i \rvert > 0)
@@ -98,10 +98,10 @@ class LinearL0ARD(torch.nn.Linear, BaseARD):
         For $\tau=0.25$ and $\beta=0.66$ we have `threshold=2.96`.
         """
         with torch.no_grad():
-            return self.gate(None)
+            return torch.gt(self.gate(None), 0) if hard else self.gate(None)
 
     def _sparsity(self, threshold=None, hard=True):
-        mask = torch.gt(self.relevance(), 0) if hard else self.relevance()
+        mask = self.relevance(hard)
         n_relevant = float(mask.sum().item())
 
         n, m = mask.shape
