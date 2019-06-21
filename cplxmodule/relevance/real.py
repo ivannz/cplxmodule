@@ -23,6 +23,8 @@ def real_nkldiv_apprx(log_alpha, reduction="mean"):
 
 
 class LinearARD(torch.nn.Linear, BaseARD):
+    __ard_ignore__ = ("log_sigma2",)
+
     def __init__(self, in_features, out_features, bias=True, reduction="mean"):
         super().__init__(in_features, out_features, bias=bias)
         self.reduction = reduction
@@ -45,13 +47,14 @@ class LinearARD(torch.nn.Linear, BaseARD):
         # neg KL divergence must be maximized, hence the -ve sign.
         return - real_nkldiv_apprx(self.log_alpha, reduction=self.reduction)
 
-    def get_sparsity_mask(self, threshold):
-        r"""Get the dropout mask based on the log-relevance."""
+    def relevance(self, threshold):
+        r"""Get the relevance mask based on the threshold."""
         with torch.no_grad():
-            return torch.ge(self.log_alpha, threshold)
+            return torch.le(self.log_alpha, threshold).to(self.log_alpha)
 
-    def num_zeros(self, threshold=1.0):
-        return self.get_sparsity_mask(threshold).sum().item()
+    def _sparsity(self, threshold, hard=None):
+        n_relevant = float(self.relevance(threshold).sum().item())
+        return [(id(self.weight), self.weight.numel() - n_relevant)]
 
     def forward(self, input):
         mu = super().forward(input)

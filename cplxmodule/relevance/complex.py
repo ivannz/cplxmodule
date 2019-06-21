@@ -44,6 +44,8 @@ def cplx_nkldiv_exact(log_alpha, reduction="mean"):
 
 
 class CplxLinearARD(CplxLinear, BaseARD):
+    __ard_ignore__ = ("log_sigma2",)
+
     def __init__(self, in_features, out_features, bias=True, reduction="mean"):
         super().__init__(in_features, out_features, bias=bias)
         self.reduction = reduction
@@ -67,13 +69,20 @@ class CplxLinearARD(CplxLinear, BaseARD):
         # neg KL divergence must be maximized, hence the -ve sign.
         return -cplx_nkldiv_exact(self.log_alpha, reduction=self.reduction)
 
-    def get_sparsity_mask(self, threshold):
-        r"""Get the dropout mask based on the log-relevance."""
+    def relevance(self, threshold):
+        r"""Get the relevance mask based on the threshold."""
         with torch.no_grad():
-            return torch.ge(self.log_alpha, threshold)
+            return torch.le(self.log_alpha, threshold).to(self.log_alpha)
 
-    def num_zeros(self, threshold=1.0):
-        return 2 * self.get_sparsity_mask(threshold).sum().item()
+    def _sparsity(self, threshold, hard=None):
+        n_relevant = float(self.relevance(threshold).sum().item())
+
+        # bypass CplxWeightMixin and get the parameter dict itself
+        pd_weight = self.__getattr__("weight")
+        return [
+            (id(pd_weight.real), pd_weight.real.numel() - n_relevant),
+            (id(pd_weight.imag), pd_weight.imag.numel() - n_relevant),
+        ]
 
     def forward(self, input):
         # $\mu = \theta x$ in $\mathbb{C}$

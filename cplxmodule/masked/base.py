@@ -73,15 +73,13 @@ def deploy_masks(module, *, state_dict=None, prefix=""):
 
 
 def compute_ard_masks(module, *, threshold=None, prefix=""):
-    if not isinstance(threshold, (float, int)) \
-       or not isinstance(module, torch.nn.Module):
+    if not isinstance(module, torch.nn.Module):
         return {}
 
     masks = {}
     for name, mod in module.named_modules(prefix=prefix):
         if isinstance(mod, BaseARD):
-            mask = mod.get_sparsity_mask(threshold).detach().clone()
             name = name + ("." if name else "") + "mask"
-            masks[name] = ~mask
+            masks[name] = mod.relevance(threshold).detach()
 
     return masks
