@@ -36,6 +36,10 @@ class BaseMasked(torch.nn.Module):
 
         self.mask_(value)
 
+    def _sparsity(self, threshold, hard=True):
+        raise NotImplementedError("Derived classes must implement "
+                                  "a method to estimate sparsity.")
+
 
 class SparseWeightMixin(BaseMasked):
     @property
