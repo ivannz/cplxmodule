@@ -1,5 +1,5 @@
 import torch
-from ..relevance.base import BaseARD
+from ..relevance.base import named_relevance
 
 
 class BaseMasked(torch.nn.Module):
@@ -76,10 +76,8 @@ def compute_ard_masks(module, *, threshold=None, prefix=""):
     if not isinstance(module, torch.nn.Module):
         return {}
 
-    masks = {}
-    for name, mod in module.named_modules(prefix=prefix):
-        if isinstance(mod, BaseARD):
-            name = name + ("." if name else "") + "mask"
-            masks[name] = mod.relevance(threshold).detach()
+    relevance = named_relevance(module, threshold=threshold,
+                                hard=False, prefix=prefix)
 
-    return masks
+    return {name + ("." if name else "") + "mask": mask
+            for name, mask in relevance}

@@ -66,3 +66,11 @@ def sparsity(module, threshold=1.0, hard=True):
                                           threshold=threshold))
     n_zer, n_par = map(sum, zip(*pairs))
     return n_zer / max(n_par, 1)
+
+
+def named_relevance(module, threshold=1.0, hard=False, prefix=""):
+    """A generator of relevance masks and submodules owning them."""
+
+    for name, mod in module.named_modules(prefix=prefix):
+        if isinstance(mod, BaseARD):
+            yield name, mod.relevance(threshold, hard=hard).detach()
