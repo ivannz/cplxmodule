@@ -47,7 +47,7 @@ class LinearARD(torch.nn.Linear, BaseARD):
         # neg KL divergence must be maximized, hence the -ve sign.
         return - real_nkldiv_apprx(self.log_alpha, reduction=self.reduction)
 
-    def relevance(self, threshold):
+    def relevance(self, threshold, hard=None):
         r"""Get the relevance mask based on the threshold."""
         with torch.no_grad():
             return torch.le(self.log_alpha, threshold).to(self.log_alpha)

@@ -12,19 +12,9 @@ class BaseARD(torch.nn.Module):
         raise NotImplementedError("Derived classes must compute "
                                   "their own penalty.")
 
-    def relevance(self, threshold):
+    def relevance(self, threshold, hard=False):
         raise NotImplementedError("Derived classes must implement a float "
                                   "mask of relevant coefficients.")
-
-    def get_sparsity_mask(self, threshold):
-        r"""Get a binary mask of dropped out values based on the threshold."""
-        # Deprecated
-        return 1 - self.relevance(threshold)
-
-    def num_zeros(self, threshold):
-        # Deprecated
-        raise NotImplementedError("Derived classes must implement a "
-                                  "zero-counting method.")
 
     def _sparsity(self, threshold, hard=True):
         raise NotImplementedError("Derived classes must implement "
