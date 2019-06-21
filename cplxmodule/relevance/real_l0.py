@@ -38,6 +38,8 @@ class LinearL0ARD(torch.nn.Linear, BaseARD):
            ICLR 2017
            https://arxiv.org/pdf/1611.00712.pdf
     """
+    __ard_ignore__ = ("log_alpha",)
+
     beta, gamma, zeta = .25, -0.25, 1.25
     # beta, gamma, zeta = 0.66, -0.1, 1.1
 
