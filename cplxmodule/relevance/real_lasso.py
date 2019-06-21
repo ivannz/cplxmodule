@@ -19,10 +19,11 @@ class LinearLASSO(torch.nn.Linear, BaseARD):
 
         return w_norm
 
-    def get_sparsity_mask(self, threshold):
+    def relevance(self, threshold):
         with torch.no_grad():
-            # the mask is $\tau \mapsto \lvert w_{ij} \rvert \leq \tau$
-            return torch.le(torch.log(abs(self.weight) + 1e-20), threshold)
+            # the mask is $\tau \mapsto \lvert w_{ij} \rvert \geq \tau$
+            return torch.ge(torch.log(abs(self.weight) + 1e-20), threshold)
 
-    def num_zeros(self, threshold):
-        return self.get_sparsity_mask(threshold).sum().item()
+    def _sparsity(self, threshold, hard=None):
+        n_relevant = float(self.relevance(threshold).sum().item())
+        return [(id(self.weight), self.weight.numel() - n_relevant)]

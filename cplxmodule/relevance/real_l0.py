@@ -83,7 +83,7 @@ class LinearL0ARD(torch.nn.Linear, BaseARD):
 
         return 1 - p_zeq0
 
-    def get_sparsity_mask(self, threshold=None):
+    def relevance(self, threshold=None):
         r"""Get the dropout mask based on the confidence level $\tau \in (0, 1)$:
         $$
             \Pr(\lvert w_i \rvert > 0)
@@ -96,19 +96,20 @@ class LinearL0ARD(torch.nn.Linear, BaseARD):
         For $\tau=0.25$ and $\beta=0.66$ we have `threshold=2.96`.
         """
         with torch.no_grad():
-            return 1 - self.gate(None)
+            return self.gate(None)
 
-    def num_zeros(self, threshold=1.0):
-        mask = self.get_sparsity_mask(threshold)
+    def _sparsity(self, threshold=None, hard=True):
+        mask = torch.gt(self.relevance(), 0) if hard else self.relevance()
+        n_relevant = float(mask.sum().item())
+
         n, m = mask.shape
-        n_zer = mask.sum().item()
         if n == 1:
-            return self.weight.shape[0] * n_zer
+            n_relevant = self.weight.shape[0] * n_relevant
 
         elif m == 1:
-            return n_zer * self.weight.shape[1]
+            n_relevant = n_relevant * self.weight.shape[1]
 
-        return n_zer
+        return [(id(self.weight), self.weight.numel() - n_relevant)]
 
     def forward(self, input):
         # draw uniform rv for the hard-concrete
