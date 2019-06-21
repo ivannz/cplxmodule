@@ -61,8 +61,12 @@ class RealToCplx(torch.nn.Module):
         \bigl)_{k=0}^{d-1}
         \,. $$
     """
+    def __init__(self, copy=False):
+        super().__init__()
+        self.copy = copy
+
     def forward(self, input):
-        return real_to_cplx(input)
+        return real_to_cplx(input, copy=self.copy)
 
 
 class AsTypeCplx(RealToCplx):
