@@ -21,15 +21,27 @@ class BaseARD(torch.nn.Module):
                                   "a method to estimate sparsity.")
 
 
-def named_penalties(module, prefix=""):
+def named_penalties(module, reduction="mean", prefix=""):
+    """Generator of named penalty terms with specified reduction."""
+    if reduction is not None and reduction not in ("mean", "sum"):
+        raise ValueError(f"""`reduction` must be either `None`, "sum" """
+                         f"""or "mean". Got {reduction}.""")
+
     # yields own penalty and penalties of all descendants
     for name, mod in module.named_modules(prefix=prefix):
         if isinstance(mod, BaseARD):
-            yield name, mod.penalty
+            kl_div = mod.penalty
+            if reduction == "mean":
+                kl_div = kl_div.mean()
+
+            elif reduction == "sum":
+                kl_div = kl_div.sum()
+
+            yield name, kl_div
 
 
-def penalties(module):
-    for name, penalty in named_penalties(module):
+def penalties(module, reduction="mean"):
+    for name, penalty in named_penalties(module, reduction=reduction):
         yield penalty
 
 

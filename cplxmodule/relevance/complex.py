@@ -1,5 +1,7 @@
 import torch
 import torch.nn
+import scipy
+import scipy.special
 
 import torch.nn.functional as F
 
@@ -8,47 +10,82 @@ from numpy import euler_gamma
 
 from .base import BaseARD
 
-from .utils import kldiv_approx, torch_expi, ExpiFunction
-
 from ..layers import CplxLinear
 from ..cplx import Cplx
 
 
-def cplx_nkldiv_exact(log_alpha, reduction="mean"):
-    r"""
-    Exact negative complex KL divergence
+class ExpiFunction(torch.autograd.Function):
+    r"""Pythonic differentiable port of scipy's Exponential Integral Ei.
     $$
-        - KL(\mathcal{CN}(w\mid \theta, \alpha \theta \bar{\theta}, 0) \|
-                \tfrac1{\lvert w \rvert^2})
-            = \log \alpha
-              - 2 \mathbb{E}_{\xi \sim \mathcal{CN}(1, \alpha, 0)}
-                \log{\lvert \xi \rvert} + C
-            = \log \alpha + Ei( - \tfrac1{\alpha}) + C
-        \,, $$
-    where $Ei(x) = \int_{-\infty}^x e^t t^{-1} dt$ is the exponential integral.
+        Ei
+            \colon \mathbb{R} \to \mathbb{R} \cup \{\pm \infty\}
+            \colon x \mapsto \int_{-\infty}^x \tfrac{e^t}{t} dt
+        \,. $$
+
+    Notes
+    -----
+    This may potentially introduce a memory transfer and compute bottleneck
+    during the forward pass due to CPU-GPU device switch. Backward pass does
+    not suffer from this issue and is computed on-device.
     """
-    if reduction is not None and reduction not in ("mean", "sum"):
-        raise ValueError("""`reduction` must be either `None`, "sum" """
-                         """or "mean".""")
+    @staticmethod
+    def forward(ctx, x):
+        ctx.save_for_backward(x)
 
-    # Ei behaves well on the -ve values, and near 0-.
-    kl_div = log_alpha + torch_expi(- torch.exp(- log_alpha)) - euler_gamma
+        x_cpu = x.data.cpu().numpy()
+        output = scipy.special.expi(x_cpu, dtype=x_cpu.dtype)
+        return torch.from_numpy(output).to(x.device)
 
-    if reduction == "mean":
-        return kl_div.mean()
+    @staticmethod
+    def backward(ctx, grad_output):
+        x = ctx.saved_tensors[-1]
+        return grad_output * torch.exp(x) / x
 
-    elif reduction == "sum":
-        return kl_div.sum()
 
-    return kl_div
+torch_expi = ExpiFunction.apply
 
 
 class CplxLinearARD(CplxLinear, BaseARD):
+    r"""Complex valued linear layer with automatic relevance detection.
+
+    Details
+    -------
+    This module assumes the standard loss-minimization framework. Hence
+    instead of -ve KL divergence for ELBO and log-likelihood maximization,
+    this property computes and returns the divergence as is, which implies
+    minimization of minus log-likelihood (and, thus, minus ELBO).
+
+    Attributes
+    ----------
+    penalty : computed torch.Tensor, read-only
+        The Kullback-Leibler divergence between the mean field approximate
+        complex variational posterior of the weights and the scale-free
+        log-uniform complex prior:
+        $$
+            KL(\mathcal{CN}(w\mid \theta, \alpha \theta \bar{\theta}, 0) \|
+                    \tfrac1{\lvert w \rvert^2})
+                = 2 \mathbb{E}_{\xi \sim \mathcal{CN}(1, \alpha, 0)}
+                    \log{\lvert \xi \rvert}
+                  + C - \log \alpha
+                = C - \log \alpha - Ei( - \tfrac1{\alpha})
+            \,, $$
+        where $Ei(x) = \int_{-\infty}^x e^t t^{-1} dt$ is the exponential
+        integral. Unlike real-valued variational dropout, this KL divergence
+        does not need an approximation, since it can be computed exactly via
+        a special function. $Ei(x)$ behaves well on the -ve values, and near
+        $0-$. The constant $C$ is fixed to Euler's gamma, so that the divergence
+        is +ve.
+
+    log_alpha : computed torch.Tensor, read-only
+        Log-variance of the multiplicative scaling noise. Computed as a log
+        of the ratio of the variance of the weight to the squared absolute
+        value of the weight. The higher the log-alpha the less relevant the
+        parameter is.
+    """
     __ard_ignore__ = ("log_sigma2",)
 
-    def __init__(self, in_features, out_features, bias=True, reduction="mean"):
+    def __init__(self, in_features, out_features, bias=True):
         super().__init__(in_features, out_features, bias=bias)
-        self.reduction = reduction
 
         self.log_sigma2 = torch.nn.Parameter(
             torch.Tensor(out_features, in_features))
@@ -65,9 +102,23 @@ class CplxLinearARD(CplxLinear, BaseARD):
 
     @property
     def penalty(self):
-        r"""Compute the variational penalty term."""
-        # neg KL divergence must be maximized, hence the -ve sign.
-        return -cplx_nkldiv_exact(self.log_alpha, reduction=self.reduction)
+        r"""Exact complex KL divergence."""
+        log_alpha = self.log_alpha
+        return euler_gamma - log_alpha - torch_expi(- torch.exp(- log_alpha))
+
+    def forward(self, input):
+        # $\mu = \theta x$ in $\mathbb{C}$
+        mu = super().forward(input)
+        if not self.training:
+            return mu
+
+        # \gamma = \sigma^2 (x \odot \bar{x})
+        s2 = F.linear(input.real * input.real + input.imag * input.imag,
+                      torch.exp(self.log_sigma2), None)
+
+        # generate complex Gaussian noise with proper scale
+        noise = Cplx(*map(torch.randn_like, (s2, s2))) / sqrt(2)
+        return mu + noise * torch.sqrt(s2 + 1e-20)
 
     def relevance(self, threshold, hard=None):
         r"""Get the relevance mask based on the threshold."""
@@ -76,56 +127,42 @@ class CplxLinearARD(CplxLinear, BaseARD):
 
     def _sparsity(self, threshold, hard=None):
         n_relevant = float(self.relevance(threshold).sum().item())
-
-        # bypass CplxWeightMixin and get the parameter dict itself
-        pd_weight = self.__getattr__("weight")
+        weight = self.weight
         return [
-            (id(pd_weight.real), pd_weight.real.numel() - n_relevant),
-            (id(pd_weight.imag), pd_weight.imag.numel() - n_relevant),
+            (id(weight.real), weight.real.numel() - n_relevant),
+            (id(weight.imag), weight.imag.numel() - n_relevant),
         ]
-
-    def forward(self, input):
-        # $\mu = \theta x$ in $\mathbb{C}$
-        mu = super().forward(input)
-        # mu = cplx_linear(input, Cplx(**self.weight), self.bias)
-        if not self.training:
-            return mu
-
-        # \gamma = \sigma^2 (x \odot \bar{x})
-        s2 = F.linear(input.real * input.real + input.imag * input.imag,
-                      torch.exp(self.log_sigma2), None)
-
-        # generate complex gaussian noise with proper scale
-        noise = Cplx(*map(torch.rand_like, (s2, s2))) / sqrt(2)
-        return mu + noise * torch.sqrt(s2 + 1e-20)
-
-
-def cplx_nkldiv_apprx(log_alpha, reduction="mean"):
-    r"""
-    Sofplus-sigmoid approximation of the negative complex KL divergence.
-    $$
-        - KL(\mathcal{CN}(w\mid \theta, \alpha \theta \bar{\theta}, 0) \|
-                \tfrac1{\lvert w \rvert^2})
-            = \log \alpha
-              - 2 \mathbb{E}_{\xi \sim \mathcal{CN}(1, \alpha, 0)}
-                \log{\lvert \xi \rvert} + C
-        \,. $$
-    For coef estimation and derivation c.f. the supplementary notebook.
-    """
-    coef = 0.57811, 1.46018, 1.36562, 1.  # 0.57811265, 1.4601848, 1.36561527
-    return kldiv_approx(log_alpha, coef, reduction)
 
 
 class CplxLinearARDApprox(CplxLinearARD):
     @property
     def penalty(self):
-        r"""Compute the variational penalty term."""
-        # neg KL divergence must be maximized, hence the -ve sign.
-        return -cplx_nkldiv_apprx(self.log_alpha, reduction=self.reduction)
+        r"""Sofplus-sigmoid approximation of the complex KL divergence.
+        $$
+            \alpha \mapsto
+                k_4 \log (1 + e^{-\log \alpha}) - C
+                - k_1 \sigma(k_2 + k_3 \log \alpha)
+            \,, $$
+        with $C = - k_1$ and $k_4 = 1$. Note that $x \mapsto \log(1 + e^x)$
+        is known as `softplus` and in fact needs different compute paths
+        depending on the sign of $x$, much like the stable method for the
+        `log-sum-exp`:
+        $$
+            x \mapsto
+                \log(1+e^{-\lvert x\rvert}) + \max{\{x, 0\}}
+            \,. $$
+
+        See the accompanying notebook for the MC estimaton of tje k1-k3
+        constants.
+        """
+        log_alpha = self.log_alpha
+        k1, k2, k3 = 0.57811, 1.46018, 1.36562
+        sigmoid = torch.sigmoid(k2 + k3 * log_alpha)
+        return F.softplus(- log_alpha) - k1 * sigmoid + k1
 
 
 class BogusExpiFunction(ExpiFunction):
-    """The Dummy Expi function, that compute bogus values on the forward pass,
+    """The Dummy Expi function, that computes bogus values on the forward pass,
     but correct values on the backwards pass, provided there is no downstream
     dependence on its forward-pass output.
     """
@@ -141,14 +178,6 @@ bogus_expi = BogusExpiFunction.apply
 class CplxLinearARDBogus(CplxLinearARD):
     @property
     def penalty(self):
-        r"""-ve KL-div with bogus forward output, but correct gradient."""
+        r"""KL-div with bogus forward output, but correct gradient."""
         log_alpha = self.log_alpha
-        kl_div = log_alpha + bogus_expi(- torch.exp(- log_alpha))
-
-        if self.reduction == "mean":
-            return -kl_div.mean()
-
-        elif self.reduction == "sum":
-            return -kl_div.sum()
-
-        return -kl_div
+        return - log_alpha - bogus_expi(- torch.exp(- log_alpha))
