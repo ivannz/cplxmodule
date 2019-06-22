@@ -5,7 +5,7 @@ from torch.nn import Linear
 from .base import BaseMasked, SparseWeightMixin
 
 
-class LinearMasked(SparseWeightMixin, BaseMasked, Linear):
+class LinearMasked(SparseWeightMixin, Linear, BaseMasked):
     def forward(self, input):
         return F.linear(input, self.weight_masked, self.bias)
 
