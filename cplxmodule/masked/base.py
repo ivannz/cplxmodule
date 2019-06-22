@@ -105,12 +105,12 @@ class BaseMasked(torch.nn.Module):
         if mask in unexpected:
             # state comes from an actively masked layer
             unexpected.remove(mask)
-        missing_keys.extend(missing)
+        unexpected_keys.extend(unexpected)
 
         if mask in missing:
             # state comes from an unmasked layer
             missing.remove(mask)
-        unexpected_keys.extend(unexpected)
+        missing_keys.extend(missing)
 
 
 class MaskedWeightMixin(BaseMasked):
