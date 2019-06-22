@@ -20,9 +20,9 @@ from cplxmodule.relevance import CplxLinearARD
 from cplxmodule.masked import LinearMasked
 from cplxmodule.masked import CplxLinearMasked
 
-from cplxmodule.relevance import penalties, sparsity
-from cplxmodule.masked import deploy_masks, compute_ard_masks
-from cplxmodule.masked import named_masks
+from cplxmodule.relevance import penalties, compute_ard_masks
+from cplxmodule.masked import deploy_masks, named_masks
+from cplxmodule.utils.stats import sparsity, named_sparsity
 
 
 @pytest.fixture
@@ -68,7 +68,12 @@ def example(cplx=False):
                 optim.step()
 
                 losses.append(float(loss))
-                f_sparsity = sparsity(model, threshold) if verbose else float("nan")
+                if verbose:
+                    f_sparsity = sparsity(model, hard=True,
+                                          threshold=threshold)
+                else:
+                    f_sparsity = float("nan")
+
                 bar.set_postfix_str(f"{f_sparsity:.1%} {float(mse):.3e} {float(kl_d):.3e}")
             # end for
         # end with
@@ -80,8 +85,8 @@ def example(cplx=False):
             mse = F.mse_loss(model(X), y)
             kl_d = sum(penalties(model))
 
-        print(f"{sparsity(model, threshold):.1%} "
-              f"{mse.item():.3e} {float(kl_d):.3e}")
+        f_sparsity = sparsity(model, hard=True, threshold=threshold)
+        print(f"{f_sparsity:.1%} {mse.item():.3e} {float(kl_d):.3e}")
         return model
 
     def construct_real(linear):
@@ -178,14 +183,11 @@ def example(cplx=False):
         if model is None:
             continue
 
+        print(f"\n>>> {key}")
         test_model(X, y, model, threshold=threshold)
-        # print([*model.named_parameters()])
-        if cplx:
-            weight = model.final.weight
-            print(Cplx(weight.real, weight.imag))
-        else:
-            print(model.final.weight)
+        print(model.final.weight)
         print([*named_masks(model)])
+        print([*named_sparsity(model, hard=True, threshold=threshold)])
 
 
 if __name__ == '__main__':
