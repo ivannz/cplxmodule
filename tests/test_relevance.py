@@ -32,7 +32,7 @@ def random_state():
 
 def test_torch_expi(random_state):
     from scipy.special import expi
-    from cplxmodule.relevance.utils import torch_expi
+    from cplxmodule.relevance.complex import torch_expi
 
     npy = random_state.randn(200)
     trx = torch.tensor(npy)
@@ -45,7 +45,8 @@ def test_torch_expi(random_state):
 def example(cplx=False):
     r"""An example, illustrating pre-training."""
 
-    def train_model(X, y, model, n_steps=20000, threshold=1.0, klw=1e-3):
+    def train_model(X, y, model, n_steps=20000, threshold=1.0,
+                    klw=1e-3, verbose=False):
         import tqdm
 
         model.train()
@@ -67,7 +68,7 @@ def example(cplx=False):
                 optim.step()
 
                 losses.append(float(loss))
-                f_sparsity = sparsity(model, threshold)
+                f_sparsity = sparsity(model, threshold) if verbose else float("nan")
                 bar.set_postfix_str(f"{f_sparsity:.1%} {float(mse):.3e} {float(kl_d):.3e}")
             # end for
         # end with
