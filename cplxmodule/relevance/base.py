@@ -44,3 +44,15 @@ def named_relevance(module, prefix="", **kwargs):
     for name, mod in module.named_modules(prefix=prefix):
         if isinstance(mod, BaseARD):
             yield name, mod.relevance(**kwargs).detach()
+
+
+def compute_ard_masks(module, *, prefix="", **kwargs):
+    if not isinstance(module, torch.nn.Module):
+        return {}
+
+    relevance = named_relevance(module, prefix=prefix, **kwargs, hard=True)
+
+    return {
+        name + ("." if name else "") + "mask": mask
+        for name, mask in relevance
+    }

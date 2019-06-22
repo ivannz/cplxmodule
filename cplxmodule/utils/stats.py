@@ -1,5 +1,4 @@
 import torch
-from ..relevance.base import named_relevance
 
 
 class SparsityStats(object):
@@ -8,18 +7,6 @@ class SparsityStats(object):
     def sparsity(self, **kwargs):
         raise NotImplementedError("Derived classes must implement "
                                   "a method to estimate sparsity.")
-
-
-def compute_ard_masks(module, *, prefix="", **kwargs):
-    if not isinstance(module, torch.nn.Module):
-        return {}
-
-    relevance = named_relevance(module, prefix=prefix, **kwargs)
-
-    return {
-        name + ("." if name else "") + "mask": mask
-        for name, mask in relevance
-    }
 
 
 def named_sparsity(module, prefix="", **kwargs):
