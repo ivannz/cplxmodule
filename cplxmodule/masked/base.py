@@ -64,8 +64,10 @@ class BaseMasked(torch.nn.Module):
             self.mask.copy_(mask.detach())
 
         elif self.is_sparse and mask is None:
-            # sparse -> None : remove the mask (but do not drop the buffer)
-            self.mask = None
+            # sparse -> None : remove the mask and re-register the buffer
+            del self.mask
+
+            self.register_buffer("mask", None)
 
         elif not self.is_sparse and mask is None:
             # None -> None : nothing
