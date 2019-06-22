@@ -57,13 +57,13 @@ class LinearARD(torch.nn.Linear, BaseARD):
     @property
     def penalty(self):
         r"""Sofplus-sigmoid approximation of the Kl divergence from
-        arxiv:1701.05369 :
+        arxiv:1701.05369:
         $$
             \alpha \mapsto
-                k_4 \log (1 + e^{-\log \alpha}) - C
+                \tfrac12 \log (1 + e^{-\log \alpha}) - C
                 - k_1 \sigma(k_2 + k_3 \log \alpha)
             \,, $$
-        with $C = - k_1$ and $k_4 = 0.5$. Note that $x \mapsto \log(1 + e^x)$
+        with $C$ chosen to be $- k_1$. Note that $x \mapsto \log(1 + e^x)$
         is known as `softplus` and in fact needs different compute paths
         depending on the sign of $x$, much like the stable method for the
         `log-sum-exp`:
@@ -71,11 +71,13 @@ class LinearARD(torch.nn.Linear, BaseARD):
             x \mapsto
                 \log(1+e^{-\lvert x\rvert}) + \max{\{x, 0\}}
             \,. $$
+        See the paper eq. (14) (mind the overall negative sign) or the
+        accompanying notebook for the MC estimation of the constants:
+        `k1, k2, k3 = 0.63576, 1.87320, 1.48695`
         """
-        log_alpha = self.log_alpha
-        k1, k2, k3 = 0.63576, 1.87320, 1.48695
-        sigmoid = torch.sigmoid(k2 + k3 * log_alpha)
-        return F.softplus(- log_alpha) / 2 - k1 * sigmoid + k1
+        n_log_alpha = - self.log_alpha
+        sigmoid = torch.sigmoid(1.48695 * n_log_alpha - 1.87320)
+        return F.softplus(n_log_alpha) / 2 + 0.63576 * sigmoid
 
     def forward(self, input):
         mu = super().forward(input)

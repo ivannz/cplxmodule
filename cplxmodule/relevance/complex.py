@@ -140,10 +140,10 @@ class CplxLinearARDApprox(CplxLinearARD):
         r"""Sofplus-sigmoid approximation of the complex KL divergence.
         $$
             \alpha \mapsto
-                k_4 \log (1 + e^{-\log \alpha}) - C
+                \log (1 + e^{-\log \alpha}) - C
                 - k_1 \sigma(k_2 + k_3 \log \alpha)
             \,, $$
-        with $C = - k_1$ and $k_4 = 1$. Note that $x \mapsto \log(1 + e^x)$
+        with $C$ chosen as $- k_1$. Note that $x \mapsto \log(1 + e^x)$
         is known as `softplus` and in fact needs different compute paths
         depending on the sign of $x$, much like the stable method for the
         `log-sum-exp`:
@@ -152,13 +152,12 @@ class CplxLinearARDApprox(CplxLinearARD):
                 \log(1+e^{-\lvert x\rvert}) + \max{\{x, 0\}}
             \,. $$
 
-        See the accompanying notebook for the MC estimaton of tje k1-k3
-        constants.
+        See the accompanying notebook for the MC estimation of the k1-k3
+        constants: `k1, k2, k3 = 0.57810091, 1.45926293, 1.36525956`
         """
-        log_alpha = self.log_alpha
-        k1, k2, k3 = 0.57811, 1.46018, 1.36562
-        sigmoid = torch.sigmoid(k2 + k3 * log_alpha)
-        return F.softplus(- log_alpha) - k1 * sigmoid + k1
+        n_log_alpha = - self.log_alpha
+        sigmoid = torch.sigmoid(1.36526 * n_log_alpha - 1.45926)
+        return F.softplus(n_log_alpha) + 0.57810 * sigmoid
 
 
 class BogusExpiFunction(ExpiFunction):
