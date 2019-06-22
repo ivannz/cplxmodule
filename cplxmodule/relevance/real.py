@@ -69,7 +69,7 @@ class LinearARD(torch.nn.Linear, BaseARD):
         `log-sum-exp`:
         $$
             x \mapsto
-                \log(1+e^{-\lvert x\rvert}) + \max{\{x, 0\}}
+                \log(1 + e^{-\lvert x\rvert}) + \max{\{x, 0\}}
             \,. $$
         See the paper eq. (14) (mind the overall negative sign) or the
         accompanying notebook for the MC estimation of the constants:

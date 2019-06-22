@@ -103,8 +103,8 @@ class CplxLinearARD(CplxLinear, BaseARD):
     @property
     def penalty(self):
         r"""Exact complex KL divergence."""
-        log_alpha = self.log_alpha
-        return euler_gamma - log_alpha - torch_expi(- torch.exp(- log_alpha))
+        n_log_alpha = - self.log_alpha
+        return euler_gamma + n_log_alpha - torch_expi(- torch.exp(n_log_alpha))
 
     def forward(self, input):
         # $\mu = \theta x$ in $\mathbb{C}$
