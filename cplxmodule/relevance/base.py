@@ -30,14 +30,14 @@ def named_penalties(module, reduction="mean", prefix=""):
     # yields own penalty and penalties of all descendants
     for name, mod in module.named_modules(prefix=prefix):
         if isinstance(mod, BaseARD):
-            kl_div = mod.penalty
+            penalty = mod.penalty
             if reduction == "mean":
-                kl_div = kl_div.mean()
+                penalty = penalty.mean()
 
             elif reduction == "sum":
-                kl_div = kl_div.sum()
+                penalty = penalty.sum()
 
-            yield name, kl_div
+            yield name, penalty
 
 
 def penalties(module, reduction="mean"):
