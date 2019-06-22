@@ -1,5 +1,4 @@
 import torch
-from ..relevance.base import named_relevance
 
 
 class BaseMasked(torch.nn.Module):
@@ -111,12 +110,8 @@ class BaseMasked(torch.nn.Module):
             missing.remove(mask)
         unexpected_keys.extend(unexpected)
 
-    def _sparsity(self, threshold, hard=True):
-        raise NotImplementedError("Derived classes must implement "
-                                  "a method to estimate sparsity.")
 
-
-class SparseWeightMixin(BaseMasked):
+class MaskedWeightMixin(BaseMasked):
     @property
     def weight_masked(self):
         """Return a sparsified weight of the parent *Linear."""
@@ -149,14 +144,3 @@ def deploy_masks(module, *, state_dict=None, prefix=""):
             mod.mask = state_dict.get(name, None)
 
     return module
-
-
-def compute_ard_masks(module, *, threshold=None, prefix=""):
-    if not isinstance(module, torch.nn.Module):
-        return {}
-
-    relevance = named_relevance(module, threshold=threshold,
-                                hard=False, prefix=prefix)
-
-    return {name + ("." if name else "") + "mask": mask
-            for name, mask in relevance}
