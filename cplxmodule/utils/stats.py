@@ -43,7 +43,7 @@ def named_sparsity(module, prefix="", **kwargs):
             p_service.update(name + k for k in mod.__sparsity_ignore__)
 
             # collect parameter id-keyed number of hard zeros
-            n_dropout.update(mod._sparsity(**kwargs))
+            n_dropout.update(mod.sparsity(**kwargs))
 
     for name, par in module.named_parameters(prefix=prefix):
         if name not in p_service:
