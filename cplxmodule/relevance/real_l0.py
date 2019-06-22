@@ -5,9 +5,10 @@ import torch.nn
 import torch.nn.functional as F
 
 from .base import BaseARD
+from ..utils.stats import SparsityStats
 
 
-class LinearL0ARD(torch.nn.Linear, BaseARD):
+class LinearL0ARD(torch.nn.Linear, BaseARD, SparsityStats):
     """L0 regularized linear layer according to [1]_.
 
     Details
@@ -38,15 +39,13 @@ class LinearL0ARD(torch.nn.Linear, BaseARD):
            ICLR 2017
            https://arxiv.org/pdf/1611.00712.pdf
     """
-    __ard_ignore__ = ("log_alpha",)
+    __sparsity_ignore__ = ("log_alpha",)
 
     beta, gamma, zeta = .25, -0.25, 1.25
     # beta, gamma, zeta = 0.66, -0.1, 1.1
 
-    def __init__(self, in_features, out_features, bias=True,
-                 reduction="mean", group=None):
+    def __init__(self, in_features, out_features, bias=True, group=None):
         super().__init__(in_features, out_features, bias=bias)
-        self.reduction = reduction
 
         # weight is out_features, in_features
         if group == "input":
@@ -72,46 +71,20 @@ class LinearL0ARD(torch.nn.Linear, BaseARD):
 
     @property
     def penalty(self):
-        shift = self.beta * math.log(- self.gamma / self.zeta)
-
-        # compute P(z=0) (no minus, due to -ve log-alpha, c.f. eq. (12)).
-        p_zeq0 = torch.sigmoid(self.log_alpha + shift)
-
-        if self.reduction == "mean":
-            return 1 - p_zeq0.mean()
-
-        elif self.reduction == "sum":
-            return p_zeq0.numel() - p_zeq0.sum()
-
-        return 1 - p_zeq0
-
-    def relevance(self, threshold=None, hard=False):
-        r"""Get the dropout mask based on the confidence level $\tau \in (0, 1)$:
+        r"""Penalty the probability of a nonzero gate $z$:
         $$
             \Pr(\lvert w_i \rvert > 0)
                 \leq \Pr(z_i \neq 0)
                 = 1 - \sigma\bigl(
                     \log\alpha + \beta \log \tfrac{-\gamma}{\zeta}
                 \bigr)
-                \leq \tau
-            \,. $$
-        For $\tau=0.25$ and $\beta=0.66$ we have `threshold=2.96`.
+            \,, $$
+        where $\sigma(x) = (1+e^{-x})^{-1}$, which also satisfies the
+        realtion $1 - \sigma(x) = \sigma(-x)$.
         """
-        with torch.no_grad():
-            return torch.gt(self.gate(None), 0) if hard else self.gate(None)
-
-    def _sparsity(self, threshold=None, hard=True):
-        mask = self.relevance(hard)
-        n_relevant = float(mask.sum().item())
-
-        n, m = mask.shape
-        if n == 1:
-            n_relevant = self.weight.shape[0] * n_relevant
-
-        elif m == 1:
-            n_relevant = n_relevant * self.weight.shape[1]
-
-        return [(id(self.weight), self.weight.numel() - n_relevant)]
+        # compute P(z\neq 0) (minus, due to -ve log-alpha, c.f. eq. (12)).
+        shift = - self.beta * math.log(- self.gamma / self.zeta)
+        return torch.sigmoid(shift - self.log_alpha)
 
     def forward(self, input):
         # draw uniform rv for the hard-concrete
@@ -180,3 +153,23 @@ class LinearL0ARD(torch.nn.Linear, BaseARD):
             # It seems that this beta is very important! But why?
 
         return torch.clamp((self.zeta - self.gamma) * s + self.gamma, 0, 1)
+
+    def relevance(self, *, hard, **kwargs):
+        r"""Get the dropout mask based on the confidence level $\tau \in (0, 1)$:
+        $$
+            \Pr(\lvert w_i \rvert > 0)
+                \leq \Pr(z_i \neq 0)
+                = 1 - \sigma\bigl(
+                    \log\alpha + \beta \log \tfrac{-\gamma}{\zeta}
+                \bigr)
+                \leq \tau
+            \,. $$
+        For $\tau=0.25$ and $\beta=0.66$ we have `threshold=2.96`.
+        """
+        with torch.no_grad():
+            velue = torch.gt(self.gate(None), 0) if hard else self.gate(None)
+            return velue.to(self.weight).expand_as(self.weight)
+
+    def sparsity(self, *, hard, **kwargs):
+        n_relevant = float(self.relevance(hard=hard).sum().item())
+        return [(id(self.weight), self.weight.numel() - n_relevant)]
