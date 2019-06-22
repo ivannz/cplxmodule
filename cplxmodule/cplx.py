@@ -4,8 +4,10 @@ import torch.nn.functional as F
 from .utils import complex_view
 
 
-class Cplx(tuple):
+class Cplx(tuple, object):
     r"""A type partially implementing complex valued tensors in torch."""
+    __slots__ = ()
+
     def __new__(cls, real, imag=None):
         if isinstance(real, cls):
             return real
