@@ -156,7 +156,7 @@ def example(kind="cplx"):
     else:
         tau = 0.73105  # p = a / 1 + a, a = p / (1 - p)
     threshold = np.log(tau) - np.log(1 - tau)
-    print(f"{tau:.1%} - {threshold:.3g}")
+    print(f"\n{80*'='}\n{tau:.1%} - {threshold:.3g}")
 
     n_features = 500 if "cplx" in kind else 250
     n_output = 20 if "cplx" in kind else 10
@@ -176,6 +176,7 @@ def example(kind="cplx"):
     # train a sequence of models
     names, losses = list(models.keys()), {}
     for src, dst in zip(names[:-1], names[1:]):
+        print(f">>>>>> {dst}")
         n_steps, klw = phases[dst]
 
         # load the current model with the last one's weights
@@ -205,7 +206,7 @@ def example(kind="cplx"):
         if model is None:
             continue
 
-        print(f"\n>>> {key}")
+        print(f"\n>>>>>> {key}")
         test_model(X, y, model, threshold=threshold)
         print(model.final.weight)
         print([*named_masks(model)])
