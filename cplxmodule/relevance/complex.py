@@ -13,6 +13,8 @@ from .base import BaseARD
 from ..layers import CplxLinear
 from ..cplx import Cplx
 
+from ..utils.stats import SparsityStats
+
 
 class ExpiFunction(torch.autograd.Function):
     r"""Pythonic differentiable port of scipy's Exponential Integral Ei.
@@ -45,7 +47,7 @@ class ExpiFunction(torch.autograd.Function):
 torch_expi = ExpiFunction.apply
 
 
-class CplxLinearARD(CplxLinear, BaseARD):
+class CplxLinearARD(CplxLinear, BaseARD, SparsityStats):
     r"""Complex valued linear layer with automatic relevance detection.
 
     Details
@@ -82,7 +84,7 @@ class CplxLinearARD(CplxLinear, BaseARD):
         value of the weight. The higher the log-alpha the less relevant the
         parameter is.
     """
-    __ard_ignore__ = ("log_sigma2",)
+    __sparsity_ignore__ = ("log_sigma2",)
 
     def __init__(self, in_features, out_features, bias=True):
         super().__init__(in_features, out_features, bias=bias)
@@ -120,15 +122,14 @@ class CplxLinearARD(CplxLinear, BaseARD):
         noise = Cplx(*map(torch.randn_like, (s2, s2))) / sqrt(2)
         return mu + noise * torch.sqrt(s2 + 1e-20)
 
-    def relevance(self, threshold, hard=None):
+    def relevance(self, *, threshold, **kwargs):
         r"""Get the relevance mask based on the threshold."""
         with torch.no_grad():
             return torch.le(self.log_alpha, threshold).to(self.log_alpha)
 
-    def _sparsity(self, threshold, hard=None):
-        n_relevant = float(self.relevance(threshold).sum().item())
+    def sparsity(self, *, threshold, **kwargs):
+        relevance = self.relevance(threshold=threshold)
+
         weight = self.weight
-        return [
-            (id(weight.real), weight.real.numel() - n_relevant),
-            (id(weight.imag), weight.imag.numel() - n_relevant),
-        ]
+        n_dropped = float(weight.real.numel()) - float(relevance.sum().item())
+        return [(id(weight.real), n_dropped), (id(weight.imag), n_dropped), ]

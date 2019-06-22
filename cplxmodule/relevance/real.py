@@ -4,9 +4,10 @@ import torch.nn
 import torch.nn.functional as F
 
 from .base import BaseARD
+from ..utils.stats import SparsityStats
 
 
-class LinearARD(torch.nn.Linear, BaseARD):
+class LinearARD(torch.nn.Linear, BaseARD, SparsityStats):
     r"""Linear layer with automatic relevance detection.
 
     Details
@@ -37,7 +38,7 @@ class LinearARD(torch.nn.Linear, BaseARD):
         value of the weight. The higher the log-alpha the less relevant the
         parameter is.
     """
-    __ard_ignore__ = ("log_sigma2",)
+    __sparsity_ignore__ = ("log_sigma2",)
 
     def __init__(self, in_features, out_features, bias=True):
         super().__init__(in_features, out_features, bias=bias)
@@ -87,11 +88,12 @@ class LinearARD(torch.nn.Linear, BaseARD):
         s2 = F.linear(input * input, torch.exp(self.log_sigma2), None)
         return mu + torch.randn_like(s2) * torch.sqrt(s2 + 1e-20)
 
-    def relevance(self, threshold, hard=None):
+    def relevance(self, *, threshold, **kwargs):
         r"""Get the relevance mask based on the threshold."""
         with torch.no_grad():
             return torch.le(self.log_alpha, threshold).to(self.log_alpha)
 
-    def _sparsity(self, threshold, hard=None):
-        n_relevant = float(self.relevance(threshold).sum().item())
+    def sparsity(self, *, threshold, **kwargs):
+        relevance = self.relevance(threshold=threshold)
+        n_relevant = float(relevance.sum().item())
         return [(id(self.weight), self.weight.numel() - n_relevant)]
