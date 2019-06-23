@@ -50,7 +50,7 @@ def compute_ard_masks(module, *, prefix="", **kwargs):
     if not isinstance(module, torch.nn.Module):
         return {}
 
-    relevance = named_relevance(module, prefix=prefix, **kwargs, hard=True)
+    relevance = named_relevance(module, prefix=prefix, hard=True, **kwargs)
 
     return {
         name + ("." if name else "") + "mask": mask
