@@ -187,7 +187,7 @@ def example(kind="cplx"):
         model.to(device_)
 
         # compute the dropout masks and
-        masks = compute_ard_masks(models[src], threshold=threshold)
+        masks = compute_ard_masks(models[src], threshold=threshold, hard=False)
 
         # conditionally deploy the computed dropout masks
         model = deploy_masks(model, state_dict=masks)
