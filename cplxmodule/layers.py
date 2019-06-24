@@ -30,6 +30,9 @@ def is_from_cplx(module):
     if isinstance(module, torch.nn.Sequential):
         return is_from_cplx(module[0])
 
+    if isinstance(module, type):
+        return issubclass(module, (CplxToCplx, CplxToReal))
+
     return False
 
 
@@ -39,6 +42,9 @@ def is_to_cplx(module):
 
     if isinstance(module, torch.nn.Sequential):
         return is_to_cplx(module[-1])
+
+    if isinstance(module, type):
+        return issubclass(module, (CplxToCplx, RealToCplx))
 
     return False
 
