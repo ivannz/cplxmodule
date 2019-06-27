@@ -15,9 +15,12 @@ class CplxLinearMasked(MaskedWeightMixin, CplxLinear,
     def sparsity(self, *, hard=True, **kwargs):
         weight = self.weight
 
-        n_dropped = float(weight.real.numel())
         if self.is_sparse:
             mask = torch.gt(self.mask, 0) if hard else self.mask
+            n_dropped = float(weight.real.numel())
             n_dropped -= float(mask.sum().item())
+
+        else:
+            n_dropped = 0.
 
         return [(id(weight.real), n_dropped), (id(weight.imag), n_dropped), ]

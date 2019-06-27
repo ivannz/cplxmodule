@@ -13,9 +13,12 @@ class LinearMasked(MaskedWeightMixin, Linear,
         return F.linear(input, self.weight_masked, self.bias)
 
     def sparsity(self, *, hard=True, **kwargs):
-        n_dropped = float(self.weight.numel())
         if self.is_sparse:
             mask = torch.gt(self.mask, 0) if hard else self.mask
+            n_dropped = float(self.weight.numel())
             n_dropped -= float(mask.sum().item())
+
+        else:
+            n_dropped = 0.
 
         return [(id(self.weight), n_dropped)]
