@@ -135,7 +135,7 @@ def named_masks(module, prefix=""):
             yield name, mod.mask
 
 
-def deploy_masks(module, *, state_dict=None, prefix=""):
+def deploy_masks(module, *, state_dict=None, prefix="", reset=False):
     if not isinstance(state_dict, dict) \
        or not isinstance(module, torch.nn.Module):
         return module
@@ -143,6 +143,15 @@ def deploy_masks(module, *, state_dict=None, prefix=""):
     for name, mod in module.named_modules(prefix=prefix):
         if isinstance(mod, BaseMasked):
             name = name + ("." if name else "") + "mask"
-            mod.mask = state_dict.get(name, None)
+            if name in state_dict:
+                # mask was given :: update
+                mod.mask = state_dict[name]
+
+            elif reset:
+                # mask is missing and reset :: set to None
+                mod.mask = None
+            else:
+                # mask is missing and nott reset :: nothing
+                pass
 
     return module
