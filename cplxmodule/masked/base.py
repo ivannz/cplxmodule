@@ -114,6 +114,7 @@ class BaseMasked(torch.nn.Module):
 
 
 class MaskedWeightMixin(BaseMasked):
+    """A mixin for accessing read-only masked weight,"""
     @property
     def weight_masked(self):
         """Return a sparsified weight of the parent *Linear."""
@@ -122,6 +123,7 @@ class MaskedWeightMixin(BaseMasked):
 
 
 def is_sparse(module):
+    """Check if a module is sparse and has a set mask."""
     if isinstance(module, BaseMasked):
         return module.is_sparse
 
@@ -129,6 +131,7 @@ def is_sparse(module):
 
 
 def named_masks(module, prefix=""):
+    """Walk over the submodule tree yielding names and masks."""
     # yields own mask and masks of every descendant
     for name, mod in module.named_modules(prefix=prefix):
         if isinstance(mod, BaseMasked):
@@ -136,6 +139,26 @@ def named_masks(module, prefix=""):
 
 
 def deploy_masks(module, *, state_dict=None, prefix="", reset=False):
+    """Apply mask to the Masked submodules.
+
+    Arguments
+    ---------
+    module : torch.nn.Module
+        The module, children of which will have their masks updated or reset.
+
+    state_dict : dict, keyword-only
+        The dictionary of masks. Keys indicate which layer's mask to update
+        or reset and the value represents the masking tensor. Explicitly
+        providing `None` under some key resets disables the sparsity of that
+        layer.
+
+    prefix : str, default
+        The prefix to append to submodules' names during module tree walk.
+
+    reset : bool, default False
+        Whether to forcefully reset the sparsity of the layers, masks for
+        which were NOT provided in `state_dict`.
+    """
     if not isinstance(state_dict, dict) \
        or not isinstance(module, torch.nn.Module):
         return module
@@ -150,8 +173,9 @@ def deploy_masks(module, *, state_dict=None, prefix="", reset=False):
             elif reset:
                 # mask is missing and reset :: set to None
                 mod.mask = None
+
             else:
-                # mask is missing and nott reset :: nothing
+                # mask is missing and not reset :: nothing
                 pass
 
     return module
