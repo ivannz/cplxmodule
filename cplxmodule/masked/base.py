@@ -118,8 +118,13 @@ class MaskedWeightMixin(BaseMasked):
     @property
     def weight_masked(self):
         """Return a sparsified weight of the parent *Linear."""
-        # __rmul__ by the mask in case of weird weight types
-        return (self.weight * self.mask) if self.is_sparse else self.weight
+        if not self.is_sparse:
+            msg = f"`{type(self).__name__}` has no sparsity mask. Please, " \
+                  f"either set a mask attribute, or call `deploy_masks()`."
+            raise RuntimeError(msg)
+
+        # __rmul__ by the mask in case of weird weight types (like Cplx)
+        return self.weight * self.mask
 
 
 def is_sparse(module):
