@@ -96,20 +96,27 @@ class BaseMasked(torch.nn.Module):
         # this next call loads into this module only!
         missing, unexpected = [], []
         super()._load_from_state_dict(state_dict, prefix, local_metadata,
-                                      True, missing, unexpected, error_msgs)
+                                      strict, missing, unexpected, error_msgs)
 
         mask = prefix + "mask"
-        self.mask_(state_dict.get(mask, None))
+        # mask was explicitly given: set own mask
+        if mask in state_dict:
+            self.mask_(state_dict[mask])
 
-        # clean up the missing/unexpected lists
-        if mask in unexpected:
-            # state comes from an actively masked layer
-            unexpected.remove(mask)
+            # mask not in self => mask might be in unexpected (not in missing)
+            if mask in unexpected:
+                unexpected.remove(mask)
+
+        # mask was not given => mask might be in missing (not in unexpected)
+        elif mask not in missing and strict:
+            # report missing mask if self has mask
+            missing.append(mask)
+
+        # mask was not given, and is either in missing, or not strict
+        else:
+            pass
+
         unexpected_keys.extend(unexpected)
-
-        if mask in missing:
-            # state comes from an unmasked layer
-            missing.remove(mask)
         missing_keys.extend(missing)
 
 
