@@ -41,8 +41,7 @@ class LinearL0ARD(torch.nn.Linear, BaseARD, SparsityStats):
     """
     __sparsity_ignore__ = ("log_alpha",)
 
-    beta, gamma, zeta = .25, -0.25, 1.25
-    # beta, gamma, zeta = 0.66, -0.1, 1.1
+    beta, gamma, zeta = 0.66, -0.1, 1.1
 
     def __init__(self, in_features, out_features, bias=True, group=None):
         super().__init__(in_features, out_features, bias=bias)
