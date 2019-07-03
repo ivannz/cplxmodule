@@ -164,7 +164,7 @@ def example(kind="cplx"):
 
     # a simple dataset
     X = torch.randn(100, n_features)
-    y = X[:, :n_output].clone()
+    y = - X[:, :n_output].clone()
 
     X, y = X.to(device_), y.to(device_)
 
@@ -203,7 +203,7 @@ def example(kind="cplx"):
 
     # get scores on test
     X = torch.randn(10000, n_features)
-    y = X[:, :n_output].clone()
+    y = - X[:, :n_output].clone()
 
     X, y = X.to(device_), y.to(device_)
 
