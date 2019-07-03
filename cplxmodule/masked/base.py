@@ -191,3 +191,37 @@ def deploy_masks(module, *, state_dict=None, prefix="", reset=False):
                 pass
 
     return module
+
+
+def binarize_masks(state_dict, masks):
+    """Normalize the weight and masks, so that masks are binary.
+
+    Arguments
+    ---------
+    state_dict : dict of tensors
+        A dictionary of tensors, usually from `.state_dict()` call.
+
+    masks : dict of tensors
+        A dictionary of masks for the weights in `state_dict`.
+
+    Returns
+    -------
+    state_dict : dict of tensors
+        A dictionary of tensors, multiplied by their corresponding mask.
+
+    masks : dict of tensors
+        A dictionary of binarized masks.
+    """
+    new_state_dict = {}
+    for name, par in state_dict.items():
+        if "weight" in name:
+            mask = name.rsplit("weight", 1)[0] + "mask"
+            if mask in masks:
+                par *= masks[mask].to(par)
+
+        new_state_dict[name] = par
+
+    new_masks = {name: torch.ne(mask, 0).to(mask)
+                 for name, mask in masks.items()}
+
+    return new_state_dict, new_masks

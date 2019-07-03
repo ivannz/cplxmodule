@@ -24,6 +24,7 @@ from cplxmodule.masked import CplxLinearMasked
 
 from cplxmodule.relevance import penalties, compute_ard_masks
 from cplxmodule.masked import deploy_masks, named_masks
+from cplxmodule.masked import binarize_masks
 from cplxmodule.utils.stats import sparsity, named_sparsity
 
 
@@ -182,15 +183,19 @@ def example(kind="cplx"):
         # load the current model with the last one's weights
         model = models[dst]
         if models[src] is not None:
-            model.load_state_dict(models[src].state_dict(), strict=False)
+            # compute the dropout masks and normalize them
+            state_dict = models[src].state_dict()
+            masks = compute_ard_masks(models[src], threshold=threshold, hard=False)
+
+            state_dict, masks = binarize_masks(state_dict, masks)
+
+            # deploy old weights onto the new model
+            model.load_state_dict(state_dict, strict=False)
+
+            # conditionally deploy the computed dropout masks
+            model = deploy_masks(model, state_dict=masks)
 
         model.to(device_)
-
-        # compute the dropout masks and
-        masks = compute_ard_masks(models[src], threshold=threshold, hard=False)
-
-        # conditionally deploy the computed dropout masks
-        model = deploy_masks(model, state_dict=masks)
 
         model, losses[dst] = train_model(X, y, model, n_steps=n_steps,
                                          threshold=threshold, klw=klw)
