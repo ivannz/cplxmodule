@@ -212,16 +212,20 @@ def binarize_masks(state_dict, masks):
     masks : dict of tensors
         A dictionary of binarized masks.
     """
-    new_state_dict = {}
-    for name, par in state_dict.items():
-        if "weight" in name:
-            mask = name.rsplit("weight", 1)[0] + "mask"
-            if mask in masks:
-                par *= masks[mask].to(par)
+    with torch.no_grad():
+        new_state_dict = {}
+        for name, par in state_dict.items():
+            if "weight" in name:
+                mask = name.rsplit("weight", 1)[0] + "mask"
+                if mask in masks:
+                    par = par * masks[mask].to(par)
 
-        new_state_dict[name] = par
+                    # clean up negative hard zeros (sign bit is set)
+                    par[abs(par) == 0] = 0
 
-    new_masks = {name: torch.ne(mask, 0).to(mask)
-                 for name, mask in masks.items()}
+            new_state_dict[name] = par
+
+        new_masks = {name: torch.ne(mask, 0).to(mask)
+                     for name, mask in masks.items()}
 
     return new_state_dict, new_masks
