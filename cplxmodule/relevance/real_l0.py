@@ -64,9 +64,9 @@ class LinearL0ARD(torch.nn.Linear, BaseARD, SparsityStats):
         self.reset_variational_parameters()
 
     def reset_variational_parameters(self):
-        # assume everything is important (but do not saturate too much)
-        # self.log_alpha.data.uniform_(-0.45, -0.45)
-        self.log_alpha.data.uniform_(-0.45, -0.45)
+        # assume everything is unimportant (but do not desaturate too much)
+        # $\log\alpha \approx \log p - \log(1-p)$, for dropout rate $p=0.90$
+        self.log_alpha.data.uniform_(2.197, 2.197)
 
     @property
     def penalty(self):
