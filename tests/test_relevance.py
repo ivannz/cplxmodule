@@ -49,7 +49,7 @@ def example(kind="cplx"):
     r"""An example, illustrating pre-training."""
 
     def train_model(X, y, model, n_steps=20000, threshold=1.0,
-                    klw=1e-3, verbose=False):
+                    reduction="mean", klw=1e-3, verbose=True):
         import tqdm
 
         model.train()
@@ -63,7 +63,7 @@ def example(kind="cplx"):
                 y_pred = model(X)
 
                 mse = F.mse_loss(y_pred, y)
-                kl_d = sum(penalties(model))
+                kl_d = sum(penalties(model, reduction=reduction))
 
                 loss = mse + klw * kl_d
                 loss.backward()
@@ -122,30 +122,37 @@ def example(kind="cplx"):
     if kind == "cplx":
         layers = [CplxLinear, CplxLinearARD, CplxLinearMasked]
         construct = construct_cplx
+        reduction = "mean"
         phases = {
             "CplxLinear": (1000, 0.0),
             "CplxLinearARD": (4000, 1e-1),
             "CplxLinearMasked": (500, 0.0)
         }
+
     elif kind == "real-ard":
         layers = [Linear, LinearARD, LinearMasked]
         construct = construct_real
+        reduction = "mean"
         phases = {
             "Linear": (1000, 0.0),
             "LinearARD": (4000, 1e-1),
             "LinearMasked": (500, 0.0)
         }
+
     elif kind == "real-l0":
         layers = [Linear, LinearL0ARD, LinearMasked]
         construct = construct_real
+        reduction = "sum"
         phases = {
             "Linear": (1000, 0.0),
-            "LinearL0ARD": (4000, 1e1),
+            "LinearL0ARD": (4000, 2e-2),
             "LinearMasked": (500, 0.0)
         }
+
     elif kind == "real-lasso":
         layers = [Linear, LinearLASSO, LinearMasked]
         construct = construct_real
+        reduction = "mean"
         phases = {
             "Linear": (1000, 0.0),
             "LinearLASSO": (4000, 1e-1),
@@ -185,7 +192,8 @@ def example(kind="cplx"):
         if models[src] is not None:
             # compute the dropout masks and normalize them
             state_dict = models[src].state_dict()
-            masks = compute_ard_masks(models[src], threshold=threshold, hard=False)
+            masks = compute_ard_masks(models[src], hard=False,
+                                      threshold=threshold)
 
             state_dict, masks = binarize_masks(state_dict, masks)
 
@@ -198,7 +206,8 @@ def example(kind="cplx"):
         model.to(device_)
 
         model, losses[dst] = train_model(X, y, model, n_steps=n_steps,
-                                         threshold=threshold, klw=klw)
+                                         threshold=threshold, klw=klw,
+                                         reduction=reduction)
     # end for
 
     # get scores on test
