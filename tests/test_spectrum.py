@@ -20,8 +20,8 @@ def test_complex_fft(random_state):
     tr_fft = torch.fft(tr_x.transpose(axis, -2),
                        signal_ndim=1).transpose(axis, -2)
 
-    assert_allclose(tr_fft[..., 0], np_fft.real)
-    assert_allclose(tr_fft[..., 1], np_fft.imag)
+    assert_allclose(tr_fft[..., 0].numpy(), np_fft.real)
+    assert_allclose(tr_fft[..., 1].numpy(), np_fft.imag)
 
 
 def test_hamming_window(random_state=None):
@@ -33,13 +33,13 @@ def test_hamming_window(random_state=None):
     tr_window = torch.hamming_window(n_window, periodic=True,
                                      dtype=torch.float64)
 
-    assert_allclose(tr_window, np_window)
+    assert_allclose(tr_window.numpy(), np_window)
 
     np_window = hamming(n_window, True).astype(np.float64)
     tr_window = torch.hamming_window(n_window, periodic=False,
                                      dtype=torch.float64)
 
-    assert_allclose(tr_window, np_window)
+    assert_allclose(tr_window.numpy(), np_window)
 
 
 def test_pwelch(random_state):
@@ -66,5 +66,14 @@ def test_pwelch(random_state):
                          nfft=None, nperseg=None, scaling="density",
                          noverlap=300, detrend=False, return_onesided=False)
 
-    assert_allclose(tr_px, np_px)
-    assert_allclose(tr_ff, np_ff)
+    assert_allclose(tr_px.numpy(), np_px)
+    assert_allclose(tr_ff.numpy(), np_ff)
+
+    tr_ff, tr_px = pwelch(tr_x, 1, tr_window, fs=fs,
+                          scaling="spectrum", n_overlap=499)
+    np_ff, np_px = welch(np_x, fs=fs, axis=-1, window=tr_window.numpy(),
+                         nfft=None, nperseg=None, scaling="spectrum",
+                         noverlap=499, detrend=False, return_onesided=False)
+
+    assert_allclose(tr_px.numpy(), np_px)
+    assert_allclose(tr_ff.numpy(), np_ff)
