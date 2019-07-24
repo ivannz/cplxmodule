@@ -7,6 +7,70 @@ from .base import BaseARD
 from ..utils.stats import SparsityStats
 
 
+class Conv2dARD(torch.nn.Conv2d, BaseARD, SparsityStats):
+    def __init__(self, in_channels, out_channels, kernel_size, stride=1,
+                 padding=0, dilation=1, groups=1,
+                 bias=True, padding_mode='zeros'):
+        super().__init__(in_channels, out_channels, kernel_size, stride=stride,
+                         padding=padding, dilation=dilation, groups=groups,
+                         bias=bias, padding_mode=padding_mode)
+
+        if self.padding_mode != "zeros":
+            raise ValueError(f"Only `zeros` padding mode is supported. "
+                             f"Got `{self.padding_mode}`.")
+
+        self.log_sigma2 = torch.nn.Parameter(torch.Tensor(*self.weight.shape))
+        self.reset_variational_parameters()
+
+    def reset_variational_parameters(self):
+        self.log_sigma2.data.uniform_(-10, -10)
+
+    @property
+    def log_alpha(self):
+        return self.log_sigma2 - 2 * torch.log(abs(self.weight) + 1e-12)
+
+    @property
+    def penalty(self):
+        n_log_alpha = - self.log_alpha
+        sigmoid = torch.sigmoid(1.48695 * n_log_alpha - 1.87320)
+        return F.softplus(n_log_alpha) / 2 + 0.63576 * sigmoid
+
+    def forward(self, input):
+        r"""
+        $x \in \mathbb{R}^{C\times H\times W}$
+        $$
+            y_{kij}
+                = \sum_{fpq} W_{kfpq} x^{(ij)}_{fpq} + b_k
+                = \sum_{z} W_{kz} x^{(ij)}_{z} + b_k
+            \,. $$
+        $W \in \mathbb{R}^{G\times [C\times h \times w]}$
+        $x^{(ij)} \in \mathbb{R}^{[C\times h \times w]}$ -- $ij$-the window
+        $$
+            \mu_{ij} = \theta x^{(ij)} + b
+            \,, \nu_{ij} = \sum_k
+                e_k e_k^\top
+                \sum_z \sigma^2_{kz} \lvert x^{(ij)}_z \rvert^2
+            \,. $$
+        """
+        mu = super().forward(input)
+        if not self.training:
+            return mu
+
+        s2 = F.conv2d(input * input, torch.exp(self.log_sigma2), None,
+                      self.stride, self.padding, self.dilation, self.groups)
+        return mu + torch.randn_like(s2) * torch.sqrt(s2 + 1e-20)
+
+    def relevance(self, *, threshold, **kwargs):
+        r"""Get the relevance mask based on the threshold."""
+        with torch.no_grad():
+            return torch.le(self.log_alpha, threshold).to(self.log_alpha)
+
+    def sparsity(self, *, threshold, **kwargs):
+        relevance = self.relevance(threshold=threshold)
+        n_relevant = float(relevance.sum().item())
+        return [(id(self.weight), self.weight.numel() - n_relevant)]
+
+
 class LinearARD(torch.nn.Linear, BaseARD, SparsityStats):
     r"""Linear layer with automatic relevance detection.
 
