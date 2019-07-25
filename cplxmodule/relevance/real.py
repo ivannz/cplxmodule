@@ -131,6 +131,39 @@ class Conv2dARD(torch.nn.Conv2d, BaseARD, SparsityStats):
     penalty = LinearARD.penalty
 
     def forward(self, input):
+        r"""Forward pass of the SGVB method for a 2d convolutional layer.
+
+        Details
+        -------
+        A convolution can be represented as matrix-vector product of the doubly
+        block-circulant embedding (Toeplitz) of the kernel and the unravelled
+        input. As such, it is an implicit linear layer with block structured
+        weight matrix, but unlike it, the local reparameterization trick has
+        a little caveat. If the kernel itself is assumed to have the specified
+        variational distribution, then the outputs will be spatially correlated
+        due to the same weight block being reused at each location:
+        $$
+            cov(y_{f\beta}, y_{k\omega})
+                = \delta_{f=k} \sum_{c \alpha}
+                    \sigma^2_{fc \alpha}
+                    x_{c i_\beta(\alpha)}
+                    x_{c i_\omega(\alpha)}
+            \,, $$
+        where $i_\beta(\alpha)$ is the location in $x$ for the output location
+        $\beta$ and kernel offset $\alpha$ (depends on stride and dilation).
+        In contrast, if instead the Toeplitz embedding blocks are assumed iid
+        draws from the variational distribution, then covariance becomes
+        $$
+            cov(y_{f\beta}, y_{k\omega})
+                = \delta_{f\beta = k\omega} \sum_{c \alpha}
+                    \sigma^2_{fc \alpha}
+                    \lvert x_{c i_\omega(\alpha)} \rvert^2
+            \,. $$
+        Molchanov et al. (2017) implicitly assume that kernels is are iid draws
+        from the variational distribution for different spatial locations. This
+        effectively zeroes the spatial cross-correlation in the output, reduces
+        the variance of the gradient in SGVB method.
+        """
         mu = super().forward(input)
         if not self.training:
             return mu
