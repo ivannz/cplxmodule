@@ -126,15 +126,9 @@ class Conv2dARD(torch.nn.Conv2d, BaseARD, SparsityStats):
     def reset_variational_parameters(self):
         self.log_sigma2.data.uniform_(-10, -10)
 
-    @property
-    def log_alpha(self):
-        return self.log_sigma2 - 2 * torch.log(abs(self.weight) + 1e-12)
+    log_alpha = LinearARD.log_alpha
 
-    @property
-    def penalty(self):
-        n_log_alpha = - self.log_alpha
-        sigmoid = torch.sigmoid(1.48695 * n_log_alpha - 1.87320)
-        return F.softplus(n_log_alpha) / 2 + 0.63576 * sigmoid
+    penalty = LinearARD.penalty
 
     def forward(self, input):
         mu = super().forward(input)
@@ -145,12 +139,6 @@ class Conv2dARD(torch.nn.Conv2d, BaseARD, SparsityStats):
                       self.stride, self.padding, self.dilation, self.groups)
         return mu + torch.randn_like(s2) * torch.sqrt(s2 + 1e-20)
 
-    def relevance(self, *, threshold, **kwargs):
-        r"""Get the relevance mask based on the threshold."""
-        with torch.no_grad():
-            return torch.le(self.log_alpha, threshold).to(self.log_alpha)
+    relevance = LinearARD.relevance
 
-    def sparsity(self, *, threshold, **kwargs):
-        relevance = self.relevance(threshold=threshold)
-        n_relevant = float(relevance.sum().item())
-        return [(id(self.weight), self.weight.numel() - n_relevant)]
+    sparsity = LinearARD.sparsity
