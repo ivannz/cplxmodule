@@ -16,32 +16,16 @@ from cplxmodule.masked import named_masks
 from cplxmodule.utils.stats import named_sparsity
 
 
-class SimpleNet(torch.nn.Module):
-    def __init__(self, conv2d=torch.nn.Conv2d, linear=torch.nn.Linear):
-        super().__init__()
-
-        self.conv1 = conv2d(1, 20, 5, 1)
-        self.conv2 = conv2d(20, 50, 5, 1)
-        self.fc1 = linear(4 * 4 * 50, 500)
-        self.fc2 = linear(500, 10)
-
-    def forward(self, x):
-        x = F.max_pool2d(F.relu(self.conv1(x)), 2, 2)
-        x = F.max_pool2d(F.relu(self.conv2(x)), 2, 2)
-        x = self.fc2(F.relu(self.fc1(x.view(-1, 4 * 4 * 50))))
-        return F.log_softmax(x, dim=1)
-
-
 def train_model(model, feed, optim, n_steps=100, threshold=1.0,
-                reduction="mean", klw=1e-3, verbose=True):
-    model.train()
+                klw=1e-3, reduction="mean", verbose=True):
     losses = []
     with tqdm.tqdm(range(n_steps)) as bar:
+        model.train()
         for i in bar:
             for data, target in feed:
                 optim.zero_grad()
 
-                n_ll = F.nll_loss(model(data), target)
+                n_ll = F.nll_loss(model(data), target, reduction=reduction)
                 kl_d = sum(penalties(model, reduction=reduction))
 
                 loss = n_ll + klw * kl_d
@@ -56,49 +40,109 @@ def train_model(model, feed, optim, n_steps=100, threshold=1.0,
                 else:
                     f_sparsity = float("nan")
 
-                bar.set_postfix_str(f"{f_sparsity:.1%} {float(n_ll):.3e} {float(kl_d):.3e}")
+                bar.set_postfix_str(
+                    f"{f_sparsity:.1%} {float(n_ll):.3e} {float(kl_d):.3e}"
+                )
             # end for
         # end for
     # end with
     return model.eval(), losses
 
 
-def test_model(model, feed, threshold=1.0):
-    model.eval()
+def predict_model(model, feed):
+    """Compute the model prediction on data from the feed."""
+    pred, fact = [], []
     with tqdm.tqdm(feed) as bar, torch.no_grad():
-        n_ll = torch.cat([
-            F.nll_loss(model(data), target, reduction=None)
-            for data, target in bar
-        ], dim=0).mean()
+        model.eval()
+        for data, *rest in bar:
+            pred.append(model(data))
+            if rest:
+                fact.append(rest[0])
 
-        kl_d = sum(penalties(model))
+    fact = torch.cat(fact, dim=0).cpu() if fact else None
+    return torch.cat(pred, dim=0).cpu(), fact
+
+
+def test_model(model, feed, threshold=1.0):
+    from sklearn.metrics import confusion_matrix
+    import re
+
+    model.eval()
+    pred, fact = predict_model(model, feed)
+
+    n_ll = F.nll_loss(pred, fact, reduction="mean")
+    kl_d = sum(penalties(model))
 
     f_sparsity = sparsity(model, hard=True, threshold=threshold)
-    print(f"{f_sparsity:.1%} {n_ll.item():.3e} {float(kl_d):.3e}")
+
+    # C_{ij} = \hat{P}(y = i & \hat{y} = j)
+    cm = confusion_matrix(fact.numpy(), pred.numpy().argmax(axis=-1))
+
+    tp = cm.diagonal()
+    fp, fn = cm.sum(axis=1) - tp, cm.sum(axis=0) - tp
+    p_str = str([f"{p:4.0%}" for p in tp / (tp + fp)])
+    r_str = str([f"{p:4.0%}" for p in tp / (tp + fn)])
+    print(
+        f"""(S) {f_sparsity:.1%} ({float(kl_d):.2e}) """
+        f"""(A) {tp.sum() / cm.sum():.1%} ({n_ll.item():.2e})"""
+        # \approx (y = i \mid \hat{y} = i)
+        f"""\n(P) {re.sub("[',]", "", p_str)}"""
+        # \approx (\hat{y} = i \mid y = i)
+        f"""\n(R) {re.sub("[',]", "", r_str)}"""
+    )
+    print(re.sub(r"(?<=\D)0", ".", str(cm)))
+
     return model
 
 
-class FeedWrapper():
+class FeedWrapper(object):
+    """A wrapper for a dataLoader that puts batches on device on the fly.
+
+    Parameters
+    ----------
+    feed : torch.utils.data.DataLoader
+        The data loader instance to be wrapped.
+
+    **kwargs : keyword arguments
+        The keyword arguments to be passed to `torch.Tensor.to()`.
+    """
     def __init__(self, feed, **kwargs):
+        assert isinstance(feed, torch.utils.data.DataLoader)
         self.feed, self.kwargs = feed, kwargs
-
-    def __iter__(self):
-        self.iter_ = iter(self.feed)
-        return self
-
-    def __next__(self):
-        return tuple(
-            b.to(**self.kwargs)
-            for b in next(self.iter_)
-        )
 
     def __len__(self):
         return len(self.feed)
 
+    def __iter__(self):
+        if not self.kwargs:
+            yield from iter(self.feed)
+
+        else:
+            for batch in iter(self.feed):
+                yield tuple(b.to(**self.kwargs)
+                            for b in batch)
+                break
+
+
+class Model(torch.nn.Module):
+    """A convolutional net."""
+    def __init__(self, conv2d=torch.nn.Conv2d, linear=torch.nn.Linear):
+        super().__init__()
+
+        self.conv1 = conv2d(1, 20, 5, 1)
+        self.conv2 = conv2d(20, 50, 5, 1)
+        self.fc1 = linear(4 * 4 * 50, 500)
+        self.fc2 = linear(500, 10)
+
+    def forward(self, x):
+        x = F.max_pool2d(F.relu(self.conv1(x)), 2, 2)
+        x = F.max_pool2d(F.relu(self.conv2(x)), 2, 2)
+        x = F.relu(self.fc1(x.reshape(-1, 4 * 4 * 50)))
+        return F.log_softmax(self.fc2(x), dim=1)
+
 
 threshold = 3.0
 device_ = torch.device("cpu")
-
 
 transform = transforms.Compose([
     transforms.ToTensor(),
@@ -109,6 +153,7 @@ transform = transforms.Compose([
 mnist_test = datasets.MNIST('./data', transform=transform, train=True, download=True)
 mnist_train = datasets.MNIST('./data', transform=transform, train=False)
 
+# define wrapped data feeds
 feeds = {
     "train": FeedWrapper(
         torch.utils.data.DataLoader(
@@ -120,12 +165,12 @@ feeds = {
         device=device_),
 }
 
-
-models = {"none": None}
-models.update({
-    "dense": SimpleNet(torch.nn.Conv2d, torch.nn.Linear),
-    "ard": SimpleNet(Conv2dARD, LinearARD),
-})
+# Models and training setttings
+models = {
+    "none": None,
+    "dense": Model(torch.nn.Conv2d, torch.nn.Linear),
+    "ard": Model(Conv2dARD, LinearARD),
+}
 
 phases = {
     "dense": (40, 0.0),
@@ -133,6 +178,7 @@ phases = {
 }
 
 
+# the main loop: transfer weights and masks and then train
 names, losses = list(models.keys()), {}
 for src, dst in zip(names[:-1], names[1:]):
     print(f">>>>>> {dst}")
@@ -155,14 +201,13 @@ for src, dst in zip(names[:-1], names[1:]):
         model = deploy_masks(model, state_dict=masks)
 
     model.to(device_)
-
     optim = torch.optim.Adam(model.parameters())
     model, losses[dst] = train_model(
-        model,
-        feeds["train"],
-        optim, n_steps=n_steps, threshold=threshold, klw=klw, reduction="mean")
+        model, feeds["train"], optim, n_steps=n_steps,
+        threshold=threshold, klw=klw, reduction="mean")
 
 
+# run tests
 for key, model in models.items():
     if model is None:
         continue
