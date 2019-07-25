@@ -9,6 +9,7 @@ from cplxmodule.relevance import penalties
 from cplxmodule.utils.stats import sparsity
 
 from cplxmodule.relevance.real import LinearARD, Conv2dARD
+from cplxmodule.masked.real import LinearMasked, Conv2dMasked
 
 from cplxmodule.relevance import compute_ard_masks
 from cplxmodule.masked import binarize_masks, deploy_masks
@@ -172,11 +173,13 @@ if __name__ == '__main__':
         "none": None,
         "dense": Model(torch.nn.Conv2d, torch.nn.Linear),
         "ard": Model(Conv2dARD, LinearARD),
+        "masked": Model(Conv2dMasked, LinearMasked),
     }
 
     phases = {
         "dense": (40, 0.0),
-        "ard": (80, 1e-1),
+        "ard": (80, 1e-2),
+        "masked": (40, 0.0),
     }
 
     # the main loop: transfer weights and masks and then train
