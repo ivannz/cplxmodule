@@ -80,15 +80,15 @@ def model_score(model, feed, threshold=1.0):
 
     tp = cm.diagonal()
     fp, fn = cm.sum(axis=1) - tp, cm.sum(axis=0) - tp
-    p_str = str([f"{p:4.0%}" for p in tp / (tp + fp)])
-    r_str = str([f"{p:4.0%}" for p in tp / (tp + fn)])
+
+    # format the arrays and remove clutter
+    p_str = re.sub("[',]", "", str([f"{p:4.0%}" for p in tp / (tp + fp)]))
+    r_str = re.sub("[',]", "", str([f"{p:4.0%}" for p in tp / (tp + fn)]))
     print(
-        f"""(S) {f_sparsity:.1%} ({float(kl_d):.2e}) """
-        f"""(A) {tp.sum() / cm.sum():.1%} ({n_ll.item():.2e})"""
-        # \approx (y = i \mid \hat{y} = i)
-        f"""\n(P) {re.sub("[',]", "", p_str)}"""
-        # \approx (\hat{y} = i \mid y = i)
-        f"""\n(R) {re.sub("[',]", "", r_str)}"""
+        f"(S) {f_sparsity:.1%} ({float(kl_d):.2e}) "
+        f"(A) {tp.sum() / cm.sum():.1%} ({n_ll.item():.2e})"
+        f"\n(P) {p_str}"  # \approx (y = i \mid \hat{y} = i)
+        f"\n(R) {r_str}"  # \approx (\hat{y} = i \mid y = i)
     )
     print(re.sub(r"(?<=\D)0", ".", str(cm)))
 
@@ -121,7 +121,6 @@ class FeedWrapper(object):
             for batch in iter(self.feed):
                 yield tuple(b.to(**self.kwargs)
                             for b in batch)
-                break
 
 
 class Model(torch.nn.Module):
@@ -143,7 +142,7 @@ class Model(torch.nn.Module):
 
 if __name__ == '__main__':
     threshold = 3.0
-    device_ = torch.device("cpu")
+    device_ = torch.device("cuda:3")
 
     transform = transforms.Compose([
         transforms.ToTensor(),
@@ -160,7 +159,7 @@ if __name__ == '__main__':
     feeds = {
         "train": FeedWrapper(
             torch.utils.data.DataLoader(
-                mnist_train, batch_size=256, shuffle=True),
+                mnist_train, batch_size=32, shuffle=True),
             device=device_),
         "test": FeedWrapper(
             torch.utils.data.DataLoader(
