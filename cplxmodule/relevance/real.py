@@ -100,6 +100,15 @@ class LinearARD(torch.nn.Linear, BaseARD, SparsityStats):
 
 
 class Conv2dARD(torch.nn.Conv2d, BaseARD, SparsityStats):
+    r"""2D convolution layer with automatic relevance detection.
+
+    Details
+    -------
+    See `torch.nn.Conv2d` for reference on the dimensions and parameters. See
+    `cplxmodule.relevance.Conv2dARD` for details about the implementation of
+    the automatic relevance detection via variational dropout and the chosen
+    parametrization.
+    """
     def __init__(self, in_channels, out_channels, kernel_size, stride=1,
                  padding=0, dilation=1, groups=1,
                  bias=True, padding_mode='zeros'):
