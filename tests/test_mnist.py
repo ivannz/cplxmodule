@@ -16,8 +16,8 @@ from cplxmodule.masked import named_masks
 from cplxmodule.utils.stats import named_sparsity
 
 
-def train_model(model, feed, optim, n_steps=100, threshold=1.0,
-                klw=1e-3, reduction="mean", verbose=True):
+def model_fit(model, feed, optim, n_steps=100, threshold=1.0,
+              klw=1e-3, reduction="mean", verbose=True):
     losses = []
     with tqdm.tqdm(range(n_steps)) as bar:
         model.train()
@@ -49,7 +49,7 @@ def train_model(model, feed, optim, n_steps=100, threshold=1.0,
     return model.eval(), losses
 
 
-def predict_model(model, feed):
+def model_predict(model, feed):
     """Compute the model prediction on data from the feed."""
     pred, fact = [], []
     with tqdm.tqdm(feed) as bar, torch.no_grad():
@@ -63,12 +63,12 @@ def predict_model(model, feed):
     return torch.cat(pred, dim=0).cpu(), fact
 
 
-def test_model(model, feed, threshold=1.0):
+def model_score(model, feed, threshold=1.0):
     from sklearn.metrics import confusion_matrix
     import re
 
     model.eval()
-    pred, fact = predict_model(model, feed)
+    pred, fact = model_predict(model, feed)
 
     n_ll = F.nll_loss(pred, fact, reduction="mean")
     kl_d = sum(penalties(model))
@@ -141,78 +141,79 @@ class Model(torch.nn.Module):
         return F.log_softmax(self.fc2(x), dim=1)
 
 
-threshold = 3.0
-device_ = torch.device("cpu")
+if __name__ == '__main__':
+    threshold = 3.0
+    device_ = torch.device("cpu")
 
-transform = transforms.Compose([
-    transforms.ToTensor(),
-    transforms.Normalize((0.1307,), (0.3081,))
-])
+    transform = transforms.Compose([
+        transforms.ToTensor(),
+        transforms.Normalize((0.1307,), (0.3081,))
+    ])
 
-# reverse the roles of the MNIST train-test split
-mnist_test = datasets.MNIST('./data', transform=transform, train=True, download=True)
-mnist_train = datasets.MNIST('./data', transform=transform, train=False)
+    # reverse the roles of the MNIST train-test split
+    mnist_test = datasets.MNIST('./data', transform=transform,
+                                train=True, download=True)
+    mnist_train = datasets.MNIST('./data', transform=transform,
+                                 train=False)
 
-# define wrapped data feeds
-feeds = {
-    "train": FeedWrapper(
-        torch.utils.data.DataLoader(
-            mnist_train, batch_size=256, shuffle=True),
-        device=device_),
-    "test": FeedWrapper(
-        torch.utils.data.DataLoader(
-            mnist_test, batch_size=256, shuffle=False),
-        device=device_),
-}
+    # define wrapped data feeds
+    feeds = {
+        "train": FeedWrapper(
+            torch.utils.data.DataLoader(
+                mnist_train, batch_size=256, shuffle=True),
+            device=device_),
+        "test": FeedWrapper(
+            torch.utils.data.DataLoader(
+                mnist_test, batch_size=256, shuffle=False),
+            device=device_),
+    }
 
-# Models and training setttings
-models = {
-    "none": None,
-    "dense": Model(torch.nn.Conv2d, torch.nn.Linear),
-    "ard": Model(Conv2dARD, LinearARD),
-}
+    # Models and training setttings
+    models = {
+        "none": None,
+        "dense": Model(torch.nn.Conv2d, torch.nn.Linear),
+        "ard": Model(Conv2dARD, LinearARD),
+    }
 
-phases = {
-    "dense": (40, 0.0),
-    "ard": (80, 1e-1),
-}
+    phases = {
+        "dense": (40, 0.0),
+        "ard": (80, 1e-1),
+    }
 
+    # the main loop: transfer weights and masks and then train
+    names, losses = list(models.keys()), {}
+    for src, dst in zip(names[:-1], names[1:]):
+        print(f">>>>>> {dst}")
+        n_steps, klw = phases[dst]
 
-# the main loop: transfer weights and masks and then train
-names, losses = list(models.keys()), {}
-for src, dst in zip(names[:-1], names[1:]):
-    print(f">>>>>> {dst}")
-    n_steps, klw = phases[dst]
+        # load the current model with the last one's weights
+        model = models[dst]
+        if models[src] is not None:
+            # compute the dropout masks and normalize them
+            state_dict = models[src].state_dict()
+            masks = compute_ard_masks(models[src], hard=False,
+                                      threshold=threshold)
 
-    # load the current model with the last one's weights
-    model = models[dst]
-    if models[src] is not None:
-        # compute the dropout masks and normalize them
-        state_dict = models[src].state_dict()
-        masks = compute_ard_masks(models[src], hard=False,
-                                  threshold=threshold)
+            state_dict, masks = binarize_masks(state_dict, masks)
 
-        state_dict, masks = binarize_masks(state_dict, masks)
+            # deploy old weights onto the new model
+            model.load_state_dict(state_dict, strict=False)
 
-        # deploy old weights onto the new model
-        model.load_state_dict(state_dict, strict=False)
+            # conditionally deploy the computed dropout masks
+            model = deploy_masks(model, state_dict=masks)
 
-        # conditionally deploy the computed dropout masks
-        model = deploy_masks(model, state_dict=masks)
+        model.to(device_)
+        optim = torch.optim.Adam(model.parameters())
+        model, losses[dst] = model_fit(
+            model, feeds["train"], optim, n_steps=n_steps,
+            threshold=threshold, klw=klw, reduction="mean")
 
-    model.to(device_)
-    optim = torch.optim.Adam(model.parameters())
-    model, losses[dst] = train_model(
-        model, feeds["train"], optim, n_steps=n_steps,
-        threshold=threshold, klw=klw, reduction="mean")
+    # run tests
+    for key, model in models.items():
+        if model is None:
+            continue
 
-
-# run tests
-for key, model in models.items():
-    if model is None:
-        continue
-
-    print(f"\n>>>>>> {key}")
-    test_model(model, feeds["test"], threshold=threshold)
-    print([*named_masks(model)])
-    print([*named_sparsity(model, hard=True, threshold=threshold)])
+        print(f"\n>>>>>> {key}")
+        model_score(model, feeds["test"], threshold=threshold)
+        print([*named_masks(model)])
+        print([*named_sparsity(model, hard=True, threshold=threshold)])
