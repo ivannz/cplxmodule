@@ -8,6 +8,7 @@ from torchvision import datasets, transforms
 from cplxmodule.relevance import penalties
 from cplxmodule.utils.stats import sparsity
 
+from torch.nn import Linear, Conv2d
 from cplxmodule.relevance.real import LinearARD, Conv2dARD
 from cplxmodule.masked.real import LinearMasked, Conv2dMasked
 
@@ -126,7 +127,7 @@ class FeedWrapper(object):
 
 class Model(torch.nn.Module):
     """A convolutional net."""
-    def __init__(self, conv2d=torch.nn.Conv2d, linear=torch.nn.Linear):
+    def __init__(self, conv2d=Conv2d, linear=Linear):
         super().__init__()
 
         self.conv1 = conv2d(1, 20, 5, 1)
@@ -135,8 +136,8 @@ class Model(torch.nn.Module):
         self.fc2 = linear(500, 10)
 
     def forward(self, x):
-        x = F.max_pool2d(F.relu(self.conv1(x)), 2, 2)
-        x = F.max_pool2d(F.relu(self.conv2(x)), 2, 2)
+        x = F.avg_pool2d(F.relu(self.conv1(x)), 2, 2)
+        x = F.avg_pool2d(F.relu(self.conv2(x)), 2, 2)
         x = F.relu(self.fc1(x.reshape(-1, 4 * 4 * 50)))
         return F.log_softmax(self.fc2(x), dim=1)
 
@@ -171,15 +172,15 @@ if __name__ == '__main__':
     # Models and training setttings
     models = {
         "none": None,
-        "dense": Model(torch.nn.Conv2d, torch.nn.Linear),
+        "dense": Model(Conv2d, Linear),
         "ard": Model(Conv2dARD, LinearARD),
         "masked": Model(Conv2dMasked, LinearMasked),
     }
 
     phases = {
         "dense": (40, 0.0),
-        "ard": (80, 1e-2),
-        "masked": (40, 0.0),
+        "ard": (40, 1e-2),
+        "masked": (20, 0.0),
     }
 
     # the main loop: transfer weights and masks and then train
@@ -217,5 +218,5 @@ if __name__ == '__main__':
 
         print(f"\n>>>>>> {key}")
         model_score(model, feeds["test"], threshold=threshold)
-        print([*named_masks(model)])
+        # print([*named_masks(model)])
         print([*named_sparsity(model, hard=True, threshold=threshold)])
