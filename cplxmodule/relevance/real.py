@@ -97,3 +97,81 @@ class LinearARD(torch.nn.Linear, BaseARD, SparsityStats):
         relevance = self.relevance(threshold=threshold)
         n_relevant = float(relevance.sum().item())
         return [(id(self.weight), self.weight.numel() - n_relevant)]
+
+
+class Conv2dARD(torch.nn.Conv2d, BaseARD, SparsityStats):
+    r"""2D convolution layer with automatic relevance detection.
+
+    Details
+    -------
+    See `torch.nn.Conv2d` for reference on the dimensions and parameters. See
+    `cplxmodule.relevance.Conv2dARD` for details about the implementation of
+    the automatic relevance detection via variational dropout and the chosen
+    parametrization.
+    """
+    def __init__(self, in_channels, out_channels, kernel_size, stride=1,
+                 padding=0, dilation=1, groups=1,
+                 bias=True, padding_mode='zeros'):
+        super().__init__(in_channels, out_channels, kernel_size, stride=stride,
+                         padding=padding, dilation=dilation, groups=groups,
+                         bias=bias, padding_mode=padding_mode)
+
+        if self.padding_mode != "zeros":
+            raise ValueError(f"Only `zeros` padding mode is supported. "
+                             f"Got `{self.padding_mode}`.")
+
+        self.log_sigma2 = torch.nn.Parameter(torch.Tensor(*self.weight.shape))
+        self.reset_variational_parameters()
+
+    def reset_variational_parameters(self):
+        self.log_sigma2.data.uniform_(-10, -10)
+
+    log_alpha = LinearARD.log_alpha
+
+    penalty = LinearARD.penalty
+
+    def forward(self, input):
+        r"""Forward pass of the SGVB method for a 2d convolutional layer.
+
+        Details
+        -------
+        A convolution can be represented as matrix-vector product of the doubly
+        block-circulant embedding (Toeplitz) of the kernel and the unravelled
+        input. As such, it is an implicit linear layer with block structured
+        weight matrix, but unlike it, the local reparameterization trick has
+        a little caveat. If the kernel itself is assumed to have the specified
+        variational distribution, then the outputs will be spatially correlated
+        due to the same weight block being reused at each location:
+        $$
+            cov(y_{f\beta}, y_{k\omega})
+                = \delta_{f=k} \sum_{c \alpha}
+                    \sigma^2_{fc \alpha}
+                    x_{c i_\beta(\alpha)}
+                    x_{c i_\omega(\alpha)}
+            \,, $$
+        where $i_\beta(\alpha)$ is the location in $x$ for the output location
+        $\beta$ and kernel offset $\alpha$ (depends on stride and dilation).
+        In contrast, if instead the Toeplitz embedding blocks are assumed iid
+        draws from the variational distribution, then covariance becomes
+        $$
+            cov(y_{f\beta}, y_{k\omega})
+                = \delta_{f\beta = k\omega} \sum_{c \alpha}
+                    \sigma^2_{fc \alpha}
+                    \lvert x_{c i_\omega(\alpha)} \rvert^2
+            \,. $$
+        Molchanov et al. (2017) implicitly assume that kernels is are iid draws
+        from the variational distribution for different spatial locations. This
+        effectively zeroes the spatial cross-correlation in the output, reduces
+        the variance of the gradient in SGVB method.
+        """
+        mu = super().forward(input)
+        if not self.training:
+            return mu
+
+        s2 = F.conv2d(input * input, torch.exp(self.log_sigma2), None,
+                      self.stride, self.padding, self.dilation, self.groups)
+        return mu + torch.randn_like(s2) * torch.sqrt(s2 + 1e-20)
+
+    relevance = LinearARD.relevance
+
+    sparsity = LinearARD.sparsity
