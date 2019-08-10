@@ -15,6 +15,7 @@ from torch.nn import Linear
 from cplxmodule.layers import CplxLinear
 
 from cplxmodule.relevance import LinearARD
+# from cplxmodule.relevance.extensions import LinearARD
 from cplxmodule.relevance import LinearL0ARD
 from cplxmodule.relevance import LinearLASSO
 from cplxmodule.relevance import CplxLinearARD
