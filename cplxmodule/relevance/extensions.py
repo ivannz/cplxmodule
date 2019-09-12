@@ -2,7 +2,8 @@ import torch
 import torch.nn.functional as F
 
 from .real import LinearARD as LinearVD
-from .complex import ExpiFunction, CplxLinearARD
+from .complex import CplxLinearARD as CplxLinearVD
+from .complex import ExpiFunction
 
 
 class LinearARD(LinearVD):
@@ -39,7 +40,7 @@ class LinearARD(LinearVD):
         return 0.5 * F.softplus(- self.log_alpha)
 
 
-class CplxLinearARDApprox(CplxLinearARD):
+class CplxLinearVDApprox(CplxLinearVD):
     @property
     def penalty(self):
         r"""Sofplus-sigmoid approximation of the complex KL divergence.
@@ -79,7 +80,7 @@ class BogusExpiFunction(ExpiFunction):
 bogus_expi = BogusExpiFunction.apply
 
 
-class CplxLinearARDBogus(CplxLinearARD):
+class CplxLinearVDBogus(CplxLinearVD):
     @property
     def penalty(self):
         r"""KL-div with bogus forward output, but correct gradient."""
