@@ -175,3 +175,40 @@ class Conv2dARD(torch.nn.Conv2d, BaseARD, SparsityStats):
     relevance = LinearARD.relevance
 
     sparsity = LinearARD.sparsity
+
+
+class BilinearARD(torch.nn.Bilinear, BaseARD, SparsityStats):
+    r"""Bilinear layer with automatic relevance detection."""
+    __sparsity_ignore__ = ("log_sigma2",)
+
+    def __init__(self, in1_features, in2_features, out_features, bias=True):
+        super().__init__(in1_features, in2_features, out_features, bias=bias)
+
+        self.log_sigma2 = torch.nn.Parameter(torch.Tensor(*self.weight.shape))
+        self.reset_variational_parameters()
+
+    def reset_variational_parameters(self):
+        # initially everything is relevant
+        self.log_sigma2.data.uniform_(-10, -10)
+
+    log_alpha = LinearARD.log_alpha
+
+    penalty = LinearARD.penalty
+
+    def forward(self, input1, input2):
+        r"""Forward pass of the SGVB method for a bilinear layer.
+
+        Straightforward generalization of the local reparameterization trick.
+        """
+        mu = super().forward(input1, input2)
+        if not self.training:
+            return mu
+
+        s2 = F.bilinear(input1 * input1, input2 * input2,
+                        torch.exp(self.log_sigma2), None)
+
+        return torch.normal(mu, torch.sqrt(s2 + 1e-20))
+
+    relevance = LinearARD.relevance
+
+    sparsity = LinearARD.sparsity
