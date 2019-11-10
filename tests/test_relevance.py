@@ -19,9 +19,14 @@ from cplxmodule.relevance import LinearARD
 from cplxmodule.relevance import LinearL0ARD
 from cplxmodule.relevance import LinearLASSO
 from cplxmodule.relevance import CplxLinearARD
+# from cplxmodule.relevance.extensions import CplxLinearARD
 
 from cplxmodule.masked import LinearMasked
 from cplxmodule.masked import CplxLinearMasked
+
+from torch.nn import Bilinear
+from cplxmodule.relevance.real import BilinearARD
+from cplxmodule.masked.real import BilinearMasked
 
 from cplxmodule.relevance import penalties, compute_ard_masks
 from cplxmodule.masked import deploy_masks, named_masks
@@ -46,52 +51,54 @@ def test_torch_expi(random_state):
     assert torch.autograd.gradcheck(torch_expi, trx.requires_grad_(True))
 
 
+def model_train(X, y, model, n_steps=20000, threshold=1.0,
+                reduction="mean", klw=1e-3, verbose=True):
+    import tqdm
+
+    model.train()
+    optim = torch.optim.Adam(model.parameters())
+
+    losses = []
+    with tqdm.tqdm(range(n_steps)) as bar:
+        for i in bar:
+            optim.zero_grad()
+
+            y_pred = model(X)
+
+            mse = F.mse_loss(y_pred, y)
+            kl_d = sum(penalties(model, reduction=reduction))
+
+            loss = mse + klw * kl_d
+            loss.backward()
+
+            optim.step()
+
+            losses.append(float(loss))
+            if verbose:
+                f_sparsity = sparsity(model, hard=True,
+                                      threshold=threshold)
+            else:
+                f_sparsity = float("nan")
+
+            bar.set_postfix_str(f"{f_sparsity:.1%} {float(mse):.3e} {float(kl_d):.3e}")
+        # end for
+    # end with
+    return model.eval(), losses
+
+
+def model_test(X, y, model, threshold=1.0):
+    model.eval()
+    with torch.no_grad():
+        mse = F.mse_loss(model(X), y)
+        kl_d = sum(penalties(model))
+
+    f_sparsity = sparsity(model, hard=True, threshold=threshold)
+    print(f"{f_sparsity:.1%} {mse.item():.3e} {float(kl_d):.3e}")
+    return model
+
+
 def example(kind="cplx"):
     r"""An example, illustrating pre-training."""
-
-    def train_model(X, y, model, n_steps=20000, threshold=1.0,
-                    reduction="mean", klw=1e-3, verbose=True):
-        import tqdm
-
-        model.train()
-        optim = torch.optim.Adam(model.parameters())
-
-        losses = []
-        with tqdm.tqdm(range(n_steps)) as bar:
-            for i in bar:
-                optim.zero_grad()
-
-                y_pred = model(X)
-
-                mse = F.mse_loss(y_pred, y)
-                kl_d = sum(penalties(model, reduction=reduction))
-
-                loss = mse + klw * kl_d
-                loss.backward()
-
-                optim.step()
-
-                losses.append(float(loss))
-                if verbose:
-                    f_sparsity = sparsity(model, hard=True,
-                                          threshold=threshold)
-                else:
-                    f_sparsity = float("nan")
-
-                bar.set_postfix_str(f"{f_sparsity:.1%} {float(mse):.3e} {float(kl_d):.3e}")
-            # end for
-        # end with
-        return model.eval(), losses
-
-    def test_model(X, y, model, threshold=1.0):
-        model.eval()
-        with torch.no_grad():
-            mse = F.mse_loss(model(X), y)
-            kl_d = sum(penalties(model))
-
-        f_sparsity = sparsity(model, hard=True, threshold=threshold)
-        print(f"{f_sparsity:.1%} {mse.item():.3e} {float(kl_d):.3e}")
-        return model
 
     def construct_real(linear):
         from collections import OrderedDict
@@ -206,7 +213,7 @@ def example(kind="cplx"):
 
         model.to(device_)
 
-        model, losses[dst] = train_model(X, y, model, n_steps=n_steps,
+        model, losses[dst] = model_train(X, y, model, n_steps=n_steps,
                                          threshold=threshold, klw=klw,
                                          reduction=reduction)
     # end for
@@ -222,7 +229,113 @@ def example(kind="cplx"):
             continue
 
         print(f"\n>>>>>> {key}")
-        test_model(X, y, model, threshold=threshold)
+        model_test(X, y, model, threshold=threshold)
+        print(model.final.weight)
+        print([*named_masks(model)])
+        print([*named_sparsity(model, hard=True, threshold=threshold)])
+
+
+def example_bilinear():
+    r"""An example, illustrating pre-training."""
+
+    class BilinearTest(torch.nn.Module):
+        def __init__(self, bilinear):
+            super().__init__()
+            self.final = bilinear(n_features, n_features, 1, bias=False)
+
+        def forward(self, input):
+            return self.final(input, input)
+
+    class BilinearTestEmulation(torch.nn.Module):
+        def __init__(self, linear):
+            super().__init__()
+            self.final = linear(n_features * n_features, 1, bias=False)
+
+        def forward(self, input):
+            *head, tail = input.shape
+            x = input.unsqueeze(-1) * input.unsqueeze(-2)
+            return self.final(x.reshape(*head, -1))
+
+    device_ = torch.device("cpu")
+    reduction = "mean"
+    if False:
+        layers = [Linear, LinearARD, LinearMasked]
+        phases = {
+            "Linear": (1000, 0.0),
+            "LinearARD": (4000, 1e-2),
+            "LinearMasked": (500, 0.0)
+        }
+        construct = BilinearTestEmulation
+
+    else:
+        layers = [Bilinear, BilinearARD, BilinearMasked]
+        phases = {
+            "Bilinear": (1000, 0.0),
+            "BilinearARD": (10000, 1e-1),
+            "BilinearMasked": (500, 0.0)
+        }
+        construct = BilinearTest
+
+    tau = 0.73105  # p = a / 1 + a, a = p / (1 - p)
+    threshold = np.log(tau) - np.log(1 - tau)
+    print(f"\n{80*'='}\n{tau:.1%} - {threshold:.3g}")
+
+    n_features = 50
+    n_output = 10
+
+    # a simple dataset : larger that in linear ARD!
+    X = torch.randn(500, n_features)
+    y = - (X[:, :n_output] * X[:, :n_output]).mean(dim=-1, keepdim=True)
+
+    X, y = X.to(device_), y.to(device_)
+
+    # construct models
+    models = {"none": None}
+    models.update({
+        l.__name__: construct(l) for l in layers
+    })
+
+    # train a sequence of models
+    names, losses = list(models.keys()), {}
+    for src, dst in zip(names[:-1], names[1:]):
+        print(f">>>>>> {dst}")
+        n_steps, klw = phases[dst]
+
+        # load the current model with the last one's weights
+        model = models[dst]
+        if models[src] is not None:
+            # compute the dropout masks and normalize them
+            state_dict = models[src].state_dict()
+            masks = compute_ard_masks(models[src], hard=False,
+                                      threshold=threshold)
+
+            state_dict, masks = binarize_masks(state_dict, masks)
+
+            # deploy old weights onto the new model
+            print(model.load_state_dict(state_dict, strict=False))
+
+            # conditionally deploy the computed dropout masks
+            model = deploy_masks(model, state_dict=masks)
+
+        model.to(device_)
+
+        model, losses[dst] = model_train(X, y, model, n_steps=n_steps,
+                                         threshold=threshold, klw=klw,
+                                         reduction=reduction)
+    # end for
+
+    # get scores on test
+    X = torch.randn(10000, n_features)
+    y = - (X[:, :n_output] * X[:, :n_output]).mean(dim=-1, keepdim=True)
+
+    X, y = X.to(device_), y.to(device_)
+
+    for key, model in models.items():
+        if model is None:
+            continue
+
+        print(f"\n>>>>>> {key}")
+        model_test(X, y, model, threshold=threshold)
         print(model.final.weight)
         print([*named_masks(model)])
         print([*named_sparsity(model, hard=True, threshold=threshold)])
@@ -233,3 +346,4 @@ if __name__ == '__main__':
     example("real-l0")
     example("real-lasso")
     example("cplx")
+    example_bilinear()
