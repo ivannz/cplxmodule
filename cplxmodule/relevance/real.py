@@ -207,7 +207,8 @@ class BilinearARD(torch.nn.Bilinear, BaseARD, SparsityStats):
         s2 = F.bilinear(input1 * input1, input2 * input2,
                         torch.exp(self.log_sigma2), None)
 
-        return torch.normal(mu, torch.sqrt(s2 + 1e-20))
+        # .normal reports a grad-fn, but weirdly does not pass grads!
+        return mu + torch.randn_like(s2) * torch.sqrt(s2 + 1e-20)
 
     relevance = LinearARD.relevance
 
