@@ -28,6 +28,10 @@ from torch.nn import Bilinear
 from cplxmodule.relevance.real import BilinearARD
 from cplxmodule.masked.real import BilinearMasked
 
+from cplxmodule.layers import CplxBilinear
+from cplxmodule.relevance.complex import CplxBilinearARD
+from cplxmodule.masked.complex import CplxBilinearMasked
+
 from cplxmodule.relevance import penalties, compute_ard_masks
 from cplxmodule.masked import deploy_masks, named_masks
 from cplxmodule.masked import binarize_masks
@@ -178,10 +182,12 @@ def example(kind="cplx"):
     n_output = 20 if "cplx" in kind else 10
 
     # a simple dataset
-    X = torch.randn(100, n_features)
+    X = torch.randn(10100, n_features)
     y = - X[:, :n_output].clone()
-
     X, y = X.to(device_), y.to(device_)
+
+    train_X, train_y = X[:100], y[:100]
+    test_X, test_y = X[100:], y[100:]
 
     # construct models
     models = {"none": None}
@@ -213,30 +219,27 @@ def example(kind="cplx"):
 
         model.to(device_)
 
-        model, losses[dst] = model_train(X, y, model, n_steps=n_steps,
-                                         threshold=threshold, klw=klw,
-                                         reduction=reduction)
+        model, losses[dst] = model_train(train_X, train_y, model,
+                                         n_steps=n_steps, threshold=threshold,
+                                         klw=klw, reduction=reduction)
     # end for
 
     # get scores on test
-    X = torch.randn(10000, n_features)
-    y = - X[:, :n_output].clone()
-
-    X, y = X.to(device_), y.to(device_)
-
     for key, model in models.items():
         if model is None:
             continue
 
         print(f"\n>>>>>> {key}")
-        model_test(X, y, model, threshold=threshold)
+        model_test(test_X, test_y, model, threshold=threshold)
         print(model.final.weight)
         print([*named_masks(model)])
         print([*named_sparsity(model, hard=True, threshold=threshold)])
 
 
-def example_bilinear():
+def example_bilinear(kind="real"):
     r"""An example, illustrating pre-training."""
+    from cplxmodule.layers import RealToCplx, CplxToReal
+    from cplxmodule.cplx import real_to_cplx, cplx_to_real
 
     class BilinearTest(torch.nn.Module):
         def __init__(self, bilinear):
@@ -246,28 +249,30 @@ def example_bilinear():
         def forward(self, input):
             return self.final(input, input)
 
-    class BilinearTestEmulation(torch.nn.Module):
-        def __init__(self, linear):
+    class CplxBilinearTest(torch.nn.Module):
+        def __init__(self, bilinear):
             super().__init__()
-            self.final = linear(n_features * n_features, 1, bias=False)
+            self.cplx = RealToCplx()
+            self.final = bilinear(n_features // 2, n_features // 2, 1, bias=False)
+            self.real = CplxToReal()
 
         def forward(self, input):
-            *head, tail = input.shape
-            x = input.unsqueeze(-1) * input.unsqueeze(-2)
-            return self.final(x.reshape(*head, -1))
+            z = self.cplx(input)
+            return self.real(self.final(z, z))
 
     device_ = torch.device("cpu")
     reduction = "mean"
-    if False:
-        layers = [Linear, LinearARD, LinearMasked]
+    if kind == "cplx":
+        layers = [CplxBilinear, CplxBilinearARD, CplxBilinearMasked]
+        construct = CplxBilinearTest
+        reduction = "mean"
         phases = {
-            "Linear": (1000, 0.0),
-            "LinearARD": (4000, 1e-2),
-            "LinearMasked": (500, 0.0)
+            "CplxBilinear": (1000, 0.0),
+            "CplxBilinearARD": (10000, 1e-1),
+            "CplxBilinearMasked": (500, 0.0)
         }
-        construct = BilinearTestEmulation
 
-    else:
+    elif kind == "real":
         layers = [Bilinear, BilinearARD, BilinearMasked]
         phases = {
             "Bilinear": (1000, 0.0),
@@ -280,14 +285,22 @@ def example_bilinear():
     threshold = np.log(tau) - np.log(1 - tau)
     print(f"\n{80*'='}\n{tau:.1%} - {threshold:.3g}")
 
-    n_features = 50
-    n_output = 10
+    n_features, n_output = 50, 10
 
-    # a simple dataset : larger that in linear ARD!
-    X = torch.randn(500, n_features)
-    y = - (X[:, :n_output] * X[:, :n_output]).mean(dim=-1, keepdim=True)
+    # a simple dataset : larger than in linear ARD!
+    X = torch.randn(10500, n_features)
+    out = X[:, :n_output]
+    if "cplx" in kind:
+        z = real_to_cplx(out, copy=False)
+        y = - cplx_to_real(z.conj * z, flatten=False).mean(dim=-2)
+
+    else:
+        y = - (out * out).mean(dim=-1, keepdim=True)
 
     X, y = X.to(device_), y.to(device_)
+
+    train_X, train_y = X[:500], y[:500]
+    test_X, test_y = X[500:], y[500:]
 
     # construct models
     models = {"none": None}
@@ -319,23 +332,18 @@ def example_bilinear():
 
         model.to(device_)
 
-        model, losses[dst] = model_train(X, y, model, n_steps=n_steps,
-                                         threshold=threshold, klw=klw,
-                                         reduction=reduction)
+        model, losses[dst] = model_train(train_X, train_y, model,
+                                         n_steps=n_steps, threshold=threshold,
+                                         klw=klw, reduction=reduction)
     # end for
 
     # get scores on test
-    X = torch.randn(10000, n_features)
-    y = - (X[:, :n_output] * X[:, :n_output]).mean(dim=-1, keepdim=True)
-
-    X, y = X.to(device_), y.to(device_)
-
     for key, model in models.items():
         if model is None:
             continue
 
         print(f"\n>>>>>> {key}")
-        model_test(X, y, model, threshold=threshold)
+        model_test(test_X, test_y, model, threshold=threshold)
         print(model.final.weight)
         print([*named_masks(model)])
         print([*named_sparsity(model, hard=True, threshold=threshold)])
@@ -346,4 +354,5 @@ if __name__ == '__main__':
     example("real-l0")
     example("real-lasso")
     example("cplx")
-    example_bilinear()
+    example_bilinear("real")
+    example_bilinear("cplx")
