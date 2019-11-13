@@ -258,6 +258,25 @@ def test_linear_transform(random_state):
     assert_allclose_cplx(np.dot(a, L.T) + b, cplx.cplx_linear(p, U, q))
 
 
+def test_bilinear_transform(random_state):
+    a = random_state.randn(5, 5, 41) + 1j * random_state.randn(5, 5, 41)
+    z = random_state.randn(5, 5, 23) + 1j * random_state.randn(5, 5, 23)
+    L = random_state.randn(321, 41, 23) + 1j * random_state.randn(321, 41, 23)
+    b = random_state.randn(321) + 1j * random_state.randn(321)
+
+    p, r = cplx.Cplx.from_numpy(a), cplx.Cplx.from_numpy(z)
+    U = cplx.Cplx.from_numpy(L)
+    q = cplx.Cplx.from_numpy(b)
+
+    base = np.einsum("bsi, bsj, fij ->bsf", a.conj(), z, L)
+    assert_allclose_cplx(base, cplx.cplx_bilinear(p, r, U, None, conjugate=True))
+    assert_allclose_cplx(base + b, cplx.cplx_bilinear(p, r, U, q, conjugate=True))
+
+    base = np.einsum("bsi, bsj, fij ->bsf", a, z, L)
+    assert_allclose_cplx(base, cplx.cplx_bilinear(p, r, U, None, conjugate=False))
+    assert_allclose_cplx(base + b, cplx.cplx_bilinear(p, r, U, q, conjugate=False))
+
+
 def test_type_conversion(random_state):
     a = random_state.randn(5, 5, 200) + 1j * random_state.randn(5, 5, 200)
     b = np.stack([a.real, a.imag], axis=-1).reshape(*a.shape[:-1], -1)

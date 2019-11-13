@@ -504,3 +504,34 @@ def cplx_einsum(equation, *tensors):
 
     raise RuntimeError(f"""`cplx_einsum()` does not support more """
                        f"""than 2 tensors. Got {2 + len(tensors)}.""")
+
+
+def cplx_bilinear_naive(input1, input2, weight, bias=None, conjugate=True):
+    r"""Applies a complex bilinear transformation to the incoming complex
+    data: :math:`y = x^(T/H) W z + b`.
+    """
+
+    n_out = weight.shape[0]
+
+    ww = torch.cat([weight.real, weight.imag], dim=0)
+    a, b = input1.real, input1.imag
+    u, v = input2.real, input2.imag
+    au, av = F.bilinear(a, u, ww, bias=None), F.bilinear(a, v, ww, bias=None)
+    bu, bv = F.bilinear(b, u, ww, bias=None), F.bilinear(b, v, ww, bias=None)
+
+    if conjugate:
+        pp, qq = au + bv, av - bu
+    else:
+        pp, qq = au - bv, av + bu
+
+    repp, impp = pp[..., :n_out], pp[..., n_out:]
+    reqq, imqq = qq[..., :n_out], qq[..., n_out:]
+
+    output = Cplx(repp - imqq, impp + reqq)
+    if bias is not None:
+        output += bias
+
+    return output
+
+
+cplx_bilinear = cplx_bilinear_naive
