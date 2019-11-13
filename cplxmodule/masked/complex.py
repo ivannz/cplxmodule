@@ -1,7 +1,7 @@
 import torch
 
-from ..cplx import cplx_linear
-from ..layers import CplxLinear
+from ..cplx import cplx_linear, cplx_bilinear
+from ..layers import CplxLinear, CplxBilinear
 from .base import BaseMasked, MaskedWeightMixin
 
 from ..utils.stats import SparsityStats
@@ -24,3 +24,11 @@ class CplxLinearMasked(MaskedWeightMixin, CplxLinear,
             n_dropped = 0.
 
         return [(id(weight.real), n_dropped), (id(weight.imag), n_dropped), ]
+
+
+class CplxBilinearMasked(MaskedWeightMixin, CplxBilinear,
+                         BaseMasked, SparsityStats):
+    def forward(self, input1, input2):
+        return cplx_bilinear(input1, input2, self.weight_masked, self.bias)
+
+    sparsity = CplxLinearMasked.sparsity
