@@ -7,6 +7,7 @@ from .layers import CplxToCplx, CplxToReal
 from .layers import CplxParameter
 
 from .layers import CplxLinear
+from .layers import CplxBilinear
 from .conv import CplxConv1d
 
 from .activation import CplxModulus, CplxAngle

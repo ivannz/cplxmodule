@@ -7,7 +7,7 @@ import torch.nn.functional as F
 from torch.nn import Parameter
 
 from .cplx import Cplx, real_to_cplx, cplx_to_real
-from .cplx import cplx_linear
+from .cplx import cplx_linear, cplx_bilinear
 from .cplx import cplx_phaseshift
 
 
@@ -234,3 +234,46 @@ class CplxPhaseShift(CplxToCplx):
 
     def forward(self, input):
         return cplx_phaseshift(input, self.phi)
+
+
+class CplxBilinear(CplxWeightMixin, CplxToCplx):
+    r"""Complex bilinear transform"""
+    def __init__(self, in1_features, in2_features, out_features, bias=True,
+                 conjugate=True):
+        super().__init__()
+        self.in1_features = in1_features
+        self.in2_features = in2_features
+        self.out_features = out_features
+
+        self.weight = CplxParameter(Cplx.empty(
+            out_features, in1_features, in2_features))
+
+        if bias:
+            self.bias = CplxParameter(Cplx.empty(out_features))
+        else:
+            self.register_parameter('bias', None)
+
+        self.conjugate = conjugate
+
+        self.reset_parameters()
+
+    def reset_parameters(self):
+        weight, bias = self.weight, self.bias  # inplace acessors
+        torch.nn.init.kaiming_uniform_(weight.real, a=math.sqrt(5))
+        torch.nn.init.kaiming_uniform_(weight.imag, a=math.sqrt(5))
+        if bias is not None:
+            fan_in, _ = torch.nn.init._calculate_fan_in_and_fan_out(weight.real)
+            bound = 1 / math.sqrt(fan_in)
+            torch.nn.init.uniform_(bias.real, -bound, bound)
+            torch.nn.init.uniform_(bias.imag, -bound, bound)
+
+    def forward(self, input1, input2):
+        return cplx_bilinear(input1, input2, self.weight,
+                             self.bias, self.conjugate)
+
+    def extra_repr(self):
+        fmt = """in1_features={}, in2_features={}, out_features={}, """
+        fmt += """bias={}, conjugate={}"""
+        return fmt.format(
+            self.in1_features, self.in2_features, self.out_features,
+            self.bias is not None, self.conjugate)
