@@ -310,7 +310,7 @@ def test_enisum(random_state):
 
 
 def test_cat_stack(random_state):
-    with pytest.raises(RuntimeError, match="a non-empty list of Tensors"):
+    with pytest.raises(RuntimeError, match="a non-empty"):
         cplx.cplx_stack([], dim=0)
 
     np_tensors = 10 * [
