@@ -41,9 +41,6 @@ from cplxmodule.layers import CplxConv1d, CplxLinear
 
 # activation layers
 from cplxmodule.activation import CplxModReLU, CplxActivation
-
-# special layers from signal processing
-from cplxmodule.signal import CplxMultichannelGainLayer
 ```
 
 After `RealToCplx` layer the intermediate inputs are Cplx objects, which are abstractions
@@ -71,9 +68,6 @@ modulus_gain = torch.nn.Sequential(
 # purely complex-to-complex sequential container
 complex_model = CplxSequential(
     CplxLinear(n_features, n_features, bias=True),
-
-    # complex: batch x n_features
-    CplxMultichannelGainLayer(modulus_gain, flatten=False),
 
     # complex: batch x n_channels x n_features
     CplxConv1d(n_channels, 3 * n_channels, kernel_size=4, stride=1, bias=False),
