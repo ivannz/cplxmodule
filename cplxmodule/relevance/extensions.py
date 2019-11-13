@@ -1,9 +1,11 @@
 import torch
 import torch.nn.functional as F
 
+from numpy import euler_gamma
+
 from .real import LinearARD as LinearVD
 from .complex import CplxLinearARD as CplxLinearVD
-from .complex import ExpiFunction
+from .complex import ExpiFunction, torch_expi
 
 
 class LinearARD(LinearVD):
@@ -74,10 +76,39 @@ class CplxLinearARD(CplxLinearVD):
         return F.softplus(- self.log_alpha)
 
 
+class CplxLinearVDScaleFree(CplxLinearVD):
+    @property
+    def penalty(self):
+        r"""The Kullback-Leibler divergence between the mean field approximate
+        complex variational posterior of the weights and the scale-free
+        log-uniform complex prior:
+        $$
+            KL(\mathcal{CN}(w\mid \theta, \alpha \theta \bar{\theta}, 0) \|
+                    \tfrac1{\lvert w \rvert})
+                = \mathbb{E}_{\xi \sim \mathcal{CN}(1, \alpha, 0)}
+                    \log{\lvert \xi \rvert}
+                  + \log \lvert \theta \rvert
+                  + C - \log \alpha \lvert \theta \rvert^2
+                = - \log \lvert \theta \rvert - \log \alpha
+                  + C - \tfrac12 Ei( - \tfrac1{\alpha})
+            \,, $$
+        where $Ei(x) = \int_{-\infty}^x e^t t^{-1} dt$ is the exponential
+        integral. Unlike real-valued variational dropout, this KL divergence
+        does not need an approximation, since it can be computed exactly via
+        a special function. $Ei(x)$ behaves well on the -ve values, and near
+        $0-$. The constant $C$ is fixed to half of Euler's gamma, so that the
+        divergence is +ve.
+        """
+        log_abs_w = torch.log(abs(self.weight) + 1e-12)
+        n_log_alpha = 2 * log_abs_w - self.log_sigma2
+        ei = torch_expi(- torch.exp(n_log_alpha))
+        return log_abs_w - self.log_sigma2 - 0.5 * ei
+
+
 class CplxLinearVDApprox(CplxLinearVD):
     @property
     def penalty(self):
-        r"""Sofplus-sigmoid approximation of the complex KL divergence.
+        r"""Softplus-sigmoid approximation of the complex KL divergence.
         $$
             \alpha \mapsto
                 \log (1 + e^{-\log \alpha}) - C
