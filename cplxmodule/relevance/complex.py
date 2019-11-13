@@ -10,7 +10,7 @@ from numpy import euler_gamma
 
 from .base import BaseARD
 
-from ..layers import CplxLinear
+from ..layers import CplxLinear, CplxBilinear
 from ..cplx import Cplx
 
 from ..utils.stats import SparsityStats
@@ -133,3 +133,40 @@ class CplxLinearARD(CplxLinear, BaseARD, SparsityStats):
         weight = self.weight
         n_dropped = float(weight.real.numel()) - float(relevance.sum().item())
         return [(id(weight.real), n_dropped), (id(weight.imag), n_dropped), ]
+
+
+class CplxBilinearARD(CplxBilinear, BaseARD, SparsityStats):
+    r"""Complex valued bilinear layer with automatic relevance detection.
+    """
+    __sparsity_ignore__ = ("log_sigma2",)
+
+    def __init__(self, in1_features, in2_features, out_features, bias=True,
+                 conjugate=True):
+        super().__init__(in1_features, in2_features, out_features,
+                         bias=bias, conjugate=conjugate)
+
+        self.log_sigma2 = torch.nn.Parameter(
+            torch.Tensor(out_features, in1_features, in2_features))
+        self.reset_variational_parameters()
+
+    reset_variational_parameters = CplxLinearARD.reset_variational_parameters
+
+    log_alpha = CplxLinearARD.log_alpha
+
+    penalty = CplxLinearARD.penalty
+
+    def forward(self, input1, input2):
+        mu = super().forward(input1, input2)
+        if not self.training:
+            return mu
+
+        s2 = F.bilinear(input1.real * input1.real + input1.imag * input1.imag,
+                        input2.real * input2.real + input2.imag * input2.imag,
+                        torch.exp(self.log_sigma2), None)
+
+        noise = Cplx(*map(torch.randn_like, (s2, s2))) / sqrt(2)
+        return mu + noise * torch.sqrt(s2 + 1e-20)
+
+    relevance = CplxLinearARD.relevance
+
+    sparsity = CplxLinearARD.sparsity
