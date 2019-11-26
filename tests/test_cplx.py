@@ -1,6 +1,7 @@
 import pytest
 
 import torch
+import torch.nn.functional as F
 
 import numpy as np
 from numpy.testing import assert_allclose
@@ -256,6 +257,28 @@ def test_linear_transform(random_state):
 
     assert_allclose_cplx(np.dot(a, L.T), cplx.cplx_linear(p, U, None))
     assert_allclose_cplx(np.dot(a, L.T) + b, cplx.cplx_linear(p, U, q))
+
+
+def test_conv1d_transform(random_state):
+    a = random_state.randn(5, 12, 200) + 1j * random_state.randn(5, 12, 200)
+    L = random_state.randn(14, 12, 7) + 1j * random_state.randn(14, 12, 7)
+    b = random_state.randn(14) + 1j * random_state.randn(14)
+
+    p = cplx.Cplx.from_numpy(a)
+    U = cplx.Cplx.from_numpy(L)
+    q = cplx.Cplx.from_numpy(b)
+
+    assert_allclose_cplx(cplx.cplx_convnd_naive(F.conv1d, p, U),
+                         cplx.cplx_convnd_quick(F.conv1d, p, U))
+
+    assert_allclose_cplx(cplx.cplx_convnd_naive(F.conv1d, p, U, stride=5),
+                         cplx.cplx_convnd_quick(F.conv1d, p, U, stride=5))
+
+    assert_allclose_cplx(cplx.cplx_convnd_naive(F.conv1d, p, U, padding=2),
+                         cplx.cplx_convnd_quick(F.conv1d, p, U, padding=2))
+
+    assert_allclose_cplx(cplx.cplx_convnd_naive(F.conv1d, p, U, dilation=3),
+                         cplx.cplx_convnd_quick(F.conv1d, p, U, dilation=3))
 
 
 def test_bilinear_transform(random_state):
