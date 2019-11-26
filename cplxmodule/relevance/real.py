@@ -109,6 +109,8 @@ class Conv1dARD(torch.nn.Conv1d, BaseARD, SparsityStats):
     the automatic relevance detection via variational dropout and the chosen
     parametrization.
     """
+    __sparsity_ignore__ = ("log_sigma2",)
+
     def __init__(self, in_channels, out_channels, kernel_size, stride=1,
                  padding=0, dilation=1, groups=1,
                  bias=True, padding_mode='zeros'):
@@ -160,6 +162,8 @@ class Conv2dARD(torch.nn.Conv2d, BaseARD, SparsityStats):
     the automatic relevance detection via variational dropout and the chosen
     parametrization.
     """
+    __sparsity_ignore__ = ("log_sigma2",)
+
     def __init__(self, in_channels, out_channels, kernel_size, stride=1,
                  padding=0, dilation=1, groups=1,
                  bias=True, padding_mode='zeros'):
