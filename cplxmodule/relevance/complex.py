@@ -11,6 +11,7 @@ from numpy import euler_gamma
 from .base import BaseARD
 
 from ..layers import CplxLinear, CplxBilinear
+from ..conv import CplxConv1d, CplxConv2d
 from ..cplx import Cplx
 
 from ..utils.stats import SparsityStats
@@ -166,6 +167,90 @@ class CplxBilinearARD(CplxBilinear, BaseARD, SparsityStats):
 
         noise = Cplx(*map(torch.randn_like, (s2, s2))) / sqrt(2)
         return mu + noise * torch.sqrt(torch.clamp(s2, 1e-8))
+
+    relevance = CplxLinearARD.relevance
+
+    sparsity = CplxLinearARD.sparsity
+
+
+class CplxConv1dARD(CplxConv1d, BaseARD, SparsityStats):
+    r"""1D complex-valued convolution layer with automatic relevance detection.
+    """
+    __sparsity_ignore__ = ("log_sigma2",)
+
+    def __init__(self, in_channels, out_channels, kernel_size, stride=1,
+                 padding=0, dilation=1, groups=1,
+                 bias=True, padding_mode='zeros'):
+        super().__init__(in_channels, out_channels, kernel_size, stride=stride,
+                         padding=padding, dilation=dilation, groups=groups,
+                         bias=bias, padding_mode=padding_mode)
+
+        if self.padding_mode != "zeros":
+            raise ValueError(f"Only `zeros` padding mode is supported. "
+                             f"Got `{self.padding_mode}`.")
+
+        self.log_sigma2 = torch.nn.Parameter(torch.Tensor(*self.weight.shape))
+        self.reset_variational_parameters()
+
+    reset_variational_parameters = CplxLinearARD.reset_variational_parameters
+
+    log_alpha = CplxLinearARD.log_alpha
+
+    penalty = CplxLinearARD.penalty
+
+    def forward(self, input):
+        mu = super().forward(input)
+        if not self.training:
+            return mu
+
+        s2 = F.conv1d(input.real * input.real + input.imag * input.imag,
+                      torch.exp(self.log_sigma2), None, self.stride,
+                      self.padding, self.dilation, self.groups)
+
+        noise = Cplx(*map(torch.randn_like, (s2, s2))) / sqrt(2)
+        return mu + noise * torch.sqrt(s2 + 1e-20)
+
+    relevance = CplxLinearARD.relevance
+
+    sparsity = CplxLinearARD.sparsity
+
+
+class CplxConv2dARD(CplxConv2d, BaseARD, SparsityStats):
+    r"""2D complex-valued convolution layer with automatic relevance detection.
+    """
+    __sparsity_ignore__ = ("log_sigma2",)
+
+    def __init__(self, in_channels, out_channels, kernel_size, stride=1,
+                 padding=0, dilation=1, groups=1,
+                 bias=True, padding_mode='zeros'):
+        super().__init__(in_channels, out_channels, kernel_size, stride=stride,
+                         padding=padding, dilation=dilation, groups=groups,
+                         bias=bias, padding_mode=padding_mode)
+
+        if self.padding_mode != "zeros":
+            raise ValueError(f"Only `zeros` padding mode is supported. "
+                             f"Got `{self.padding_mode}`.")
+
+        self.log_sigma2 = torch.nn.Parameter(torch.Tensor(*self.weight.shape))
+        self.reset_variational_parameters()
+
+    reset_variational_parameters = CplxLinearARD.reset_variational_parameters
+
+    log_alpha = CplxLinearARD.log_alpha
+
+    penalty = CplxLinearARD.penalty
+
+    def forward(self, input):
+        mu = super().forward(input)
+        if not self.training:
+            return mu
+
+        s2 = F.conv2d(input.real * input.real + input.imag * input.imag,
+                      torch.exp(self.log_sigma2), None, self.stride,
+                      self.padding, self.dilation, self.groups)
+
+        noise = Cplx(*map(torch.randn_like, (s2, s2))) / sqrt(2)
+        return mu + noise * torch.sqrt(s2 + 1e-20)
 
     relevance = CplxLinearARD.relevance
 
