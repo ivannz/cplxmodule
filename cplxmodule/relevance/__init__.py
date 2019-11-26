@@ -1,4 +1,5 @@
 from .real import LinearARD
+from .real import Conv1dARD, Conv2dARD
 from .real_l0 import LinearL0ARD
 from .real_lasso import LinearLASSO
 
