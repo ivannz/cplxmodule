@@ -145,7 +145,7 @@ class Conv1dARD(torch.nn.Conv1d, BaseARD, SparsityStats):
 
         s2 = F.conv1d(input * input, torch.exp(self.log_sigma2), None,
                       self.stride, self.padding, self.dilation, self.groups)
-        return mu + torch.randn_like(s2) * torch.sqrt(s2 + 1e-20)
+        return mu + torch.randn_like(s2) * torch.sqrt(s2 + 1e-8)
 
     relevance = LinearARD.relevance
 

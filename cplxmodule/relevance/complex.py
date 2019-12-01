@@ -208,7 +208,7 @@ class CplxConv1dARD(CplxConv1d, BaseARD, SparsityStats):
                       self.padding, self.dilation, self.groups)
 
         noise = Cplx(*map(torch.randn_like, (s2, s2))) / sqrt(2)
-        return mu + noise * torch.sqrt(s2 + 1e-20)
+        return mu + noise * torch.sqrt(s2 + 1e-8)
 
     relevance = CplxLinearARD.relevance
 
@@ -250,7 +250,7 @@ class CplxConv2dARD(CplxConv2d, BaseARD, SparsityStats):
                       self.padding, self.dilation, self.groups)
 
         noise = Cplx(*map(torch.randn_like, (s2, s2))) / sqrt(2)
-        return mu + noise * torch.sqrt(s2 + 1e-20)
+        return mu + noise * torch.sqrt(s2 + 1e-8)
 
     relevance = CplxLinearARD.relevance
 
