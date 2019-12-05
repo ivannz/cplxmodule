@@ -5,10 +5,10 @@ import torch.nn
 
 from torch.nn import Parameter
 
-from .cplx import Cplx, cplx_conv1d
+from .cplx import Cplx, cplx_conv1d, cplx_conv2d
 from .layers import CplxToCplx, CplxParameter, CplxWeightMixin
 
-from torch.nn.modules.utils import _single
+from torch.nn.modules.utils import _single, _pair
 
 
 class CplxConvNd(CplxToCplx, CplxWeightMixin):
@@ -103,4 +103,37 @@ class CplxConv1d(CplxConvNd):
     def forward(self, input):
         return cplx_conv1d(input, self.weight, self.bias,
                            self.stride[0], self.padding[0], self.dilation[0],
+                           self.groups, self.padding_mode)
+
+
+class CplxConv2d(CplxConvNd):
+    r"""
+    Complex 2D convolution:
+    $$
+        F
+        \colon \mathbb{C}^{B \times c_{in} \times L}
+                \to \mathbb{C}^{B \times c_{out} \times L'}
+        \colon u + i v \mapsto (W_\mathrm{re} \star u - W_\mathrm{im} \star v)
+                                + i (W_\mathrm{im} \star u + W_\mathrm{re} \star v)
+        \,. $$
+
+    See torch.nn.Conv2d for reference on the input dimensions.
+    """
+    def __init__(self,
+                 in_channels,
+                 out_channels,
+                 kernel_size,
+                 stride=1,
+                 padding=0,
+                 dilation=1,
+                 groups=1,
+                 bias=True,
+                 padding_mode="zeros"):
+        super().__init__(
+            in_channels, out_channels, _pair(kernel_size), _pair(stride),
+            _pair(padding), _pair(dilation), groups, bias, padding_mode)
+
+    def forward(self, input):
+        return cplx_conv2d(input, self.weight, self.bias,
+                           self.stride, self.padding, self.dilation,
                            self.groups, self.padding_mode)

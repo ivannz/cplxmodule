@@ -453,30 +453,91 @@ def cplx_linear_3m(input, weight, bias=None):
 cplx_linear = cplx_linear_naive
 
 
+def symmetric_circular_padding(input, padding):
+    # `F.pad` works only for 3d, 4d, and 5d inputs
+    assert input.dim() > 2
+    if isinstance(padding, int):
+        padding = (input.dim() - 2) * [padding]
+
+    assert isinstance(padding, (tuple, list))
+    assert len(padding) + 2 == input.dim()
+
+    expanded_padding = []
+    for pad in padding:
+        expanded_padding.extend(((pad + 1) // 2, pad // 2))
+
+    return input.apply(F.pad, tuple(expanded_padding), mode="circular")
+
+
+def cplx_convnd_naive(conv, input, weight, stride=1,
+                      padding=0, dilation=1, groups=1):
+
+    re = conv(input.real, weight.real, None,
+              stride, padding, dilation, groups) \
+        - conv(input.imag, weight.imag, None,
+               stride, padding, dilation, groups)
+    im = conv(input.real, weight.imag, None,
+              stride, padding, dilation, groups) \
+        + conv(input.imag, weight.real, None,
+               stride, padding, dilation, groups)
+
+    return Cplx(re, im)
+
+
+def cplx_convnd_quick(conv, input, weight, stride=1,
+                      padding=0, dilation=1):
+    n_out = weight.shape[0]
+    ww = torch.cat([weight.real, weight.imag], dim=0)
+    wr = conv(input.real, ww, None, stride, padding, dilation, 1)
+    wi = conv(input.imag, ww, None, stride, padding, dilation, 1)
+
+    rwr, iwr = wr[:, :n_out], wr[:, n_out:]
+    rwi, iwi = wi[:, :n_out], wi[:, n_out:]
+    return Cplx(rwr - iwi, iwr + rwi)
+
+
+def cplx_convnd(conv, input, weight, bias=None, stride=1,
+                padding=0, dilation=1, groups=1, padding_mode="zeros"):
+    r"""Applies a complex n-d convolution to the incoming complex
+    tensor `B x c_in x L_1 x ... L_n`: :math:`y = x \star W + b`.
+    """
+    if padding_mode == 'circular':
+        input = symmetric_circular_padding(input, padding)
+        padding = 0
+
+    if groups == 1:
+        # ungroupped convolution can be done a little bit faster
+        output = cplx_convnd_quick(conv, input, weight, stride,
+                                   padding, dilation)
+    else:
+        output = cplx_convnd_naive(conv, input, weight, stride,
+                                   padding, dilation, groups)
+
+    if bias is not None:
+        broadcast = (input.dim() - 2) * [1]
+        output += bias.reshape(-1, *broadcast)
+
+    return output
+
+
 def cplx_conv1d(input, weight, bias=None, stride=1, padding=0,
                 dilation=1, groups=1, padding_mode="zeros"):
     r"""Applies a complex 1d convolution to the incoming complex
     tensor `B x c_in x L`: :math:`y = x \star W + b`.
     """
-    if padding_mode == 'circular':
-        expanded_padding = ((padding + 1) // 2, padding // 2)
-        input = input.apply(F.pad, expanded_padding, mode="circular")
-        padding = 0
 
-    re = F.conv1d(input.real, weight.real, None,
-                  stride, padding, dilation, groups) \
-        - F.conv1d(input.imag, weight.imag, None,
-                   stride, padding, dilation, groups)
-    im = F.conv1d(input.real, weight.imag, None,
-                  stride, padding, dilation, groups) \
-        + F.conv1d(input.imag, weight.real, None,
-                   stride, padding, dilation, groups)
+    return cplx_convnd(F.conv1d, input, weight, bias, stride,
+                       padding, dilation, groups, padding_mode)
 
-    output = Cplx(re, im)
-    if bias is not None:
-        output += bias.apply(torch.unsqueeze, -1)
 
-    return output
+def cplx_conv2d(input, weight, bias=None, stride=1, padding=0,
+                dilation=1, groups=1, padding_mode="zeros"):
+    r"""Applies a complex 2d convolution to the incoming complex
+    tensor `B x c_in x H x W`: :math:`y = x \star W + b`.
+    """
+
+    return cplx_convnd(F.conv2d, input, weight, bias, stride,
+                       padding, dilation, groups, padding_mode)
 
 
 def cplx_einsum(equation, *tensors):

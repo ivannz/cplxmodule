@@ -1,6 +1,7 @@
 import pytest
 
 import torch
+import torch.nn.functional as F
 
 import numpy as np
 from numpy.testing import assert_allclose
@@ -256,6 +257,108 @@ def test_linear_transform(random_state):
 
     assert_allclose_cplx(np.dot(a, L.T), cplx.cplx_linear(p, U, None))
     assert_allclose_cplx(np.dot(a, L.T) + b, cplx.cplx_linear(p, U, q))
+
+
+def test_conv1d_transform(random_state):
+    # torch's real convolutions correspond to numpy `correlate`
+    from scipy.signal import correlate
+
+    x = random_state.randn(5, 12, 31)
+    w = random_state.randn(1, 12, 7)
+
+    # check pure R
+    tt = F.conv1d(torch.from_numpy(x), torch.from_numpy(w)).numpy()
+    nn = correlate(x, w, mode="valid")
+    assert np.allclose(tt, nn)
+
+    # check R - C embedding
+    nn = correlate(x + 0j, w + 0j, mode="valid").real
+    assert np.allclose(tt, nn)
+
+    cx, cw = map(cplx.Cplx.from_numpy, [x, w])
+    cc = cplx.cplx_convnd_naive(F.conv1d, cx, cw).numpy().real
+    assert np.allclose(cc, nn)
+
+    # check pure C: `correlate` uses conjugation
+    #  https://docs.scipy.org/doc/numpy/reference/generated/numpy.correlate.html
+    x = random_state.randn(5, 12, 31) + 1j * random_state.randn(5, 12, 31)
+    w = random_state.randn(1, 12, 7) + 1j * random_state.randn(1, 12, 7)
+
+    nn = correlate(x, w.conj(), mode="valid")
+
+    cx, cw = map(cplx.Cplx.from_numpy, [x, w])
+    cc = cplx.cplx_convnd_naive(F.conv1d, cx, cw).numpy()
+    assert np.allclose(cc, nn)
+
+    cc = cplx.cplx_convnd_quick(F.conv1d, cx, cw).numpy()
+    assert np.allclose(cc, nn)
+
+    a = random_state.randn(5, 12, 200) + 1j * random_state.randn(5, 12, 200)
+    L = random_state.randn(14, 12, 7) + 1j * random_state.randn(14, 12, 7)
+
+    p, U = map(cplx.Cplx.from_numpy, [a, L])
+    assert_allclose_cplx(cplx.cplx_convnd_naive(F.conv1d, p, U),
+                         cplx.cplx_convnd_quick(F.conv1d, p, U))
+
+    assert_allclose_cplx(cplx.cplx_convnd_naive(F.conv1d, p, U, stride=5),
+                         cplx.cplx_convnd_quick(F.conv1d, p, U, stride=5))
+
+    assert_allclose_cplx(cplx.cplx_convnd_naive(F.conv1d, p, U, padding=2),
+                         cplx.cplx_convnd_quick(F.conv1d, p, U, padding=2))
+
+    assert_allclose_cplx(cplx.cplx_convnd_naive(F.conv1d, p, U, dilation=3),
+                         cplx.cplx_convnd_quick(F.conv1d, p, U, dilation=3))
+
+
+def test_conv2d_transform(random_state):
+    # torch's real convolutions correspond to numpy `correlate`
+    from scipy.signal import correlate
+
+    x = random_state.randn(5, 12, 31, 47)
+    w = random_state.randn(1, 12, 7, 11)
+
+    # check pure R
+    tt = F.conv2d(torch.from_numpy(x), torch.from_numpy(w)).numpy()
+    nn = correlate(x, w, mode="valid")
+    assert np.allclose(tt, nn)
+
+    # check R - C embedding
+    nn = correlate(x + 0j, w + 0j, mode="valid").real
+    assert np.allclose(tt, nn)
+
+    cx, cw = map(cplx.Cplx.from_numpy, [x, w])
+    cc = cplx.cplx_convnd_naive(F.conv2d, cx, cw).numpy().real
+    assert np.allclose(cc, nn)
+
+    # check pure C: `correlate` uses conjugation
+    #  https://docs.scipy.org/doc/numpy/reference/generated/numpy.correlate.html
+    x = random_state.randn(5, 12, 31, 47) + 1j * random_state.randn(5, 12, 31, 47)
+    w = random_state.randn(1, 12, 7, 11) + 1j * random_state.randn(1, 12, 7, 11)
+
+    nn = correlate(x, w.conj(), mode="valid")
+
+    cx, cw = map(cplx.Cplx.from_numpy, [x, w])
+    cc = cplx.cplx_convnd_naive(F.conv2d, cx, cw).numpy()
+    assert np.allclose(cc, nn)
+
+    cc = cplx.cplx_convnd_quick(F.conv2d, cx, cw).numpy()
+    assert np.allclose(cc, nn)
+
+    a = random_state.randn(5, 12, 41, 39) + 1j * random_state.randn(5, 12, 41, 39)
+    L = random_state.randn(14, 12, 7, 6) + 1j * random_state.randn(14, 12, 7, 6)
+
+    p, U = map(cplx.Cplx.from_numpy, [a, L])
+    assert_allclose_cplx(cplx.cplx_convnd_naive(F.conv2d, p, U),
+                         cplx.cplx_convnd_quick(F.conv2d, p, U))
+
+    assert_allclose_cplx(cplx.cplx_convnd_naive(F.conv2d, p, U, stride=5),
+                         cplx.cplx_convnd_quick(F.conv2d, p, U, stride=5))
+
+    assert_allclose_cplx(cplx.cplx_convnd_naive(F.conv2d, p, U, padding=2),
+                         cplx.cplx_convnd_quick(F.conv2d, p, U, padding=2))
+
+    assert_allclose_cplx(cplx.cplx_convnd_naive(F.conv2d, p, U, dilation=3),
+                         cplx.cplx_convnd_quick(F.conv2d, p, U, dilation=3))
 
 
 def test_bilinear_transform(random_state):

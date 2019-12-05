@@ -8,7 +8,7 @@ from .layers import CplxParameter
 
 from .layers import CplxLinear
 from .layers import CplxBilinear
-from .conv import CplxConv1d
+from .conv import CplxConv1d, CplxConv2d
 
 from .activation import CplxModulus, CplxAngle
 

@@ -99,6 +99,59 @@ class LinearARD(torch.nn.Linear, BaseARD, SparsityStats):
         return [(id(self.weight), self.weight.numel() - n_relevant)]
 
 
+class Conv1dARD(torch.nn.Conv1d, BaseARD, SparsityStats):
+    r"""1D convolution layer with automatic relevance detection.
+
+    Details
+    -------
+    See `torch.nn.Conv1d` for reference on the dimensions and parameters. See
+    `cplxmodule.relevance.Conv1dARD` for details about the implementation of
+    the automatic relevance detection via variational dropout and the chosen
+    parametrization.
+    """
+    __sparsity_ignore__ = ("log_sigma2",)
+
+    def __init__(self, in_channels, out_channels, kernel_size, stride=1,
+                 padding=0, dilation=1, groups=1,
+                 bias=True, padding_mode='zeros'):
+        super().__init__(in_channels, out_channels, kernel_size, stride=stride,
+                         padding=padding, dilation=dilation, groups=groups,
+                         bias=bias, padding_mode=padding_mode)
+
+        if self.padding_mode != "zeros":
+            raise ValueError(f"Only `zeros` padding mode is supported. "
+                             f"Got `{self.padding_mode}`.")
+
+        self.log_sigma2 = torch.nn.Parameter(torch.Tensor(*self.weight.shape))
+        self.reset_variational_parameters()
+
+    def reset_variational_parameters(self):
+        self.log_sigma2.data.uniform_(-10, -10)
+
+    log_alpha = LinearARD.log_alpha
+
+    penalty = LinearARD.penalty
+
+    def forward(self, input):
+        r"""Forward pass of the SGVB method for a 1d convolutional layer.
+
+        Details
+        -------
+        See `.forward` of Conv2dARD layer.
+        """
+        mu = super().forward(input)
+        if not self.training:
+            return mu
+
+        s2 = F.conv1d(input * input, torch.exp(self.log_sigma2), None,
+                      self.stride, self.padding, self.dilation, self.groups)
+        return mu + torch.randn_like(s2) * torch.sqrt(torch.clamp(s2, 1e-8))
+
+    relevance = LinearARD.relevance
+
+    sparsity = LinearARD.sparsity
+
+
 class Conv2dARD(torch.nn.Conv2d, BaseARD, SparsityStats):
     r"""2D convolution layer with automatic relevance detection.
 
@@ -109,6 +162,8 @@ class Conv2dARD(torch.nn.Conv2d, BaseARD, SparsityStats):
     the automatic relevance detection via variational dropout and the chosen
     parametrization.
     """
+    __sparsity_ignore__ = ("log_sigma2",)
+
     def __init__(self, in_channels, out_channels, kernel_size, stride=1,
                  padding=0, dilation=1, groups=1,
                  bias=True, padding_mode='zeros'):
