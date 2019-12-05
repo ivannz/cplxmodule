@@ -120,7 +120,7 @@ class CplxLinearARD(CplxLinear, BaseARD, SparsityStats):
 
         # generate complex Gaussian noise with proper scale
         noise = Cplx(*map(torch.randn_like, (s2, s2))) / sqrt(2)
-        return mu + noise * torch.sqrt(s2 + 1e-8)
+        return mu + noise * torch.sqrt(torch.clamp(s2, 1e-8))
 
     def relevance(self, *, threshold, **kwargs):
         r"""Get the relevance mask based on the threshold."""
@@ -165,7 +165,7 @@ class CplxBilinearARD(CplxBilinear, BaseARD, SparsityStats):
                         torch.exp(self.log_sigma2), None)
 
         noise = Cplx(*map(torch.randn_like, (s2, s2))) / sqrt(2)
-        return mu + noise * torch.sqrt(s2 + 1e-8)
+        return mu + noise * torch.sqrt(torch.clamp(s2, 1e-8))
 
     relevance = CplxLinearARD.relevance
 

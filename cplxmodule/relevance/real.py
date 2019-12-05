@@ -86,7 +86,7 @@ class LinearARD(torch.nn.Linear, BaseARD, SparsityStats):
             return mu
 
         s2 = F.linear(input * input, torch.exp(self.log_sigma2), None)
-        return mu + torch.randn_like(s2) * torch.sqrt(s2 + 1e-8)
+        return mu + torch.randn_like(s2) * torch.sqrt(torch.clamp(s2, 1e-8))
 
     def relevance(self, *, threshold, **kwargs):
         r"""Get the relevance mask based on the threshold."""
@@ -170,7 +170,7 @@ class Conv2dARD(torch.nn.Conv2d, BaseARD, SparsityStats):
 
         s2 = F.conv2d(input * input, torch.exp(self.log_sigma2), None,
                       self.stride, self.padding, self.dilation, self.groups)
-        return mu + torch.randn_like(s2) * torch.sqrt(s2 + 1e-8)
+        return mu + torch.randn_like(s2) * torch.sqrt(torch.clamp(s2, 1e-8))
 
     relevance = LinearARD.relevance
 
@@ -208,7 +208,7 @@ class BilinearARD(torch.nn.Bilinear, BaseARD, SparsityStats):
                         torch.exp(self.log_sigma2), None)
 
         # .normal reports a grad-fn, but weirdly does not pass grads!
-        return mu + torch.randn_like(s2) * torch.sqrt(s2 + 1e-8)
+        return mu + torch.randn_like(s2) * torch.sqrt(torch.clamp(s2, 1e-8))
 
     relevance = LinearARD.relevance
 
