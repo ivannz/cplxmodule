@@ -4,6 +4,8 @@ import torch
 import torch.nn
 import torch.nn.functional as F
 
+from functools import lru_cache
+
 from torch.nn import Parameter
 
 from .cplx import Cplx, real_to_cplx, cplx_to_real
@@ -139,7 +141,21 @@ class CplxWeightMixin(torch.nn.Module):
         return Cplx(bias.real, bias.imag)
 
 
-class CplxToCplx(torch.nn.Module):
+class _CplxToCplxMeta(type):
+    """Meta class for bracketed creation of componentwise operations."""
+    @lru_cache(maxsize=None)
+    def __getitem__(self, Base):
+        class template(Base, CplxToCplx):
+            def forward(self, input):
+                """Apply to real and imaginary parts independently."""
+                return input.apply(super().forward)
+
+        name = "Cplx" + Base.__name__
+        template.__name__ = template.__qualname__ = name
+        return template
+
+
+class CplxToCplx(torch.nn.Module, metaclass=_CplxToCplxMeta):
     pass
 
 
