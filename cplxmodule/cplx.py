@@ -1,3 +1,5 @@
+import warnings
+
 import torch
 import torch.nn.functional as F
 
@@ -316,9 +318,23 @@ def cplx_stack(tensors, dim):
                 torch.stack([z.imag for z in tensors], dim=dim))
 
 
-def real_to_cplx(input, copy=True, dim=-1):
+def interleaved_real_to_cplx(input, copy=True, dim=-1):
     """Map real tensor input `... x [D * 2]` to a pair (re, im) with dim `... x D`."""
     real, imag = complex_view(input, dim, squeeze=False)
+    return Cplx(real.clone(), imag.clone()) if copy else Cplx(real, imag)
+
+
+real_to_cplx = interleaved_real_to_cplx
+
+
+def concatenated_real_to_cplx(input, copy=True, dim=-1):
+    """Map real tensor input `... x [2 * D]` to a pair (re, im) with dim `... x D`."""
+    size, rem = divmod(input.size(dim), 2)
+    if rem != 0:
+        warnings.warn(f"Odd dimension size for the complex data unpacking: "
+                      f"taking the least size that fits.", RuntimeWarning)
+
+    real, imag = input.narrow(dim, 0, size), input.narrow(dim, size, size)
     return Cplx(real.clone(), imag.clone()) if copy else Cplx(real, imag)
 
 

@@ -387,7 +387,7 @@ def test_type_conversion(random_state):
     p = cplx.Cplx.from_numpy(a)
     q = cplx.real_to_cplx(torch.from_numpy(b))
 
-    # from cplx to double-real
+    # from cplx to double-real (interleaved)
     assert_allclose(b, cplx.cplx_to_real(p))
     assert_allclose(b, cplx.cplx_to_real(q))
 
@@ -401,6 +401,14 @@ def test_type_conversion(random_state):
         p.item()
 
     assert a[0, 0, 0] == p[0, 0, 0].item()
+
+    # concatenated to cplx
+    for dim in [0, 1, 2]:
+        stacked = torch.cat([torch.from_numpy(a.real),
+                             torch.from_numpy(a.imag)], dim=dim)
+
+        q = cplx.concatenated_real_to_cplx(stacked, dim=dim)
+        assert_allclose_cplx(a, q)
 
 
 def test_enisum(random_state):
