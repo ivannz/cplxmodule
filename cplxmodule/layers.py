@@ -145,6 +145,15 @@ class _CplxToCplxMeta(type):
     """Meta class for bracketed creation of componentwise operations."""
     @lru_cache(maxsize=None)
     def __getitem__(self, Base):
+        # make sure that base is not an instance, and that no
+        #  nested wrapping takes place.
+        assert isinstance(Base, type) and issubclass(Base, torch.nn.Module)
+        if issubclass(Base, CplxToCplx):
+            return Base
+
+        if Base is torch.nn.Module:
+            return CplxToCplx
+
         class template(Base, CplxToCplx):
             def forward(self, input):
                 """Apply to real and imaginary parts independently."""
