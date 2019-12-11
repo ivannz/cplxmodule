@@ -410,6 +410,23 @@ def test_type_conversion(random_state):
         q = cplx.concatenated_real_to_cplx(stacked, dim=dim)
         assert_allclose_cplx(a, q)
 
+    # cplx to concatenated
+    for dim in [0, 1, 2]:
+        q = cplx.cplx_to_concatenated_real(cplx.Cplx.from_numpy(a), dim=dim)
+
+        stacked = np.concatenate([a.real, a.imag], axis=dim)
+        assert_allclose(q.numpy(), stacked)
+
+    # cplx to interleaved
+    for dim in [0, 1, 2]:
+        q = cplx.interleaved_real_to_cplx(
+                cplx.cplx_to_interleaved_real(
+                    cplx.Cplx.from_numpy(a),
+                    flatten=True, dim=dim
+                ), dim=dim)
+
+        assert_allclose(q.numpy(), a)
+
 
 def test_enisum(random_state):
     a = random_state.randn(10, 32, 64) + 1j * random_state.randn(10, 32, 64)
