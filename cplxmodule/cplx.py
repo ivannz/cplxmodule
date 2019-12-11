@@ -3,7 +3,7 @@ import warnings
 import torch
 import torch.nn.functional as F
 
-from .utils import complex_view
+from .utils import complex_view, fix_dim
 
 
 class Cplx(tuple, object):
@@ -320,8 +320,8 @@ def cplx_stack(tensors, dim):
 
 def interleaved_real_to_cplx(input, copy=True, dim=-1):
     """Map real tensor input `... x [D * 2]` to a pair (re, im) with dim `... x D`."""
-    real, imag = complex_view(input, dim, squeeze=False)
-    return Cplx(real.clone(), imag.clone()) if copy else Cplx(real, imag)
+    output = Cplx(*complex_view(input, dim, squeeze=False))
+    return output.clone() if copy else output
 
 
 real_to_cplx = interleaved_real_to_cplx
@@ -329,20 +329,24 @@ real_to_cplx = interleaved_real_to_cplx
 
 def concatenated_real_to_cplx(input, copy=True, dim=-1):
     """Map real tensor input `... x [2 * D]` to a pair (re, im) with dim `... x D`."""
-    size, rem = divmod(input.size(dim), 2)
-    if rem != 0:
-        warnings.warn(f"Odd dimension size for the complex data unpacking: "
-                      f"taking the least size that fits.", RuntimeWarning)
-
-    real, imag = input.narrow(dim, 0, size), input.narrow(dim, size, size)
-    return Cplx(real.clone(), imag.clone()) if copy else Cplx(real, imag)
+    output = Cplx(*torch.chunk(input, 2, dim=dim))
+    return output.clone() if copy else output
 
 
-def cplx_to_real(input, flatten=True):
+def cplx_to_interleaved_real(input, flatten=True, dim=-1):
     """Interleave the complex re-im pair into a real tensor."""
-    # re, im = input
-    input = torch.stack([input.real, input.imag], dim=-1)
-    return input.flatten(-2) if flatten else input
+    dim = 1 + fix_dim(dim, input.dim())
+    input = torch.stack([input.real, input.imag], dim=dim)
+    return input.flatten(dim-1, dim) if flatten else input
+
+
+cplx_to_real = cplx_to_interleaved_real
+
+
+def cplx_to_concatenated_real(input, flatten=None, dim=-1):
+    """Map real tensor input `... x [2 * D]` to a pair (re, im) with dim `... x D`."""
+    assert flatten is None
+    return torch.cat([input.real, input.imag], dim=dim)
 
 
 def cplx_exp(input):
