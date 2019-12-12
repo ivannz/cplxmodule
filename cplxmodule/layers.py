@@ -8,9 +8,12 @@ from functools import lru_cache
 
 from torch.nn import Parameter
 
-from .cplx import Cplx, real_to_cplx, cplx_to_real
+from .cplx import Cplx
 from .cplx import cplx_linear, cplx_bilinear
 from .cplx import cplx_phaseshift
+
+from .cplx import cplx_to_interleaved_real, cplx_to_concatenated_real
+from .cplx import interleaved_real_to_cplx, concatenated_real_to_cplx
 
 
 class CplxParameter(torch.nn.ParameterDict):
@@ -26,27 +29,27 @@ class CplxParameter(torch.nn.ParameterDict):
 
 
 def is_from_cplx(module):
-    if isinstance(module, (CplxToCplx, CplxToReal)):
+    if isinstance(module, (CplxToCplx, BaseCplxToReal)):
         return True
 
     if isinstance(module, torch.nn.Sequential):
         return is_from_cplx(module[0])
 
     if isinstance(module, type):
-        return issubclass(module, (CplxToCplx, CplxToReal))
+        return issubclass(module, (CplxToCplx, BaseCplxToReal))
 
     return False
 
 
 def is_to_cplx(module):
-    if isinstance(module, (CplxToCplx, RealToCplx)):
+    if isinstance(module, (CplxToCplx, BaseRealToCplx)):
         return True
 
     if isinstance(module, torch.nn.Sequential):
         return is_to_cplx(module[-1])
 
     if isinstance(module, type):
-        return issubclass(module, (CplxToCplx, RealToCplx))
+        return issubclass(module, (CplxToCplx, BaseRealToCplx))
 
     return False
 
@@ -55,11 +58,15 @@ def is_cplx_to_cplx(module):
     return is_from_cplx(module) and is_to_cplx(module)
 
 
-class RealToCplx(torch.nn.Module):
-    r"""
-    A layer that splits an interleaved real tensor with even number in the last
-    dim to a complex tensor represented by a pair of real and imaginary tensors
-    of the same size. Preserves the all dimensions but the last, which is halved.
+class BaseRealToCplx(torch.nn.Module):
+    pass
+
+
+class InterleavedRealToCplx(BaseRealToCplx):
+    r"""A layer that splits an interleaved real tensor with even number in the
+    last dim to a complex tensor represented by a pair of real and imaginary
+    tensors of the same size. Preserves the all dimensions but the last, which
+    is halved.
     $$
         F
         \colon \mathbb{R}^{\ldots \times [d\times 2]}
@@ -69,15 +76,39 @@ class RealToCplx(torch.nn.Module):
         \bigl)_{k=0}^{d-1}
         \,. $$
     """
-    def __init__(self, copy=False):
+    def __init__(self, copy=False, dim=-1):
         super().__init__()
-        self.copy = copy
+        self.copy, self.dim = copy, dim
 
     def forward(self, input):
-        return real_to_cplx(input, copy=self.copy)
+        return interleaved_real_to_cplx(input, self.copy, self.dim)
 
 
-class AsTypeCplx(RealToCplx):
+RealToCplx = InterleavedRealToCplx
+
+
+class ConcatenatedRealToCplx(BaseRealToCplx):
+    r"""Convert float tensor in concatenated format, i.e. real followed by
+    imag, to a Cplx tensor. Preserves all dimensions except for the one
+    specified, which is halved.
+    $$
+        F
+        \colon \mathbb{R}^{\ldots \times [d\times 2]}
+                \to \mathbb{C}^{\ldots \times d}
+        \colon x \mapsto \bigr(
+            x_{k} + i x_{d + k}
+        \bigl)_{k=0}^{d-1}
+        \,. $$
+    """
+    def __init__(self, copy=False, dim=-1):
+        super().__init__()
+        self.copy, self.dim = copy, dim
+
+    def forward(self, input):
+        return concatenated_real_to_cplx(input, self.copy, self.dim)
+
+
+class AsTypeCplx(BaseRealToCplx):
     r"""A layer that differentibaly casts the real tensor into a complex tensor.
     $$
         F
@@ -90,7 +121,11 @@ class AsTypeCplx(RealToCplx):
         return Cplx(input)
 
 
-class CplxToReal(torch.nn.Module):
+class BaseCplxToReal(torch.nn.Module):
+    pass
+
+
+class CplxToInterleavedReal(BaseCplxToReal):
     r"""
     A layer that interleaves the complex tensor represented by a pair of real
     and imaginary tensors into a larger real tensor along the last dimension.
@@ -101,12 +136,34 @@ class CplxToReal(torch.nn.Module):
         \colon u + i v \mapsto \bigl(u_\omega, v_\omega\bigr)_{\omega}
         \,. $$
     """
-    def __init__(self, flatten=True):
+    def __init__(self, dim=-1):
         super().__init__()
-        self.flatten = flatten
+        self.dim = dim
 
     def forward(self, input):
-        return cplx_to_real(input, self.flatten)
+        return cplx_to_interleaved_real(input, True, self.dim)
+
+
+CplxToReal = CplxToInterleavedReal
+
+
+class CplxToConcatenatedReal(BaseCplxToReal):
+    r"""
+    A layer that concatenates the real and imaginary parts of a complex tensor
+    into a larger real tensor along the last dimension.
+    $$
+        F
+        \colon \mathbb{C}^{\ldots \times d}
+                \to \mathbb{R}^{\ldots \times [2 \times d]}
+        \colon u + i v \mapsto \bigl(u_\omega, v_\omega\bigr)_{\omega}
+        \,. $$
+    """
+    def __init__(self, dim=-1):
+        super().__init__()
+        self.dim = dim
+
+    def forward(self, input):
+        return cplx_to_concatenated_real(input, None, self.dim)
 
 
 class CplxWeightMixin(torch.nn.Module):
@@ -148,7 +205,7 @@ class _CplxToCplxMeta(type):
         # make sure that base is not an instance, and that no
         #  nested wrapping takes place.
         assert isinstance(Base, type) and issubclass(Base, torch.nn.Module)
-        if issubclass(Base, CplxToCplx):
+        if issubclass(Base, (CplxToCplx, BaseRealToCplx)):
             return Base
 
         if Base is torch.nn.Module:
@@ -213,7 +270,7 @@ class CplxLinear(CplxWeightMixin, CplxToCplx):
         )
 
 
-class CplxDropout1d(torch.nn.Dropout2d, CplxToCplx):
+class CplxDropout(torch.nn.Dropout2d, CplxToCplx):
     r"""
     Complex 1d dropout layer: simultaneous dropout on both real and
     imaginary parts.
@@ -221,8 +278,20 @@ class CplxDropout1d(torch.nn.Dropout2d, CplxToCplx):
     See torch.nn.Dropout1d for reference on the input dimensions and arguments.
     """
     def forward(self, input):
-        output = super().forward(cplx_to_real(input, flatten=False))
-        return real_to_cplx(output.flatten(-2))
+        *head, n_last = input.shape
+
+        # shape -> [*shape, 2] : re-im are feature maps!
+        tensor = torch.stack([input.real, input.imag], dim=-1)
+        output = super().forward(tensor.reshape(-1, 1, 2))
+
+        # [-1, 1, 2] -> [*head, n_last * 2]
+        output = output.reshape(*head, -1)
+
+        # [*head, n_last * 2] -> [*head, n_last]
+        return interleaved_real_to_cplx(output, False, -1)
+
+
+CplxDropout1d = CplxDropout
 
 
 class CplxAvgPool1d(torch.nn.AvgPool1d, CplxToCplx):
@@ -302,3 +371,13 @@ class CplxBilinear(CplxWeightMixin, CplxToCplx):
         return fmt.format(
             self.in1_features, self.in2_features, self.out_features,
             self.bias is not None, self.conjugate)
+
+
+class CplxReal(BaseCplxToReal):
+    def forward(self, input):
+        return input.real
+
+
+class CplxImag(BaseCplxToReal):
+    def forward(self, input):
+        return input.imag

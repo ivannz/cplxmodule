@@ -4,7 +4,7 @@ import torch.nn.functional as F
 
 from .cplx import cplx_exp, cplx_log, cplx_modrelu
 
-from .layers import CplxToCplx, CplxToReal
+from .layers import CplxToCplx, BaseCplxToReal
 
 from .utils import torch_module
 
@@ -88,12 +88,12 @@ class CplxAdaptiveModReLU(CplxToCplx):
         return f"{self.__class__.__name__}({body})"
 
 
-class CplxModulus(CplxToReal):
+class CplxModulus(BaseCplxToReal):
     def forward(self, input):
         return abs(input)
 
 
-class CplxAngle(CplxToReal):
+class CplxAngle(BaseCplxToReal):
     def forward(self, input):
         return input.angle
 
