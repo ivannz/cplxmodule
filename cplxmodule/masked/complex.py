@@ -11,11 +11,7 @@ from .base import BaseMasked, MaskedWeightMixin
 from ..utils.stats import SparsityStats
 
 
-class CplxLinearMasked(MaskedWeightMixin, CplxLinear,
-                       BaseMasked, SparsityStats):
-    def forward(self, input):
-        return cplx_linear(input, self.weight_masked, self.bias)
-
+class _BaseCplxMixin(BaseMasked, SparsityStats):
     def sparsity(self, *, hard=True, **kwargs):
         weight = self.weight
 
@@ -30,29 +26,25 @@ class CplxLinearMasked(MaskedWeightMixin, CplxLinear,
         return [(id(weight.real), n_dropped), (id(weight.imag), n_dropped), ]
 
 
-class CplxBilinearMasked(MaskedWeightMixin, CplxBilinear,
-                         BaseMasked, SparsityStats):
+class CplxLinearMasked(MaskedWeightMixin, CplxLinear, _BaseCplxMixin):
+    def forward(self, input):
+        return cplx_linear(input, self.weight_masked, self.bias)
+
+
+class CplxBilinearMasked(MaskedWeightMixin, CplxBilinear, _BaseCplxMixin):
     def forward(self, input1, input2):
         return cplx_bilinear(input1, input2, self.weight_masked, self.bias)
 
-    sparsity = CplxLinearMasked.sparsity
 
-
-class CplxConv1dMasked(MaskedWeightMixin, CplxConv1d,
-                       BaseMasked, SparsityStats):
+class CplxConv1dMasked(MaskedWeightMixin, CplxConv1d, _BaseCplxMixin):
     def forward(self, input):
         return cplx_conv1d(input, self.weight_masked, self.bias,
                            self.stride, self.padding, self.dilation,
                            self.groups, self.padding_mode)
 
-    sparsity = CplxLinearMasked.sparsity
 
-
-class CplxConv2dMasked(MaskedWeightMixin, CplxConv2d,
-                       BaseMasked, SparsityStats):
+class CplxConv2dMasked(MaskedWeightMixin, CplxConv2d, _BaseCplxMixin):
     def forward(self, input):
         return cplx_conv2d(input, self.weight_masked, self.bias,
                            self.stride, self.padding, self.dilation,
                            self.groups, self.padding_mode)
-
-    sparsity = CplxLinearMasked.sparsity

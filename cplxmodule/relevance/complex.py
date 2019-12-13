@@ -48,7 +48,38 @@ class ExpiFunction(torch.autograd.Function):
 torch_expi = ExpiFunction.apply
 
 
-class CplxLinearARD(CplxLinear, BaseARD, SparsityStats):
+class _BaseRelevanceCplx(BaseARD, SparsityStats):
+    __sparsity_ignore__ = ("log_sigma2",)
+
+    def reset_variational_parameters(self):
+        self.log_sigma2.data.uniform_(-10, -10)  # wtf?
+
+    @property
+    def log_alpha(self):
+        r"""Get $\log \alpha$ from $(\theta, \sigma^2)$ parameterization."""
+        # $\alpha = \tfrac{\sigma^2}{\theta \bar{\theta}}$
+        return self.log_sigma2 - 2 * torch.log(abs(self.weight) + 1e-12)
+
+    @property
+    def penalty(self):
+        r"""Exact complex KL divergence."""
+        n_log_alpha = - self.log_alpha
+        return euler_gamma + n_log_alpha - torch_expi(- torch.exp(n_log_alpha))
+
+    def relevance(self, *, threshold, **kwargs):
+        r"""Get the relevance mask based on the threshold."""
+        with torch.no_grad():
+            return torch.le(self.log_alpha, threshold).to(self.log_alpha)
+
+    def sparsity(self, *, threshold, **kwargs):
+        relevance = self.relevance(threshold=threshold)
+
+        weight = self.weight
+        n_dropped = float(weight.real.numel()) - float(relevance.sum().item())
+        return [(id(weight.real), n_dropped), (id(weight.imag), n_dropped)]
+
+
+class CplxLinearARD(CplxLinear, _BaseRelevanceCplx):
     r"""Complex valued linear layer with automatic relevance detection.
 
     Details
@@ -85,7 +116,6 @@ class CplxLinearARD(CplxLinear, BaseARD, SparsityStats):
         value of the weight. The higher the log-alpha the less relevant the
         parameter is.
     """
-    __sparsity_ignore__ = ("log_sigma2",)
 
     def __init__(self, in_features, out_features, bias=True):
         super().__init__(in_features, out_features, bias=bias)
@@ -93,21 +123,6 @@ class CplxLinearARD(CplxLinear, BaseARD, SparsityStats):
         self.log_sigma2 = torch.nn.Parameter(
             torch.Tensor(out_features, in_features))
         self.reset_variational_parameters()
-
-    def reset_variational_parameters(self):
-        self.log_sigma2.data.uniform_(-10, -10)  # wtf?
-
-    @property
-    def log_alpha(self):
-        r"""Get $\log \alpha$ from $(\theta, \sigma^2)$ parameterization."""
-        # $\alpha = \tfrac{\sigma^2}{\theta \bar{\theta}}$
-        return self.log_sigma2 - 2 * torch.log(abs(self.weight) + 1e-12)
-
-    @property
-    def penalty(self):
-        r"""Exact complex KL divergence."""
-        n_log_alpha = - self.log_alpha
-        return euler_gamma + n_log_alpha - torch_expi(- torch.exp(n_log_alpha))
 
     def forward(self, input):
         # $\mu = \theta x$ in $\mathbb{C}$
@@ -123,23 +138,10 @@ class CplxLinearARD(CplxLinear, BaseARD, SparsityStats):
         noise = Cplx(*map(torch.randn_like, (s2, s2))) / sqrt(2)
         return mu + noise * torch.sqrt(torch.clamp(s2, 1e-8))
 
-    def relevance(self, *, threshold, **kwargs):
-        r"""Get the relevance mask based on the threshold."""
-        with torch.no_grad():
-            return torch.le(self.log_alpha, threshold).to(self.log_alpha)
 
-    def sparsity(self, *, threshold, **kwargs):
-        relevance = self.relevance(threshold=threshold)
-
-        weight = self.weight
-        n_dropped = float(weight.real.numel()) - float(relevance.sum().item())
-        return [(id(weight.real), n_dropped), (id(weight.imag), n_dropped), ]
-
-
-class CplxBilinearARD(CplxBilinear, BaseARD, SparsityStats):
+class CplxBilinearARD(CplxBilinear, _BaseRelevanceCplx):
     r"""Complex valued bilinear layer with automatic relevance detection.
     """
-    __sparsity_ignore__ = ("log_sigma2",)
 
     def __init__(self, in1_features, in2_features, out_features, bias=True,
                  conjugate=True):
@@ -149,12 +151,6 @@ class CplxBilinearARD(CplxBilinear, BaseARD, SparsityStats):
         self.log_sigma2 = torch.nn.Parameter(
             torch.Tensor(out_features, in1_features, in2_features))
         self.reset_variational_parameters()
-
-    reset_variational_parameters = CplxLinearARD.reset_variational_parameters
-
-    log_alpha = CplxLinearARD.log_alpha
-
-    penalty = CplxLinearARD.penalty
 
     def forward(self, input1, input2):
         mu = super().forward(input1, input2)
@@ -168,15 +164,10 @@ class CplxBilinearARD(CplxBilinear, BaseARD, SparsityStats):
         noise = Cplx(*map(torch.randn_like, (s2, s2))) / sqrt(2)
         return mu + noise * torch.sqrt(torch.clamp(s2, 1e-8))
 
-    relevance = CplxLinearARD.relevance
 
-    sparsity = CplxLinearARD.sparsity
-
-
-class CplxConv1dARD(CplxConv1d, BaseARD, SparsityStats):
+class CplxConv1dARD(CplxConv1d, _BaseRelevanceCplx):
     r"""1D complex-valued convolution layer with automatic relevance detection.
     """
-    __sparsity_ignore__ = ("log_sigma2",)
 
     def __init__(self, in_channels, out_channels, kernel_size, stride=1,
                  padding=0, dilation=1, groups=1,
@@ -191,12 +182,6 @@ class CplxConv1dARD(CplxConv1d, BaseARD, SparsityStats):
 
         self.log_sigma2 = torch.nn.Parameter(torch.Tensor(*self.weight.shape))
         self.reset_variational_parameters()
-
-    reset_variational_parameters = CplxLinearARD.reset_variational_parameters
-
-    log_alpha = CplxLinearARD.log_alpha
-
-    penalty = CplxLinearARD.penalty
 
     def forward(self, input):
         mu = super().forward(input)
@@ -210,15 +195,10 @@ class CplxConv1dARD(CplxConv1d, BaseARD, SparsityStats):
         noise = Cplx(*map(torch.randn_like, (s2, s2))) / sqrt(2)
         return mu + noise * torch.sqrt(torch.clamp(s2, 1e-8))
 
-    relevance = CplxLinearARD.relevance
 
-    sparsity = CplxLinearARD.sparsity
-
-
-class CplxConv2dARD(CplxConv2d, BaseARD, SparsityStats):
+class CplxConv2dARD(CplxConv2d, _BaseRelevanceCplx):
     r"""2D complex-valued convolution layer with automatic relevance detection.
     """
-    __sparsity_ignore__ = ("log_sigma2",)
 
     def __init__(self, in_channels, out_channels, kernel_size, stride=1,
                  padding=0, dilation=1, groups=1,
@@ -234,12 +214,6 @@ class CplxConv2dARD(CplxConv2d, BaseARD, SparsityStats):
         self.log_sigma2 = torch.nn.Parameter(torch.Tensor(*self.weight.shape))
         self.reset_variational_parameters()
 
-    reset_variational_parameters = CplxLinearARD.reset_variational_parameters
-
-    log_alpha = CplxLinearARD.log_alpha
-
-    penalty = CplxLinearARD.penalty
-
     def forward(self, input):
         mu = super().forward(input)
         if not self.training:
@@ -251,7 +225,3 @@ class CplxConv2dARD(CplxConv2d, BaseARD, SparsityStats):
 
         noise = Cplx(*map(torch.randn_like, (s2, s2))) / sqrt(2)
         return mu + noise * torch.sqrt(torch.clamp(s2, 1e-8))
-
-    relevance = CplxLinearARD.relevance
-
-    sparsity = CplxLinearARD.sparsity

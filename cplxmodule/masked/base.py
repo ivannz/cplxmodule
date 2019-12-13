@@ -120,7 +120,7 @@ class BaseMasked(torch.nn.Module):
         missing_keys.extend(missing)
 
 
-class MaskedWeightMixin(BaseMasked):
+class MaskedWeightMixin():
     """A mixin for accessing read-only masked weight,"""
     @property
     def weight_masked(self):

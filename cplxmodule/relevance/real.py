@@ -7,44 +7,8 @@ from .base import BaseARD
 from ..utils.stats import SparsityStats
 
 
-class LinearARD(torch.nn.Linear, BaseARD, SparsityStats):
-    r"""Linear layer with automatic relevance detection.
-
-    Details
-    -------
-    This uses the ideas and formulae of Kingma et al. and Molchanov et al.
-    This module assumes the standard loss-minimization framework. Hence
-    instead of -ve KL divergence for ELBO and log-likelihood maximization,
-    this property computes and returns the divergence as is, which implies
-    minimization of minus log-likelihood (and, thus, minus ELBO).
-
-    Attributes
-    ----------
-    penalty : computed torch.Tensor, read-only
-        The Kullback-Leibler divergence between the mean field approximate
-        variational posterior of the weights and the scale-free log-uniform
-        prior:
-        $$
-            KL(\mathcal{N}(w\mid \theta, \alpha \theta^2) \|
-                    \tfrac1{\lvert w \rvert})
-                = \mathbb{E}_{\xi \sim \mathcal{N}(1, \alpha)}
-                    \log{\lvert \xi \rvert}
-                - \tfrac12 \log \alpha + C
-            \,. $$
-
-    log_alpha : computed torch.Tensor, read-only
-        Log-variance of the multiplicative scaling noise. Computed as a log
-        of the ratio of the variance of the weight to the squared absolute
-        value of the weight. The higher the log-alpha the less relevant the
-        parameter is.
-    """
+class _BaseRelevanceReal(BaseARD, SparsityStats):
     __sparsity_ignore__ = ("log_sigma2",)
-
-    def __init__(self, in_features, out_features, bias=True):
-        super().__init__(in_features, out_features, bias=bias)
-
-        self.log_sigma2 = torch.nn.Parameter(torch.Tensor(*self.weight.shape))
-        self.reset_variational_parameters()
 
     def reset_variational_parameters(self):
         # initially everything is relevant
@@ -80,14 +44,6 @@ class LinearARD(torch.nn.Linear, BaseARD, SparsityStats):
         sigmoid = torch.sigmoid(1.48695 * n_log_alpha - 1.87320)
         return F.softplus(n_log_alpha) / 2 + 0.63576 * sigmoid
 
-    def forward(self, input):
-        mu = super().forward(input)
-        if not self.training:
-            return mu
-
-        s2 = F.linear(input * input, torch.exp(self.log_sigma2), None)
-        return mu + torch.randn_like(s2) * torch.sqrt(torch.clamp(s2, 1e-8))
-
     def relevance(self, *, threshold, **kwargs):
         r"""Get the relevance mask based on the threshold."""
         with torch.no_grad():
@@ -99,7 +55,54 @@ class LinearARD(torch.nn.Linear, BaseARD, SparsityStats):
         return [(id(self.weight), self.weight.numel() - n_relevant)]
 
 
-class Conv1dARD(torch.nn.Conv1d, BaseARD, SparsityStats):
+class LinearARD(torch.nn.Linear, _BaseRelevanceReal):
+    r"""Linear layer with automatic relevance detection.
+
+    Details
+    -------
+    This uses the ideas and formulae of Kingma et al. and Molchanov et al.
+    This module assumes the standard loss-minimization framework. Hence
+    instead of -ve KL divergence for ELBO and log-likelihood maximization,
+    this property computes and returns the divergence as is, which implies
+    minimization of minus log-likelihood (and, thus, minus ELBO).
+
+    Attributes
+    ----------
+    penalty : computed torch.Tensor, read-only
+        The Kullback-Leibler divergence between the mean field approximate
+        variational posterior of the weights and the scale-free log-uniform
+        prior:
+        $$
+            KL(\mathcal{N}(w\mid \theta, \alpha \theta^2) \|
+                    \tfrac1{\lvert w \rvert})
+                = \mathbb{E}_{\xi \sim \mathcal{N}(1, \alpha)}
+                    \log{\lvert \xi \rvert}
+                - \tfrac12 \log \alpha + C
+            \,. $$
+
+    log_alpha : computed torch.Tensor, read-only
+        Log-variance of the multiplicative scaling noise. Computed as a log
+        of the ratio of the variance of the weight to the squared absolute
+        value of the weight. The higher the log-alpha the less relevant the
+        parameter is.
+    """
+
+    def __init__(self, in_features, out_features, bias=True):
+        super().__init__(in_features, out_features, bias=bias)
+
+        self.log_sigma2 = torch.nn.Parameter(torch.Tensor(*self.weight.shape))
+        self.reset_variational_parameters()
+
+    def forward(self, input):
+        mu = super().forward(input)
+        if not self.training:
+            return mu
+
+        s2 = F.linear(input * input, torch.exp(self.log_sigma2), None)
+        return mu + torch.randn_like(s2) * torch.sqrt(torch.clamp(s2, 1e-8))
+
+
+class Conv1dARD(torch.nn.Conv1d, _BaseRelevanceReal):
     r"""1D convolution layer with automatic relevance detection.
 
     Details
@@ -109,7 +112,6 @@ class Conv1dARD(torch.nn.Conv1d, BaseARD, SparsityStats):
     the automatic relevance detection via variational dropout and the chosen
     parametrization.
     """
-    __sparsity_ignore__ = ("log_sigma2",)
 
     def __init__(self, in_channels, out_channels, kernel_size, stride=1,
                  padding=0, dilation=1, groups=1,
@@ -124,13 +126,6 @@ class Conv1dARD(torch.nn.Conv1d, BaseARD, SparsityStats):
 
         self.log_sigma2 = torch.nn.Parameter(torch.Tensor(*self.weight.shape))
         self.reset_variational_parameters()
-
-    def reset_variational_parameters(self):
-        self.log_sigma2.data.uniform_(-10, -10)
-
-    log_alpha = LinearARD.log_alpha
-
-    penalty = LinearARD.penalty
 
     def forward(self, input):
         r"""Forward pass of the SGVB method for a 1d convolutional layer.
@@ -147,12 +142,8 @@ class Conv1dARD(torch.nn.Conv1d, BaseARD, SparsityStats):
                       self.stride, self.padding, self.dilation, self.groups)
         return mu + torch.randn_like(s2) * torch.sqrt(torch.clamp(s2, 1e-8))
 
-    relevance = LinearARD.relevance
 
-    sparsity = LinearARD.sparsity
-
-
-class Conv2dARD(torch.nn.Conv2d, BaseARD, SparsityStats):
+class Conv2dARD(torch.nn.Conv2d, _BaseRelevanceReal):
     r"""2D convolution layer with automatic relevance detection.
 
     Details
@@ -162,7 +153,6 @@ class Conv2dARD(torch.nn.Conv2d, BaseARD, SparsityStats):
     the automatic relevance detection via variational dropout and the chosen
     parametrization.
     """
-    __sparsity_ignore__ = ("log_sigma2",)
 
     def __init__(self, in_channels, out_channels, kernel_size, stride=1,
                  padding=0, dilation=1, groups=1,
@@ -177,13 +167,6 @@ class Conv2dARD(torch.nn.Conv2d, BaseARD, SparsityStats):
 
         self.log_sigma2 = torch.nn.Parameter(torch.Tensor(*self.weight.shape))
         self.reset_variational_parameters()
-
-    def reset_variational_parameters(self):
-        self.log_sigma2.data.uniform_(-10, -10)
-
-    log_alpha = LinearARD.log_alpha
-
-    penalty = LinearARD.penalty
 
     def forward(self, input):
         r"""Forward pass of the SGVB method for a 2d convolutional layer.
@@ -227,28 +210,15 @@ class Conv2dARD(torch.nn.Conv2d, BaseARD, SparsityStats):
                       self.stride, self.padding, self.dilation, self.groups)
         return mu + torch.randn_like(s2) * torch.sqrt(torch.clamp(s2, 1e-8))
 
-    relevance = LinearARD.relevance
 
-    sparsity = LinearARD.sparsity
-
-
-class BilinearARD(torch.nn.Bilinear, BaseARD, SparsityStats):
+class BilinearARD(torch.nn.Bilinear, _BaseRelevanceReal):
     r"""Bilinear layer with automatic relevance detection."""
-    __sparsity_ignore__ = ("log_sigma2",)
 
     def __init__(self, in1_features, in2_features, out_features, bias=True):
         super().__init__(in1_features, in2_features, out_features, bias=bias)
 
         self.log_sigma2 = torch.nn.Parameter(torch.Tensor(*self.weight.shape))
         self.reset_variational_parameters()
-
-    def reset_variational_parameters(self):
-        # initially everything is relevant
-        self.log_sigma2.data.uniform_(-10, -10)
-
-    log_alpha = LinearARD.log_alpha
-
-    penalty = LinearARD.penalty
 
     def forward(self, input1, input2):
         r"""Forward pass of the SGVB method for a bilinear layer.
@@ -264,7 +234,3 @@ class BilinearARD(torch.nn.Bilinear, BaseARD, SparsityStats):
 
         # .normal reports a grad-fn, but weirdly does not pass grads!
         return mu + torch.randn_like(s2) * torch.sqrt(torch.clamp(s2, 1e-8))
-
-    relevance = LinearARD.relevance
-
-    sparsity = LinearARD.sparsity
