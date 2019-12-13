@@ -7,7 +7,7 @@ from .base import BaseARD
 from ..utils.stats import SparsityStats
 
 
-class _BaseRealMixin(BaseARD, SparsityStats):
+class _BaseRelevanceReal(BaseARD, SparsityStats):
     __sparsity_ignore__ = ("log_sigma2",)
 
     def reset_variational_parameters(self):
@@ -55,7 +55,7 @@ class _BaseRealMixin(BaseARD, SparsityStats):
         return [(id(self.weight), self.weight.numel() - n_relevant)]
 
 
-class LinearARD(torch.nn.Linear, _BaseRealMixin):
+class LinearARD(torch.nn.Linear, _BaseRelevanceReal):
     r"""Linear layer with automatic relevance detection.
 
     Details
@@ -102,7 +102,7 @@ class LinearARD(torch.nn.Linear, _BaseRealMixin):
         return mu + torch.randn_like(s2) * torch.sqrt(torch.clamp(s2, 1e-8))
 
 
-class Conv1dARD(torch.nn.Conv1d, _BaseRealMixin):
+class Conv1dARD(torch.nn.Conv1d, _BaseRelevanceReal):
     r"""1D convolution layer with automatic relevance detection.
 
     Details
@@ -143,7 +143,7 @@ class Conv1dARD(torch.nn.Conv1d, _BaseRealMixin):
         return mu + torch.randn_like(s2) * torch.sqrt(torch.clamp(s2, 1e-8))
 
 
-class Conv2dARD(torch.nn.Conv2d, _BaseRealMixin):
+class Conv2dARD(torch.nn.Conv2d, _BaseRelevanceReal):
     r"""2D convolution layer with automatic relevance detection.
 
     Details
@@ -211,7 +211,7 @@ class Conv2dARD(torch.nn.Conv2d, _BaseRealMixin):
         return mu + torch.randn_like(s2) * torch.sqrt(torch.clamp(s2, 1e-8))
 
 
-class BilinearARD(torch.nn.Bilinear, _BaseRealMixin):
+class BilinearARD(torch.nn.Bilinear, _BaseRelevanceReal):
     r"""Bilinear layer with automatic relevance detection."""
 
     def __init__(self, in1_features, in2_features, out_features, bias=True):

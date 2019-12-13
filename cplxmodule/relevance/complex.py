@@ -48,7 +48,7 @@ class ExpiFunction(torch.autograd.Function):
 torch_expi = ExpiFunction.apply
 
 
-class _BaseCplxMixin(BaseARD, SparsityStats):
+class _BaseRelevanceCplx(BaseARD, SparsityStats):
     __sparsity_ignore__ = ("log_sigma2",)
 
     def reset_variational_parameters(self):
@@ -79,7 +79,7 @@ class _BaseCplxMixin(BaseARD, SparsityStats):
         return [(id(weight.real), n_dropped), (id(weight.imag), n_dropped)]
 
 
-class CplxLinearARD(CplxLinear, _BaseCplxMixin):
+class CplxLinearARD(CplxLinear, _BaseRelevanceCplx):
     r"""Complex valued linear layer with automatic relevance detection.
 
     Details
@@ -139,7 +139,7 @@ class CplxLinearARD(CplxLinear, _BaseCplxMixin):
         return mu + noise * torch.sqrt(torch.clamp(s2, 1e-8))
 
 
-class CplxBilinearARD(CplxBilinear, _BaseCplxMixin):
+class CplxBilinearARD(CplxBilinear, _BaseRelevanceCplx):
     r"""Complex valued bilinear layer with automatic relevance detection.
     """
 
@@ -165,7 +165,7 @@ class CplxBilinearARD(CplxBilinear, _BaseCplxMixin):
         return mu + noise * torch.sqrt(torch.clamp(s2, 1e-8))
 
 
-class CplxConv1dARD(CplxConv1d, _BaseCplxMixin):
+class CplxConv1dARD(CplxConv1d, _BaseRelevanceCplx):
     r"""1D complex-valued convolution layer with automatic relevance detection.
     """
 
@@ -196,7 +196,7 @@ class CplxConv1dARD(CplxConv1d, _BaseCplxMixin):
         return mu + noise * torch.sqrt(torch.clamp(s2, 1e-8))
 
 
-class CplxConv2dARD(CplxConv2d, _BaseCplxMixin):
+class CplxConv2dARD(CplxConv2d, _BaseRelevanceCplx):
     r"""2D complex-valued convolution layer with automatic relevance detection.
     """
 
