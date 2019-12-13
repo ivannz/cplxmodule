@@ -445,6 +445,21 @@ def cplx_linear_naive(input, weight, bias=None):
     return output
 
 
+def cplx_linear_cat(input, weight, bias=None):
+    # [n_out, n_in] -> [2 * n_out, 2 * n_in] : [[U, V], [-V, U]]
+    ww = torch.cat([
+        torch.cat([ weight.real, weight.imag], dim=0),
+        torch.cat([-weight.imag, weight.real], dim=0)
+    ], dim=1)
+
+    xx = cplx_to_concatenated_real(input, dim=-1)  # [..., 2 * n_in]
+    output = concatenated_real_to_cplx(F.linear(xx, ww, None))
+    if bias is not None:
+        output += bias
+
+    return output
+
+
 def cplx_linear_3m(input, weight, bias=None):
     r"""Applies a complex linear transformation to the incoming complex
     data: :math:`y = x A^T + b`.
@@ -616,3 +631,30 @@ def cplx_bilinear_naive(input1, input2, weight, bias=None, conjugate=True):
 
 
 cplx_bilinear = cplx_bilinear_naive
+
+
+def cplx_bilinear_cat(input1, input2, weight, bias=None, conjugate=True):
+    # [n_out, n_in1, n_in2] -> [2 * n_out, 2 * n_in1, 2 * n_in2]
+    U, V = weight.real, weight.imag
+
+    UV = torch.cat([U, -V], dim=2)
+    VU = torch.cat([V,  U], dim=2)
+    if conjugate:
+        ww = torch.cat([
+            torch.cat([UV,  VU], dim=1),
+            torch.cat([VU, -UV], dim=1)
+        ], dim=0)
+    else:
+        ww = torch.cat([
+            torch.cat([UV, -VU], dim=1),
+            torch.cat([VU,  UV], dim=1)
+        ], dim=0)
+
+    x1 = cplx_to_concatenated_real(input1, dim=-1)
+    x2 = cplx_to_concatenated_real(input2, dim=-1)
+
+    output = concatenated_real_to_cplx(F.bilinear(x1, x2, ww, None))
+    if bias is not None:
+        output += bias
+
+    return output

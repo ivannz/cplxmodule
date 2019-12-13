@@ -255,8 +255,16 @@ def test_linear_transform(random_state):
     U = cplx.Cplx.from_numpy(L)
     q = cplx.Cplx.from_numpy(b)
 
-    assert_allclose_cplx(np.dot(a, L.T), cplx.cplx_linear(p, U, None))
-    assert_allclose_cplx(np.dot(a, L.T) + b, cplx.cplx_linear(p, U, q))
+    base = np.dot(a, L.T)
+    assert_allclose_cplx(base, cplx.cplx_linear(p, U, None))
+    assert_allclose_cplx(base, cplx.cplx_linear_naive(p, U, None))
+    assert_allclose_cplx(base, cplx.cplx_linear_cat(p, U, None))
+    assert_allclose_cplx(base, cplx.cplx_linear_3m(p, U, None))
+
+    assert_allclose_cplx(base + b, cplx.cplx_linear(p, U, q))
+    assert_allclose_cplx(base + b, cplx.cplx_linear_naive(p, U, q))
+    assert_allclose_cplx(base + b, cplx.cplx_linear_cat(p, U, q))
+    assert_allclose_cplx(base + b, cplx.cplx_linear_3m(p, U, q))
 
 
 def test_conv1d_transform(random_state):
@@ -373,11 +381,21 @@ def test_bilinear_transform(random_state):
 
     base = np.einsum("bsi, bsj, fij ->bsf", a.conj(), z, L)
     assert_allclose_cplx(base, cplx.cplx_bilinear(p, r, U, None, conjugate=True))
+    assert_allclose_cplx(base, cplx.cplx_bilinear_naive(p, r, U, None, conjugate=True))
+    assert_allclose_cplx(base, cplx.cplx_bilinear_cat(p, r, U, None, conjugate=True))
+
     assert_allclose_cplx(base + b, cplx.cplx_bilinear(p, r, U, q, conjugate=True))
+    assert_allclose_cplx(base + b, cplx.cplx_bilinear_naive(p, r, U, q, conjugate=True))
+    assert_allclose_cplx(base + b, cplx.cplx_bilinear_cat(p, r, U, q, conjugate=True))
 
     base = np.einsum("bsi, bsj, fij ->bsf", a, z, L)
     assert_allclose_cplx(base, cplx.cplx_bilinear(p, r, U, None, conjugate=False))
+    assert_allclose_cplx(base, cplx.cplx_bilinear_naive(p, r, U, None, conjugate=False))
+    assert_allclose_cplx(base, cplx.cplx_bilinear_cat(p, r, U, None, conjugate=False))
+
     assert_allclose_cplx(base + b, cplx.cplx_bilinear(p, r, U, q, conjugate=False))
+    assert_allclose_cplx(base + b, cplx.cplx_bilinear_naive(p, r, U, q, conjugate=False))
+    assert_allclose_cplx(base + b, cplx.cplx_bilinear_cat(p, r, U, q, conjugate=False))
 
 
 def test_type_conversion(random_state):
