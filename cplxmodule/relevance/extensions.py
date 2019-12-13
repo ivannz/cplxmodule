@@ -25,7 +25,7 @@ from .complex import CplxConv2dARD as CplxConv2dVD
 from .complex import ExpiFunction, torch_expi
 
 
-class RealARDMixin(BaseARD):
+class RealARDMixin():
     @property
     def penalty(self):
         r"""Penalty from arxiv:1811.00596.
@@ -75,7 +75,7 @@ class BilinearARD(RealARDMixin, BilinearVD):
     pass
 
 
-class CplxARDMixin(BaseARD):
+class CplxARDMixin():
     @property
     def penalty(self):
         r"""Empricial Bayes penalty for complex layer with complex gaussian vi.
@@ -125,7 +125,7 @@ class CplxConv2dARD(CplxARDMixin, CplxConv2dVD):
     pass
 
 
-class CplxVDScaleFreeMixin(BaseARD):
+class CplxVDScaleFreeMixin():
     @property
     def penalty(self):
         r"""The Kullback-Leibler divergence between the mean field approximate
@@ -170,7 +170,7 @@ class CplxConv2dVDScaleFree(CplxVDScaleFreeMixin, CplxConv2dVD):
     pass
 
 
-class CplxVDApproxMixin(BaseARD):
+class CplxVDApproxMixin():
     @property
     def penalty(self):
         r"""Softplus-sigmoid approximation of the complex KL divergence.
@@ -226,7 +226,7 @@ class BogusExpiFunction(ExpiFunction):
 bogus_expi = BogusExpiFunction.apply
 
 
-class CplxVDBogusMixin(BaseARD):
+class CplxVDBogusMixin():
     @property
     def penalty(self):
         r"""KL-div with bogus forward output, but correct gradient."""
