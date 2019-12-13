@@ -1,14 +1,31 @@
+r"""Naming convention is thus:
+VD* -- var dropout -- 'scale free' or otherwise improper prior;
+VDBogus -- improper prior, but with fake forward outputs
+
+ARD* -- automatic relevance determination -- proper Gaussian prior,
+    aka empirical Bayes (prior parameters learnt from observations);
+"""
 import torch
 import torch.nn.functional as F
 
 from numpy import euler_gamma
 
+from .base import BaseARD
+
 from .real import LinearARD as LinearVD
+from .real import Conv1dARD as Conv1dVD
+from .real import Conv2dARD as Conv2dVD
+from .real import BilinearARD as BilinearVD
+
 from .complex import CplxLinearARD as CplxLinearVD
+from .complex import CplxBilinearARD as CplxBilinearVD
+from .complex import CplxConv1dARD as CplxConv1dVD
+from .complex import CplxConv2dARD as CplxConv2dVD
+
 from .complex import ExpiFunction, torch_expi
 
 
-class LinearARD(LinearVD):
+class RealARDMixin(BaseARD):
     @property
     def penalty(self):
         r"""Penalty from arxiv:1811.00596.
@@ -42,7 +59,23 @@ class LinearARD(LinearVD):
         return 0.5 * F.softplus(- self.log_alpha)
 
 
-class CplxLinearARD(CplxLinearVD):
+class LinearARD(RealARDMixin, LinearVD):
+    pass
+
+
+class Conv1dARD(RealARDMixin, Conv1dVD):
+    pass
+
+
+class Conv2dARD(RealARDMixin, Conv2dVD):
+    pass
+
+
+class BilinearARD(RealARDMixin, BilinearVD):
+    pass
+
+
+class CplxARDMixin(BaseARD):
     @property
     def penalty(self):
         r"""Empricial Bayes penalty for complex layer with complex gaussian vi.
@@ -76,7 +109,23 @@ class CplxLinearARD(CplxLinearVD):
         return F.softplus(- self.log_alpha)
 
 
-class CplxLinearVDScaleFree(CplxLinearVD):
+class CplxLinearARD(CplxARDMixin, CplxLinearVD):
+    pass
+
+
+class CplxBilinearARD(CplxARDMixin, CplxBilinearVD):
+    pass
+
+
+class CplxConv1dARD(CplxARDMixin, CplxConv1dVD):
+    pass
+
+
+class CplxConv2dARD(CplxARDMixin, CplxConv2dVD):
+    pass
+
+
+class CplxVDScaleFreeMixin(BaseARD):
     @property
     def penalty(self):
         r"""The Kullback-Leibler divergence between the mean field approximate
@@ -105,7 +154,23 @@ class CplxLinearVDScaleFree(CplxLinearVD):
         return log_abs_w - self.log_sigma2 - 0.5 * ei
 
 
-class CplxLinearVDApprox(CplxLinearVD):
+class CplxLinearVDScaleFree(CplxVDScaleFreeMixin, CplxLinearVD):
+    pass
+
+
+class CplxBilinearVDScaleFree(CplxVDScaleFreeMixin, CplxBilinearVD):
+    pass
+
+
+class CplxConv1dVDScaleFree(CplxVDScaleFreeMixin, CplxConv1dVD):
+    pass
+
+
+class CplxConv2dVDScaleFree(CplxVDScaleFreeMixin, CplxConv2dVD):
+    pass
+
+
+class CplxVDApproxMixin(BaseARD):
     @property
     def penalty(self):
         r"""Softplus-sigmoid approximation of the complex KL divergence.
@@ -131,6 +196,22 @@ class CplxLinearVDApprox(CplxLinearVD):
         return F.softplus(n_log_alpha) + 0.57810 * sigmoid
 
 
+class CplxLinearVDApprox(CplxVDApproxMixin, CplxLinearVD):
+    pass
+
+
+class CplxBilinearVDApprox(CplxVDApproxMixin, CplxBilinearVD):
+    pass
+
+
+class CplxConv1dVDApprox(CplxVDApproxMixin, CplxConv1dVD):
+    pass
+
+
+class CplxConv2dVDApprox(CplxVDApproxMixin, CplxConv2dVD):
+    pass
+
+
 class BogusExpiFunction(ExpiFunction):
     """The Dummy Expi function, that computes bogus values on the forward pass,
     but correct values on the backwards pass, provided there is no downstream
@@ -145,9 +226,25 @@ class BogusExpiFunction(ExpiFunction):
 bogus_expi = BogusExpiFunction.apply
 
 
-class CplxLinearVDBogus(CplxLinearVD):
+class CplxVDBogusMixin(BaseARD):
     @property
     def penalty(self):
         r"""KL-div with bogus forward output, but correct gradient."""
         log_alpha = self.log_alpha
         return - log_alpha - bogus_expi(- torch.exp(- log_alpha))
+
+
+class CplxLinearVDBogus(CplxVDBogusMixin, CplxLinearVD):
+    pass
+
+
+class CplxBilinearVDBogus(CplxVDBogusMixin, CplxBilinearVD):
+    pass
+
+
+class CplxConv1dVDBogus(CplxVDBogusMixin, CplxConv1dVD):
+    pass
+
+
+class CplxConv2dVDBogus(CplxVDBogusMixin, CplxConv2dVD):
+    pass
