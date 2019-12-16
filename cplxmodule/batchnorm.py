@@ -1,5 +1,7 @@
 import torch
 
+from torch.nn import init
+
 from .layers import CplxToCplx, CplxParameter
 from .cplx import Cplx
 
@@ -77,13 +79,16 @@ def cplx_batch_norm(
     q_ii = (v_rr + root_det) / denom
 
     # 4. apply Q to x (manually), and apply affine transformation
-    out = Cplx(r * q_rr.reshape(size) + i * q_ri.reshape(size),
-               r * q_ri.reshape(size) + i * q_ii.reshape(size))
-
+    re = r * q_rr.reshape(size) + i * q_ri.reshape(size)
+    im = r * q_ri.reshape(size) + i * q_ii.reshape(size)
     if weight is not None and bias is not None:
-        out = out * weight.reshape(size) + bias.reshape(size)
+        w_rr, w_ri, w_ii = weight
+        u = re * w_rr.reshape(size) + im * w_ri.reshape(size)
+        v = re * w_ri.reshape(size) + im * w_ii.reshape(size)
 
-    return out, running_mean, running_var
+        b_r, b_i = bias
+        re, im = u + b_r.reshape(size), v + b_i.reshape(size)
+    return Cplx(re, im)
 
 
 class _CplxBatchNorm(CplxToCplx):
@@ -103,8 +108,8 @@ class _CplxBatchNorm(CplxToCplx):
         self.affine = affine
         self.track_running_stats = track_running_stats
         if self.affine:
-            self.weight = CplxParameter(Cplx.empty(num_features))
-            self.bias = CplxParameter(Cplx.empty(num_features))
+            self.weight = torch.nn.Parameter(torch.empty(3, num_features))
+            self.bias = torch.nn.Parameter(torch.empty(2, num_features))
 
         else:
             self.register_parameter('weight', None)
@@ -136,10 +141,9 @@ class _CplxBatchNorm(CplxToCplx):
     def reset_parameters(self):
         self.reset_running_stats()
         if self.affine:
-            self.weight.real.ones_()
-            self.weight.imag.ones_()
-            self.bias.real.zeros_()
-            self.bias.imag.zeros_()
+            init.zeros_(self.bias)
+            init.ones_(self.weight)
+            init.zeros_(self.weight[1])
 
     def _check_input_dim(self, input):
         raise NotImplementedError
