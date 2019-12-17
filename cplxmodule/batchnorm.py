@@ -6,7 +6,8 @@ from .layers import CplxToCplx, CplxParameter
 from .cplx import Cplx
 
 
-def torch_invsqrt_2x2(a, b, c, d, eps=1e-8):
+def whiten2x2(tensor, training=True, running_mean=None, running_cov=None,
+              momentum=0.1, nugget=1e-5):
     r"""Solve R M R = I for R and a given 2x2 matrix M = [[a, b], [c, d]].
 
     Details
@@ -23,19 +24,97 @@ def torch_invsqrt_2x2(a, b, c, d, eps=1e-8):
     Therefore `inv \sqrt{M} = [[p, q], [r, s]]`, where
         [[p, q], [r, s]] = 1/(t s) [[d + s, -b], [-c, a + s]]
     """
+
+    # compute reduction axes and broadcast shape (tail) ? x 1 x f x ...
+    axes = 0, *range(2, tensor.dim() - 1)
+    shape = 1, tensor.shape[1], *([1] * (tensor.dim() - 3))
+
+    # get feature mean and covariance
+    # 1. compute batch mean [F x 2] and center the batch
+    if training:
+        mean = tensor.mean(dim=axes)
+        if running_mean is not None:
+            running_mean += momentum * (mean.data - running_mean)
+    else:
+        mean = running_mean
+    tensor = tensor - mean.reshape(*shape, 2)
+
+    # 2. per feature real-imag 2x2 covariance matrix
+    #  using naïve means (biased estimator)
+    if training:
+        # P x B x F x ... -> F x P x [B x ...]
+        perm = tensor.permute(1, -1, *axes).flatten(2, -1)
+        cov = torch.matmul(perm, perm.transpose(-1, -2)) / perm.shape[-1]
+        if running_cov is not None:
+            running_cov += momentum * (cov.data - running_cov)
+
+    else:
+        cov = running_cov
+
+    # 3. get R = [[p, q], [r, s]], with E R c c^T R^T = R M R = I
+    cov = cov.reshape(*shape, 2, 2)
+    a, b = cov[..., 0, 0] + nugget, cov[..., 0, 1]
+    c, d = cov[..., 1, 0], cov[..., 1, 1] + nugget
+
     # (unsure if that was intentional) the inv-root in Trabelsi (2017) uses
     #  numpy `np.sqrt` instead of `K.sqrt` so grads are not passed through
     #  properly, i.e. constants, [complex_standardization](bn.py#L56-57).
-    sqrdet = torch.sqrt((a + eps) * (d + eps) - b * c)
-    denom = sqrdet * torch.sqrt(a + 2 * sqrdet + d + 2 * eps)
+    sqrdet = torch.sqrt(a * d - b * c)
+    denom = sqrdet * torch.sqrt(a + 2 * sqrdet + d)
+    p, q = (d + sqrdet) / denom, -b / denom
+    r, s = -c / denom, (a + sqrdet) / denom
 
-    p, q = (d + sqrdet) / denom, -c / denom
-    r, s = -b / denom, (a + sqrdet) / denom
-    return p, q, r, s
+    # 4. apply Q to x (manually)
+    out = torch.stack([
+        tensor[..., 0] * p + tensor[..., 1] * r,
+        tensor[..., 0] * q + tensor[..., 1] * s,
+    ], dim=-1)
+    return out  # , torch.cat([p, q, r, s], dim=0).reshape(2, 2, -1)
 
 
-def torch_matmul_2x2(u, v, a, b, c, d):
-    return u * a + v * b, u * c + v * d
+def whitendxd(tensor, training=True, running_mean=None, running_cov=None,
+              momentum=0.1, nugget=1e-5):
+    """Jointly whiten features in tensors [B x F x ... x D]: take D vectors and
+    whiten individually for each F over [B x ...].
+
+    Details
+    -------
+    Comutes the mean along all axes but F and D, then gets F biased estimates
+    of the covariance between D. The covariances are regularized by a `nugget`
+    and then their batched cholesky decomposition is used in triangular solve
+    to do the whitening.
+    """
+
+    # compute reduction axes and broadcast shape (tail) ? x 1 x f x ...
+    axes = 0, *range(2, tensor.dim() - 1)
+    shape = 1, tensor.shape[1], *([1] * (tensor.dim() - 3)), tensor.shape[-1]
+
+    # get feature mean and covariance
+    if training:
+        mean = tensor.mean(dim=axes)
+        if running_mean is not None:
+            running_mean += momentum * (mean.data - running_mean)
+    else:
+        mean = running_mean
+    tensor = tensor - mean.reshape(shape)
+
+    if training:
+        # P x B x F x ... -> F x P x [B x ...]
+        perm = tensor.permute(1, -1, *axes).flatten(2, -1)
+        cov = torch.matmul(perm, perm.transpose(-1, -2)) / perm.shape[-1]
+        if running_cov is not None:
+            running_cov += momentum * (cov.data - running_cov)
+
+    else:
+        cov = running_cov
+
+    # invert cholesky decomposition.
+    eye = nugget * torch.eye(tensor.shape[-1]).unsqueeze(0)
+    ell = torch.cholesky(cov + eye, upper=True)
+    soln = torch.triangular_solve(
+        tensor.unsqueeze(-1), ell.reshape(*shape, tensor.shape[-1]))
+
+    return soln.solution.squeeze(-1)
 
 
 def cplx_batch_norm(
@@ -54,117 +133,22 @@ def cplx_batch_norm(
     assert ((weight is None and bias is None)
             or (weight is not None and bias is not None))
 
-    x = torch.stack([input.real, input.imag], dim=0)
-    axes = 1, *range(3, x.dim())
-    size = 1, input.shape[1], *[1]*(input.dim()-2)
+    # stack along the last axis ... -> ... x 2
+    x = torch.stack([input.real, input.imag], dim=-1)
+    shape = 1, x.shape[1], *([1] * (x.dim() - 3))
 
-    # 1. compute batch mean [C] and center the batch
-    m = x.mean(dim=axes)
-    if training:
-        pass
+    # whiten and apply affine transformation
+    z = whiten2x2(x, training=training, running_mean=running_mean,
+                  running_cov=running_var, momentum=momentum, nugget=eps)
 
-    x = x - m.reshape(2, *size)
-
-    # 2. per feature real-imag 2x2 covariance matrix using naïve means
-    # (biased) [2, B, F, ...] -> [F, 2, ...] -> [F, 2, 2] -> [4, F]
-    p = x.permute(2, 0, *axes).flatten(2, -1)
-    var = torch.matmul(p, p.transpose(-1, -2)) / p.shape[2]
-    var = var.flatten(-2, -1).t()
-    if training:
-        pass
-
-    # 3. get R = [[rr, ri], [ir, ii]], with E R c c^T R^T = RMR = I
-    Q = torch.cat(torch_invsqrt_2x2(*var, eps=1e-8), dim=0).reshape(2, 2, -1)
-
-    # 4. apply Q to x (manually), and apply affine transformation
-    # [2, B, F, ...] * [2, 2, F] 'ubf..., uvf -> vbf...'
-    x = torch.einsum('ubf..., uvf -> vbf...', x, Q)  # batch mm maybe?
-
-    # 5. Affine tranformation
     if weight is not None and bias is not None:
-        pass
-"""
-A = torch.randn(5, 2, 2).requires_grad_(True).triu()
+        weight, bias = weight.reshape(*shape, 2, 2), bias.reshape(*shape, 2)
+        z = torch.stack([
+            z[..., 0] * weight[..., 0, 0] + z[..., 1] * weight[..., 0, 1],
+            z[..., 0] * weight[..., 1, 0] + z[..., 1] * weight[..., 1, 1],
+        ], dim=-1) + bias
 
-
-
-a = torch.randn(10, 3, 3).requires_grad_(True)
-
-V = torch.matmul(a, a.transpose(-1, -2)) + 1e-05 * torch.eye(3).unsqueeze(0)
-
-L = torch.cholesky(V)
-
-torch.triangular_solve(a, torch.cholesky(V, upper=True)).solution
-
-
-
-x = torch.randn(2, 1000, 10, 17)
-
-axes = 1, *range(3, x.dim())
-size = 1, x.shape[2], *[1]*(x.dim()-3)
-
-p = x.permute(2, 0, *axes)
-shape = p.shape
-
-p = p.flatten(2, -1)
-V = torch.matmul(p, p.transpose(-1, -2)) + 1e-05 * torch.eye(2).unsqueeze(0)
-ell = torch.cholesky(V, upper=True)
-p = torch.triangular_solve(p, ell).solution
-
-res = p.reshape(shape).permute(1, 2, 0, 3)
-
-"""
-
-    # (input) [N, C, ...]
-    axes = 0, *range(2, input.dim())
-    r, i = input.real, input.imag
-
-    # 1. compute batch mean [C] and center the batch
-    if training:
-        m_r = r.mean(dim=axes)
-        m_i = i.mean(dim=axes)
-        if running_mean is not None:
-            mean = torch.cat([
-                m_r.data, m_i.data,
-            ], dim=0).reshape(2, -1)
-            running_mean += momentum * (mean - running_mean)
-
-    else:
-        m_r, m_i = running_mean  # torch.unbind(running_mean, dim=0)
-    r, i = r - m_r.reshape(size), i - m_i.reshape(size)
-
-    # 2. per feature real-imag 2x2 covariance matrix
-    #  using naïve means (biased estimator)
-    if training:
-        v_rr = (r * r).mean(dim=axes)
-        v_ri = (r * i).mean(dim=axes)
-        v_ii = (i * i).mean(dim=axes)
-        if running_var is not None:
-            var = torch.cat([  # 25% waste, needs only the upper triangle
-                v_rr.data, v_ri.data,
-                v_ri.data, v_ii.data,
-            ], dim=0).reshape(2, 2, -1)
-            running_var += momentum * (var - running_var)
-
-    else:
-        # v_rr, v_ri, _, v_ii = torch.unbind(running_var.reshape(4, -1), dim=0)
-        (v_rr, v_ri), (_, v_ii) = running_var
-
-    # 3. get R = [[rr, ri], [ir, ii]], with E R c c^T R^T = RMR = I
-    q_rr, q_ri, q_ir, q_ii = torch_invsqrt_2x2(v_rr, v_ri, v_ri, v_ii)
-
-    # 4. apply Q to x (manually), and apply affine transformation
-    q_rr, q_ri = q_rr.reshape(size), q_ri.reshape(size)
-    q_ir, q_ii = q_ir.reshape(size), q_ii.reshape(size)
-    re, im = torch_matmul_2x2(r, i, q_rr, q_ri, q_ir, q_ii)
-    if weight is not None and bias is not None:
-        w_rr, w_ri, w_ii = weight.reshape(3, *size)
-        re, im = torch_matmul_2x2(re, im, w_rr, w_ri, w_ri, w_ii)
-
-        b_r, b_i = bias.reshape(3, *size)
-        re, im = re + b_r, im + b_i
-
-    return Cplx(re, im)
+    return Cplx(z[..., 0], z[..., 1])
 
 
 class _CplxBatchNorm(CplxToCplx):
@@ -184,17 +168,16 @@ class _CplxBatchNorm(CplxToCplx):
         self.affine = affine
         self.track_running_stats = track_running_stats
         if self.affine:
-            self.weight = torch.nn.Parameter(torch.empty(3, num_features))
-            self.bias = torch.nn.Parameter(torch.empty(2, num_features))
+            self.weight = torch.nn.Parameter(torch.empty(num_features, 2, 2))
+            self.bias = torch.nn.Parameter(torch.empty(num_features, 2))
 
         else:
             self.register_parameter('weight', None)
             self.register_parameter('bias', None)
 
         if self.track_running_stats:
-            self.register_buffer('running_mean', torch.empty(2, num_features))
-
-            self.register_buffer('running_var', torch.empty(2, 2, num_features))
+            self.register_buffer('running_mean', torch.empty(num_features, 2))
+            self.register_buffer('running_var', torch.empty(num_features, 2, 2))
             self.register_buffer('num_batches_tracked', torch.tensor(0, dtype=torch.long))
 
         else:
@@ -203,23 +186,25 @@ class _CplxBatchNorm(CplxToCplx):
             self.register_parameter('num_batches_tracked', None)
 
         self.reset_parameters()
-        self.reset_running_stats()
 
     def reset_running_stats(self):
         if self.track_running_stats:
-            self.running_mean.zero_()
-            self.running_var.zero_()
-            self.running_var[0, 0].fill_(1)
-            self.running_var[1, 1].fill_(1)
-
             self.num_batches_tracked.zero_()
+
+            self.running_mean.zero_()
+            self.running_var[:, 0, 0].fill_(1)
+            self.running_var[:, 1, 0].zero_()
+            self.running_var[:, 0, 1].zero_()
+            self.running_var[:, 1, 1].fill_(1)
 
     def reset_parameters(self):
         self.reset_running_stats()
         if self.affine:
+            init.ones_(self.weight[:, 0, 0])
+            init.zeros_(self.weight[:, 1, 0])
+            init.zeros_(self.weight[:, 0, 1])
+            init.ones_(self.weight[:, 1, 1])
             init.zeros_(self.bias)
-            init.ones_(self.weight)
-            init.zeros_(self.weight[1])
 
     def _check_input_dim(self, input):
         raise NotImplementedError

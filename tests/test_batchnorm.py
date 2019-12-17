@@ -9,6 +9,7 @@ from itertools import starmap
 from cplxmodule import cplx
 from cplxmodule.batchnorm import CplxBatchNorm1d, cplx_batch_norm
 from cplxmodule.layers import RealToCplx, CplxToReal
+from cplxmodule.batchnorm import whiten2x2, whitendxd
 
 
 @pytest.fixture
@@ -16,10 +17,7 @@ def random_state():
     return np.random.RandomState(None)  # (1249563438)
 
 
-def test_invsqr2x2(random_state, eps=1e-8):
-    from cplxmodule.batchnorm import invsqrt_2x2
-
-    """Computes inverse root of the 2x2 covariance matrix."""
+def test_whitening(random_state, nugget=1e-8):
     randn = random_state.randn
 
     # generate re-im data paired over the last axis
@@ -30,14 +28,16 @@ def test_invsqr2x2(random_state, eps=1e-8):
     # center x and get variance
     axes = 0, *range(2, x.ndim - 1)  # note `-1`
     c = x - x.mean(axis=axes, keepdims=True)
-    M = np.einsum("bfsu, bfsv->uvf", c, c) / len(c)
+
+    M = np.einsum("bfsu, bfsv->uvf", c, c)
+    M /= (c.shape[0] * c.shape[2])
 
     # compute the inverse root
-    (v_rr, v_ri), (v_ir, v_ii) = M
+    v_rr, v_ri = M[0, 0] + nugget, M[0, 1]
+    v_ir, v_ii = M[1, 0], M[1, 1] + nugget
 
-    # sqrdet = np.sqrt(np.maximum(v_rr * v_ii - v_ri * v_ir, eps))
-    sqrdet = np.sqrt((v_rr + eps) * (v_ii + eps) - v_ri * v_ir)
-    denom = np.sqrt(v_rr + v_ii + 2 * sqrdet + 2 * eps) * sqrdet
+    sqrdet = np.sqrt(v_rr * v_ii - v_ri * v_ir)
+    denom = np.sqrt(v_rr + v_ii + 2 * sqrdet) * sqrdet
     R = np.array([[v_ii + sqrdet, -v_ri], [-v_ir, v_rr + sqrdet]]) / denom
 
     # verify inverse root
@@ -50,17 +50,16 @@ def test_invsqr2x2(random_state, eps=1e-8):
     m = res.mean(axis=axes, keepdims=True)
     assert np.allclose(m, 0.)
 
-    v = np.einsum("bfsu, bfsv->fuv", res - m, res - m) / len(res)
+    v = np.einsum("bfsu, bfsv->fuv", res - m, res - m)
+    v /= (res.shape[0] * res.shape[2])
     assert np.allclose(v, np.eye(2)[np.newaxis], atol=1e-3)
 
     # verify torch
-    abcd = [*map(torch.from_numpy, (v_rr, v_ri, v_ir, v_ii))]
-    pqrs = torch.stack(invsqrt_2x2(*abcd, eps=eps), dim=0)
-    assert np.allclose(pqrs.numpy().reshape(2, 2, -1), R)
+    res2x2 = whiten2x2(torch.from_numpy(x), nugget=nugget)
+    assert np.allclose(res2x2.numpy(), res)
 
-
-def test_batchnorm_layer():
-    pass
+    # resdxd = whitendxd(torch.from_numpy(x), nugget=nugget)
+    # assert np.allclose(resdxd.numpy(), res)
 
 
 def fit(X, y, model, n_steps=2000):
@@ -92,9 +91,8 @@ def predict(X, model):
 
 
 def test_real_batchnorm(random_state):
-    x = torch.from_numpy(np.random.normal(
-        loc=5.0, scale=10.0, size=(1000, 10)
-    )).to(torch.float)
+    x = random_state.randn(1000, 10) * 10. + 5.
+    x = torch.from_numpy(x).to(torch.float)
 
     model = torch.nn.BatchNorm1d(10, affine=True)
 
@@ -109,21 +107,28 @@ def test_real_batchnorm(random_state):
 
 
 def test_cplx_batchnorm(random_state):
-    z = 1e-2 * (np.random.randn(1000, 10) + 1j * np.random.randn(1000, 10))
-    z += np.random.randn(1, 10) * (1 + 1j)
-    z = cplx.Cplx.from_numpy(z)
+    randn = random_state.randn
+    noise = (randn(1000, 10, 17) + 1j * randn(1000, 10, 17)) * 1e-1
+    z = cplx.Cplx.from_numpy(noise + randn(1, 10, 1) * (1 + 1j))
 
+    z = z.to(torch.float)
     out = cplx_batch_norm(z, None, None).numpy()
+
     re, im = out.real, out.imag
+    assert np.isclose(float(re.mean()), 0., atol=1e-1)
+    assert np.isclose(float(im.mean()), 0., atol=1e-1)
+    assert np.isclose(float((re*re).mean()), 1., atol=1e-1)
+    assert np.isclose(float((im*im).mean()), 1., atol=1e-1)
+    assert np.isclose(float((re*im).mean()), 0., atol=1e-1)
 
-    assert np.isclose(re.mean(), 0.) and np.isclose(im.mean(), 0.)
-    assert np.isclose((re*re).mean(), 1.) and np.isclose((im*im).mean(), 1.)
 
+def test_cplx_batchnorm_layer_noaffine(random_state):
+    randn = random_state.randn
 
-    x = torch.stack([
-        torch.from_numpy(z.real),
-        torch.from_numpy(z.imag),
-    ], dim=-1).flatten(-2).to(torch.float)
+    noise = (randn(1000, 10, 17) + 1j * randn(1000, 10, 17)) * 1e-1
+    z = randn(1, 10, 1) * (1 + 1j) + noise
+    z = np.stack([z.real, z.imag], axis=-1).reshape(*z.shape[:-1], -1)
+    x = torch.from_numpy(z).to(torch.float)
 
     model = torch.nn.Sequential(
         RealToCplx(),
@@ -141,12 +146,39 @@ def test_cplx_batchnorm(random_state):
 
     model.eval()
 
-
     out = predict(x, model)
-    out -= model[1].bias
-    out /= model[1].weight
+    re, im = out[..., 0::2], out[..., 1::2]
+    assert np.isclose(float(re.mean()), 0., atol=1e-1)
+    assert np.isclose(float(im.mean()), 0., atol=1e-1)
+    assert np.isclose(float((re*re).mean()), 1., atol=1e-1)
+    assert np.isclose(float((im*im).mean()), 1., atol=1e-1)
+    assert np.isclose(float((re*im).mean()), 0., atol=1e-1)
 
-    assert np.isclose(float(out.mean()), 0.0, atol=1e-1)
-    assert np.isclose(float(out.std()), 1.0, atol=1e-1)
 
+def test_cplx_batchnorm_layer_affine(random_state):
+    randn = random_state.randn
 
+    noise = (randn(1000, 10, 17) + 1j * randn(1000, 10, 17)) * 1e-1
+    z = randn(1, 10, 1) * (1 + 1j) + noise
+    z = np.stack([z.real, z.imag], axis=-1).reshape(*z.shape[:-1], -1)
+    x = torch.from_numpy(z).to(torch.float)
+
+    model = torch.nn.Sequential(
+        RealToCplx(),
+        CplxBatchNorm1d(10, affine=True),
+        CplxToReal(),
+    )
+
+    fit(x, x, model, n_steps=5)
+
+    out = predict(x, model).reshape(*x.shape[:-1], -1, 2)
+    with torch.no_grad():
+        out = out - model[1].bias.reshape(1, 10, 1, 2)
+        res, _ = torch.solve(out.transpose(-1, -2), model[1].weight)
+
+    re, im = res[..., 0, :], res[..., 1, :]
+    assert np.isclose(float(re.mean()), 0., atol=1e-1)
+    assert np.isclose(float(im.mean()), 0., atol=1e-1)
+    assert np.isclose(float((re*re).mean()), 1., atol=1e-1)
+    assert np.isclose(float((im*im).mean()), 1., atol=1e-1)
+    assert np.isclose(float((re*im).mean()), 0., atol=1e-1)
