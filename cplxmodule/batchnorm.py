@@ -116,7 +116,7 @@ def whitendxd(tensor, training=True, running_mean=None, running_cov=None,
         cov = running_cov.permute(2, 0, 1)
 
     # invert cholesky decomposition.
-    eye = nugget * torch.eye(d).unsqueeze(0)
+    eye = nugget * torch.eye(d, device=cov.device, dtype=cov.dtype).unsqueeze(0)
     ell = torch.cholesky(cov + eye, upper=True)
     soln = torch.triangular_solve(
         tensor.unsqueeze(-1).permute(*range(1, tensor.dim()), 0, -1),
