@@ -2,7 +2,7 @@ import torch
 
 from torch.nn import init
 
-from .layers import CplxToCplx, CplxParameter
+from .layers import CplxToCplx
 from .cplx import Cplx
 
 
@@ -25,50 +25,59 @@ def whiten2x2(tensor, training=True, running_mean=None, running_cov=None,
         [[p, q], [r, s]] = 1/(t s) [[d + s, -b], [-c, a + s]]
     """
 
+    # assume tensor is B x F x ... x 2
+    u, v = torch.unbind(tensor, dim=-1)
+
     # compute reduction axes and broadcast shape (tail) ? x 1 x f x ...
     axes = 0, *range(2, tensor.dim() - 1)
-    shape = 1, tensor.shape[1], *([1] * (tensor.dim() - 3))
+    tail = 1, tensor.shape[1], *([1] * (tensor.dim() - 3))
 
     # get feature mean and covariance
-    # 1. compute batch mean [F x 2] and center the batch
+    # 1. compute batch mean [2 x F] and center the batch
     if training:
-        mean = tensor.mean(dim=axes)
+        m_u, m_v = u.mean(dim=axes), v.mean(dim=axes)
         if running_mean is not None:
-            running_mean += momentum * (mean.data - running_mean)
+            mean = torch.stack([m_u.data, m_v.data], dim=-1)
+            running_mean += momentum * (mean - running_mean)
     else:
-        mean = running_mean
-    tensor = tensor - mean.reshape(*shape, 2)
+        m_u, m_v = torch.unbind(running_mean, dim=-1)
+    u, v = u - m_u.reshape(tail), v - m_v.reshape(tail)
 
-    # 2. per feature real-imag 2x2 covariance matrix
-    #  using naïve means (biased estimator)
+    # 2. per feature real-imag 2x2 covariance matrix using
+    #  naïve means
     if training:
-        # P x B x F x ... -> F x P x [B x ...]
-        perm = tensor.permute(1, -1, *axes).flatten(2, -1)
-        cov = torch.matmul(perm, perm.transpose(-1, -2)) / perm.shape[-1]
+        cov_uu = (u * u).mean(dim=axes) + nugget
+        cov_uv = cov_vu = (u * v).mean(dim=axes)
+        cov_vv = (v * v).mean(dim=axes) + nugget
         if running_cov is not None:
-            running_cov += momentum * (cov.data - running_cov)
+            cov = torch.stack([
+                cov_uu.data, cov_uv.data,
+                cov_vu.data, cov_vv.data,
+            ], dim=-1).reshape(-1, 2, 2)  # you mother fucker!
+            running_cov += momentum * (cov - running_cov)
 
     else:
-        cov = running_cov
+        cov_uu, cov_uv = running_cov[:, 0, 0], running_cov[:, 0, 1]
+        cov_vu, cov_vv = running_cov[:, 1, 0], running_cov[:, 1, 1]
 
     # 3. get R = [[p, q], [r, s]], with E R c c^T R^T = R M R = I
-    cov = cov.reshape(*shape, 2, 2)
-    a, b = cov[..., 0, 0] + nugget, cov[..., 0, 1]
-    c, d = cov[..., 1, 0], cov[..., 1, 1] + nugget
+    a = cov_uu.reshape(tail)
+    c = b = cov_uv.reshape(tail)
+    d = cov_vv.reshape(tail)
 
     # (unsure if that was intentional) the inv-root in Trabelsi (2017) uses
     #  numpy `np.sqrt` instead of `K.sqrt` so grads are not passed through
     #  properly, i.e. constants, [complex_standardization](bn.py#L56-57).
     sqrdet = torch.sqrt(a * d - b * c)
+    # torch.det uses svd, so may yield -ve machine zero
+
     denom = sqrdet * torch.sqrt(a + 2 * sqrdet + d)
     p, q = (d + sqrdet) / denom, -b / denom
     r, s = -c / denom, (a + sqrdet) / denom
 
     # 4. apply Q to x (manually)
-    out = torch.stack([
-        tensor[..., 0] * p + tensor[..., 1] * r,
-        tensor[..., 0] * q + tensor[..., 1] * s,
-    ], dim=-1)
+    out = torch.stack([u * p + v * r,
+                       u * q + v * s], dim=-1)
     return out  # , torch.cat([p, q, r, s], dim=0).reshape(2, 2, -1)
 
 
@@ -99,7 +108,7 @@ def whitendxd(tensor, training=True, running_mean=None, running_cov=None,
     tensor = tensor - mean.reshape(shape)
 
     if training:
-        # P x B x F x ... -> F x P x [B x ...]
+        # B x F x ... x P -> F x P x [B x ...]
         perm = tensor.permute(1, -1, *axes).flatten(2, -1)
         cov = torch.matmul(perm, perm.transpose(-1, -2)) / perm.shape[-1]
         if running_cov is not None:

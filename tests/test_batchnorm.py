@@ -140,6 +140,8 @@ def test_cplx_batchnorm_layer_noaffine(random_state):
     feed = torch.utils.data.DataLoader(
         torch.utils.data.TensorDataset(x),
         batch_size=32, shuffle=True)
+
+    # with torch.autograd.detect_anomaly():
     for i in range(5):
         for bx, in feed:
             F.mse_loss(model(bx), bx)
@@ -169,6 +171,7 @@ def test_cplx_batchnorm_layer_affine(random_state):
         CplxToReal(),
     )
 
+    # with torch.autograd.detect_anomaly():
     fit(x, x, model, n_steps=5)
 
     out = predict(x, model).reshape(*x.shape[:-1], -1, 2)
