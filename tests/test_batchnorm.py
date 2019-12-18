@@ -23,21 +23,21 @@ def test_whitening(random_state, nugget=1e-8):
     # generate re-im data paired over the last axis
     z = (randn(1000, 10, 17) + 1j * randn(1000, 10, 17)) * 1e-1
     z += randn(1, 10, 1) * (1 + 1j)
-    x = np.stack([z.real, z.imag], axis=-1)
+    x = np.stack([z.real, z.imag], axis=0)
 
     # center x and get variance
-    axes = 0, *range(2, x.ndim - 1)  # note `-1`
+    axes = 1, *range(3, x.ndim)
+    n_samples = np.prod([x.shape[a] for a in axes])
     c = x - x.mean(axis=axes, keepdims=True)
 
-    M = np.einsum("bfsu, bfsv->uvf", c, c)
-    M /= (c.shape[0] * c.shape[2])
+    M = np.einsum("ubfs, vbfs->uvf", c, c) / n_samples
 
     # compute the inverse root
     v_rr, v_ri = M[0, 0] + nugget, M[0, 1]
     v_ir, v_ii = M[1, 0], M[1, 1] + nugget
 
     sqrdet = np.sqrt(v_rr * v_ii - v_ri * v_ir)
-    denom = np.sqrt(v_rr + v_ii + 2 * sqrdet) * sqrdet
+    denom = np.sqrt(v_rr + 2 * sqrdet + v_ii) * sqrdet
     R = np.array([[v_ii + sqrdet, -v_ri], [-v_ir, v_rr + sqrdet]]) / denom
 
     # verify inverse root
@@ -45,13 +45,12 @@ def test_whitening(random_state, nugget=1e-8):
     assert np.allclose(RMR, np.eye(2)[np.newaxis], atol=1e-3)
 
     # verify stats
-    res = np.einsum("bfsu, uvf->bfsv", c, R)
+    res = np.einsum("ubfs, uvf->vbfs", c, R)
 
     m = res.mean(axis=axes, keepdims=True)
     assert np.allclose(m, 0.)
 
-    v = np.einsum("bfsu, bfsv->fuv", res - m, res - m)
-    v /= (res.shape[0] * res.shape[2])
+    v = np.einsum("ubfs, vbfs->fuv", res - m, res - m) / n_samples
     assert np.allclose(v, np.eye(2)[np.newaxis], atol=1e-3)
 
     # verify torch
@@ -177,7 +176,7 @@ def test_cplx_batchnorm_layer_affine(random_state):
     out = predict(x, model).reshape(*x.shape[:-1], -1, 2)
     with torch.no_grad():
         out = out - model[1].bias.reshape(1, 10, 1, 2)
-        res, _ = torch.solve(out.transpose(-1, -2), model[1].weight)
+        res, _ = torch.solve(out.transpose(-1, -2), model[1].weight.permute(2, 0, 1))
 
     re, im = res[..., 0, :], res[..., 1, :]
     assert np.isclose(float(re.mean()), 0., atol=1e-1)
