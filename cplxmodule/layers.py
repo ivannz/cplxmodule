@@ -15,8 +15,11 @@ from .cplx import cplx_phaseshift
 from .cplx import cplx_to_interleaved_real, cplx_to_concatenated_real
 from .cplx import interleaved_real_to_cplx, concatenated_real_to_cplx
 
+from . import init
+
 
 class CplxParameter(torch.nn.ParameterDict):
+    """Torch-friendly container for complex-valued parameter."""
     def __init__(self, cplx):
         if not isinstance(cplx, Cplx):
             raise TypeError(f"""`{type(self).__name__}` accepts only """
@@ -27,35 +30,39 @@ class CplxParameter(torch.nn.ParameterDict):
             "imag": Parameter(cplx.imag),
         })
 
+        # save reference to the underlying cplx data
+        self._cplx = cplx
 
-def is_from_cplx(module):
-    if isinstance(module, (CplxToCplx, BaseCplxToReal)):
-        return True
-
-    if isinstance(module, torch.nn.Sequential):
-        return is_from_cplx(module[0])
-
-    if isinstance(module, type):
-        return issubclass(module, (CplxToCplx, BaseCplxToReal))
-
-    return False
+    @property
+    def data(self):
+        return self._cplx
 
 
-def is_to_cplx(module):
-    if isinstance(module, (CplxToCplx, BaseRealToCplx)):
-        return True
+class CplxParameterAccessor():
+    """Cosmetic complex parameter accessor.
 
-    if isinstance(module, torch.nn.Sequential):
-        return is_to_cplx(module[-1])
+    Details
+    -------
+    This works both for the default `forward()` inherited from Linear,
+    and for what the user expects to see when they request weight from
+    the layer (masked zero values).
 
-    if isinstance(module, type):
-        return issubclass(module, (CplxToCplx, BaseRealToCplx))
+    Warning
+    -------
+    This hacky property works only because torch.nn.Module implements
+    its own special attribute access mechanism via `__getattr__`. This
+    is why `SparseWeightMixin` in .masked couldn't work with 'weight'
+    as a read-only @property.
+    """
+    def __getattr__(self, name):
+        # default attr lookup straight to parent's __getattr__
+        attr = super().__getattr__(name)
+        if not isinstance(attr, CplxParameter):  # automatically handles None
+            return attr
 
-    return False
-
-
-def is_cplx_to_cplx(module):
-    return is_from_cplx(module) and is_to_cplx(module)
+        # Cplx() is a light weight container for mutable real-imag parts.
+        #  Can we cache this? What if creating `Cplx` is costly?
+        return Cplx(attr.real, attr.imag)
 
 
 class BaseRealToCplx(torch.nn.Module):
@@ -166,38 +173,6 @@ class CplxToConcatenatedReal(BaseCplxToReal):
         return cplx_to_concatenated_real(input, None, self.dim)
 
 
-class CplxWeightMixin(torch.nn.Module):
-    """Cosmetic complex parameter accessor.
-
-    Details
-    -------
-    This works both for the default `forward()` inherited from Linear,
-    and for what the user expects to see when they request weight from
-    the layer (masked zero values).
-
-    Warning
-    -------
-    This hacky property works only because torch.nn.Module implements
-    its own special attribute access mechanism via `__getattr__`. This
-    is why `SparseWeightMixin` in .masked couldn't work with 'weight'
-    as a read-only @property.
-    """
-    @property
-    def weight(self):
-        # bypass default attr lookup straight to own __getattr__
-        weight = self.__getattr__("weight")
-
-        # can we cache this? Cause what if creating `Cplx` is costly?
-        return Cplx(weight.real, weight.imag)
-
-    @property
-    def bias(self):
-        bias = self.__getattr__("bias")
-        if bias is None:
-            return None
-        return Cplx(bias.real, bias.imag)
-
-
 class _CplxToCplxMeta(type):
     """Meta class for bracketed creation of componentwise operations."""
     @lru_cache(maxsize=None)
@@ -221,11 +196,42 @@ class _CplxToCplxMeta(type):
         return template
 
 
-class CplxToCplx(torch.nn.Module, metaclass=_CplxToCplxMeta):
+class CplxToCplx(CplxParameterAccessor, torch.nn.Module,
+                 metaclass=_CplxToCplxMeta):
     pass
 
 
-class CplxLinear(CplxWeightMixin, CplxToCplx):
+def is_from_cplx(module):
+    if isinstance(module, (CplxToCplx, BaseCplxToReal)):
+        return True
+
+    if isinstance(module, torch.nn.Sequential):
+        return is_from_cplx(module[0])
+
+    if isinstance(module, type):
+        return issubclass(module, (CplxToCplx, BaseCplxToReal))
+
+    return False
+
+
+def is_to_cplx(module):
+    if isinstance(module, (CplxToCplx, BaseRealToCplx)):
+        return True
+
+    if isinstance(module, torch.nn.Sequential):
+        return is_to_cplx(module[-1])
+
+    if isinstance(module, type):
+        return issubclass(module, (CplxToCplx, BaseRealToCplx))
+
+    return False
+
+
+def is_cplx_to_cplx(module):
+    return is_from_cplx(module) and is_to_cplx(module)
+
+
+class CplxLinear(CplxToCplx):
     r"""
     Complex linear transform:
     $$
@@ -253,13 +259,11 @@ class CplxLinear(CplxWeightMixin, CplxToCplx):
 
     def reset_parameters(self):
         weight, bias = self.weight, self.bias  # inplace acessors
-        torch.nn.init.kaiming_uniform_(weight.real, a=math.sqrt(5))
-        torch.nn.init.kaiming_uniform_(weight.imag, a=math.sqrt(5))
+        init.cplx_kaiming_uniform_(weight, a=math.sqrt(5))
         if bias is not None:
-            fan_in, _ = torch.nn.init._calculate_fan_in_and_fan_out(weight.real)
+            fan_in, _ = init.get_fans(weight)
             bound = 1 / math.sqrt(fan_in)
-            torch.nn.init.uniform_(bias.real, -bound, bound)
-            torch.nn.init.uniform_(bias.imag, -bound, bound)
+            init.cplx_uniform_independent_(bias, -bound, bound)
 
     def forward(self, input):
         return cplx_linear(input, self.weight, self.bias)
@@ -330,7 +334,7 @@ class CplxPhaseShift(CplxToCplx):
         return cplx_phaseshift(input, self.phi)
 
 
-class CplxBilinear(CplxWeightMixin, CplxToCplx):
+class CplxBilinear(CplxToCplx):
     r"""Complex bilinear transform"""
     def __init__(self, in1_features, in2_features, out_features, bias=True,
                  conjugate=True):
@@ -352,14 +356,11 @@ class CplxBilinear(CplxWeightMixin, CplxToCplx):
         self.reset_parameters()
 
     def reset_parameters(self):
-        weight, bias = self.weight, self.bias  # inplace acessors
-        torch.nn.init.kaiming_uniform_(weight.real, a=math.sqrt(5))
-        torch.nn.init.kaiming_uniform_(weight.imag, a=math.sqrt(5))
-        if bias is not None:
-            fan_in, _ = torch.nn.init._calculate_fan_in_and_fan_out(weight.real)
+        init.cplx_kaiming_uniform_(self.weight, a=math.sqrt(5))
+        if self.bias is not None:
+            fan_in, _ = init.get_fans(self.weight)
             bound = 1 / math.sqrt(fan_in)
-            torch.nn.init.uniform_(bias.real, -bound, bound)
-            torch.nn.init.uniform_(bias.imag, -bound, bound)
+            init.cplx_uniform_independent_(self.bias, -bound, bound)
 
     def forward(self, input1, input2):
         return cplx_bilinear(input1, input2, self.weight,

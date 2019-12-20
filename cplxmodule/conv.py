@@ -1,17 +1,16 @@
 # coding=utf-8
 import math
 import torch
-import torch.nn
-
-from torch.nn import Parameter
 
 from .cplx import Cplx, cplx_conv1d, cplx_conv2d
-from .layers import CplxToCplx, CplxParameter, CplxWeightMixin
+from .layers import CplxToCplx, CplxParameter
+
+from . import init
 
 from torch.nn.modules.utils import _single, _pair
 
 
-class CplxConvNd(CplxToCplx, CplxWeightMixin):
+class CplxConvNd(CplxToCplx):
     r"""An almost verbatim copy of `_ConvNd` from torch/nn/modules/conv.py"""
     def __init__(self, in_channels, out_channels, kernel_size, stride,
                  padding, dilation, groups, bias, padding_mode):
@@ -43,13 +42,11 @@ class CplxConvNd(CplxToCplx, CplxWeightMixin):
         self.reset_parameters()
 
     def reset_parameters(self):
-        torch.nn.init.kaiming_uniform_(self.weight.real, a=math.sqrt(5))
-        torch.nn.init.kaiming_uniform_(self.weight.imag, a=math.sqrt(5))
+        init.cplx_kaiming_uniform_(self.weight, a=math.sqrt(5))
         if self.bias is not None:
-            fan_in, _ = torch.nn.init._calculate_fan_in_and_fan_out(self.weight.real)
+            fan_in, _ = init.get_fans(self.weight)
             bound = 1 / math.sqrt(fan_in)
-            torch.nn.init.uniform_(self.bias.real, -bound, bound)
-            torch.nn.init.uniform_(self.bias.imag, -bound, bound)
+            init.cplx_uniform_independent_(self.bias, -bound, bound)
 
     def extra_repr(self):
         s = ("{in_channels}, {out_channels}, kernel_size={kernel_size}"
