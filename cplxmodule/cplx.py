@@ -7,7 +7,14 @@ from .utils import complex_view, fix_dim
 
 
 class Cplx(object):
-    r"""A type partially implementing complex valued tensors in torch."""
+    r"""A type partially implementing complex valued tensors in torch.
+
+    Details
+    -------
+    Creates a complex tensor object from the real and imaginary torch tensors,
+    or pythonic floats and complex numbers. This is a container-wrapper which
+    does not copy the supplied torch tensors on creation.
+    """
     __slots__ = ("__real", "__imag")
 
     def __new__(cls, real, imag=None):
