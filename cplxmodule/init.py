@@ -7,24 +7,6 @@ from torch.nn import init
 from functools import wraps
 
 from .cplx import Cplx
-from .layers import CplxParameter
-
-
-@wraps(init.kaiming_normal_, assigned=("__name__", "__doc__", "__annotations__"))
-def cplx_kaiming_normal_(tensor, a=0., mode='fan_in', nonlinearity='leaky_relu'):
-    assert isinstance(tensor, (Cplx, CplxParameter))
-
-    a = math.sqrt(1 + 2 * a * a)
-    init.kaiming_normal_(tensor.real, a=a, mode=mode, nonlinearity=nonlinearity)
-    init.kaiming_normal_(tensor.imag, a=a, mode=mode, nonlinearity=nonlinearity)
-
-
-@wraps(init.xavier_normal_, assigned=("__name__", "__doc__", "__annotations__"))
-def cplx_xavier_normal_(tensor, gain=1.0):
-    assert isinstance(tensor, (Cplx, CplxParameter))
-
-    init.xavier_normal_(tensor.real, gain=gain/math.sqrt(2))
-    init.xavier_normal_(tensor.imag, gain=gain/math.sqrt(2))
 
 
 def get_fans(cplxtensor):
@@ -44,6 +26,40 @@ def get_fans(cplxtensor):
         fan_out = n_fmaps_output * receptive_field_size
 
     return fan_in, fan_out
+
+
+@wraps(init.kaiming_normal_, assigned=("__name__", "__doc__", "__annotations__"))
+def cplx_kaiming_normal_(tensor, a=0., mode='fan_in', nonlinearity='leaky_relu'):
+    assert isinstance(tensor, Cplx)
+
+    a = math.sqrt(1 + 2 * a * a)
+    init.kaiming_normal_(tensor.real, a=a, mode=mode, nonlinearity=nonlinearity)
+    init.kaiming_normal_(tensor.imag, a=a, mode=mode, nonlinearity=nonlinearity)
+
+
+@wraps(init.xavier_normal_, assigned=("__name__", "__doc__", "__annotations__"))
+def cplx_xavier_normal_(tensor, gain=1.0):
+    assert isinstance(tensor, Cplx)
+
+    init.xavier_normal_(tensor.real, gain=gain/math.sqrt(2))
+    init.xavier_normal_(tensor.imag, gain=gain/math.sqrt(2))
+
+
+@wraps(init.kaiming_uniform_, assigned=("__name__", "__doc__", "__annotations__"))
+def cplx_kaiming_uniform_(tensor, a=0., mode='fan_in', nonlinearity='leaky_relu'):
+    assert isinstance(tensor, Cplx)
+
+    a = math.sqrt(1 + 2 * a * a)
+    init.kaiming_uniform_(tensor.real, a=a, mode=mode, nonlinearity=nonlinearity)
+    init.kaiming_uniform_(tensor.imag, a=a, mode=mode, nonlinearity=nonlinearity)
+
+
+@wraps(init.xavier_uniform_, assigned=("__name__", "__doc__", "__annotations__"))
+def cplx_xavier_uniform_(tensor, gain=1.0):
+    assert isinstance(tensor, Cplx)
+
+    init.xavier_uniform_(tensor.real, gain=gain/math.sqrt(2))
+    init.xavier_uniform_(tensor.imag, gain=gain/math.sqrt(2))
 
 
 def cplx_trabelsi_standard_(cplx, kind="glorot"):
@@ -99,5 +115,12 @@ def cplx_trabelsi_independent_(cplx, kind="glorot"):
     with torch.no_grad():
         cplx.real.copy_(torch.from_numpy(M.real))
         cplx.imag.copy_(torch.from_numpy(M.imag))
+
+    return cplx
+
+
+def cplx_uniform_independent_(cplx, a=0., b=1.):
+    torch.nn.init.uniform_(cplx.real, a, b)
+    torch.nn.init.uniform_(cplx.imag, a, b)
 
     return cplx
