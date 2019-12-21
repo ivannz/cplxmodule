@@ -33,6 +33,9 @@ class CplxParameter(torch.nn.ParameterDict):
         # save reference to the underlying cplx data
         self._cplx = cplx
 
+    def extra_repr(self):
+        return repr(tuple(self._cplx.shape))[1:-1]
+
     @property
     def data(self):
         return self._cplx
