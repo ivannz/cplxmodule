@@ -1,14 +1,13 @@
 import torch
 
-from ..cplx import cplx_linear, cplx_bilinear
+from ... import cplx
 from ..layers import CplxLinear, CplxBilinear
 
 from ..conv import CplxConv1d, CplxConv2d
-from ..cplx import cplx_conv1d, cplx_conv2d
 
 from .base import BaseMasked, MaskedWeightMixin
 
-from ..utils.stats import SparsityStats
+from ...utils.stats import SparsityStats
 
 
 class _BaseCplxMixin(BaseMasked, SparsityStats):
@@ -28,23 +27,23 @@ class _BaseCplxMixin(BaseMasked, SparsityStats):
 
 class CplxLinearMasked(MaskedWeightMixin, CplxLinear, _BaseCplxMixin):
     def forward(self, input):
-        return cplx_linear(input, self.weight_masked, self.bias)
+        return cplx.linear(input, self.weight_masked, self.bias)
 
 
 class CplxBilinearMasked(MaskedWeightMixin, CplxBilinear, _BaseCplxMixin):
     def forward(self, input1, input2):
-        return cplx_bilinear(input1, input2, self.weight_masked, self.bias)
+        return cplx.bilinear(input1, input2, self.weight_masked, self.bias)
 
 
 class CplxConv1dMasked(MaskedWeightMixin, CplxConv1d, _BaseCplxMixin):
     def forward(self, input):
-        return cplx_conv1d(input, self.weight_masked, self.bias,
+        return cplx.conv1d(input, self.weight_masked, self.bias,
                            self.stride, self.padding, self.dilation,
                            self.groups, self.padding_mode)
 
 
 class CplxConv2dMasked(MaskedWeightMixin, CplxConv2d, _BaseCplxMixin):
     def forward(self, input):
-        return cplx_conv2d(input, self.weight_masked, self.bias,
+        return cplx.conv2d(input, self.weight_masked, self.bias,
                            self.stride, self.padding, self.dilation,
                            self.groups, self.padding_mode)

@@ -3,7 +3,7 @@ import torch
 from torch.nn import init
 
 from .layers import CplxToCplx
-from .cplx import Cplx
+from ..cplx import Cplx
 
 
 def whiten2x2(tensor, training=True, running_mean=None, running_cov=None,

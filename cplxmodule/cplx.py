@@ -316,79 +316,79 @@ class Cplx(object):
         return cls(re, torch.zeros_like(re, requires_grad=requires_grad))
 
 
-def cplx_cat(tensors, dim):
+def cat(tensors, dim):
     tensors = [*map(Cplx, tensors)]
     return Cplx(torch.cat([z.real for z in tensors], dim=dim),
                 torch.cat([z.imag for z in tensors], dim=dim))
 
 
-def cplx_stack(tensors, dim):
+def stack(tensors, dim):
     tensors = [*map(Cplx, tensors)]
     return Cplx(torch.stack([z.real for z in tensors], dim=dim),
                 torch.stack([z.imag for z in tensors], dim=dim))
 
 
-def interleaved_real_to_cplx(input, copy=True, dim=-1):
+def from_interleaved_real(input, copy=True, dim=-1):
     """Map real tensor input `... x [D * 2]` to a pair (re, im) with dim `... x D`."""
     output = Cplx(*complex_view(input, dim, squeeze=False))
     return output.clone() if copy else output
 
 
-real_to_cplx = interleaved_real_to_cplx
+from_real = from_interleaved_real
 
 
-def concatenated_real_to_cplx(input, copy=True, dim=-1):
+def from_concatenated_real(input, copy=True, dim=-1):
     """Map real tensor input `... x [2 * D]` to a pair (re, im) with dim `... x D`."""
     output = Cplx(*torch.chunk(input, 2, dim=dim))
     return output.clone() if copy else output
 
 
-def cplx_to_interleaved_real(input, flatten=True, dim=-1):
+def to_interleaved_real(input, flatten=True, dim=-1):
     """Interleave the complex re-im pair into a real tensor."""
     dim = 1 + fix_dim(dim, input.dim())
     input = torch.stack([input.real, input.imag], dim=dim)
     return input.flatten(dim-1, dim) if flatten else input
 
 
-cplx_to_real = cplx_to_interleaved_real
+to_real = to_interleaved_real
 
 
-def cplx_to_concatenated_real(input, flatten=None, dim=-1):
+def to_concatenated_real(input, flatten=None, dim=-1):
     """Map real tensor input `... x [2 * D]` to a pair (re, im) with dim `... x D`."""
     assert flatten is None
     return torch.cat([input.real, input.imag], dim=dim)
 
 
-def cplx_exp(input):
+def exp(input):
     r"""Compute the exponential of the complex tensor in re-im pair."""
     scale = torch.exp(input.real)
     return Cplx(scale * torch.cos(input.imag),
                 scale * torch.sin(input.imag))
 
 
-def cplx_log(input):
+def log(input):
     r"""Compute the logarithm of the complex tensor in re-im pair."""
     return Cplx(torch.log(abs(input)), input.angle)
 
 
-def cplx_sin(input):
+def sin(input):
     r"""Compute the sine of the complex tensor in re-im pair."""
     return Cplx(torch.sin(input.real) * torch.cosh(input.imag),
                 torch.cos(input.real) * torch.sinh(input.imag))
 
 
-def cplx_cos(input):
+def cos(input):
     r"""Compute the cosine of the complex tensor in re-im pair."""
     return Cplx(torch.cos(input.real) * torch.cosh(input.imag),
                 - torch.sin(input.real) * torch.sinh(input.imag))
 
 
-def cplx_tan(input):
+def tan(input):
     r"""Compute the tangent of the complex tensor in re-im pair."""
-    return cplx_sin(input) / cplx_cos(input)
+    return sin(input) / cos(input)
 
 
-def cplx_sinh(input):
+def sinh(input):
     r"""Compute the hyperbolic sine of the complex tensor in re-im pair.
 
     sinh(z) = - j sin(j z)
@@ -397,7 +397,7 @@ def cplx_sinh(input):
                 torch.cosh(input.real) * torch.sin(input.imag))
 
 
-def cplx_cosh(input):
+def cosh(input):
     r"""Compute the hyperbolic cosine of the complex tensor in re-im pair.
 
     cosh(z) = cos(j z)
@@ -406,22 +406,22 @@ def cplx_cosh(input):
                 torch.sinh(input.real) * torch.sin(input.imag))
 
 
-def cplx_tanh(input):
+def tanh(input):
     r"""Compute the hyperbolic tangent of the complex tensor in re-im pair.
 
     tanh(z) = j tan(z)
     """
-    return cplx_sinh(input) / cplx_cosh(input)
+    return sinh(input) / cosh(input)
 
 
-def cplx_modrelu(input, threshold=0.5):
+def modrelu(input, threshold=0.5):
     r"""Compute the modulus relu of the complex tensor in re-im pair."""
     # scale = (1 - \trfac{b}{|z|})_+
     modulus = torch.clamp(abs(input), min=1e-5)
     return input * torch.relu(1. - threshold / modulus)
 
 
-def cplx_phaseshift(input, phi=0.0):
+def phaseshift(input, phi=0.0):
     r"""
     Apply phase shift to the complex tensor in re-im pair.
     $$
@@ -436,7 +436,7 @@ def cplx_phaseshift(input, phi=0.0):
     return input * Cplx(torch.cos(phi), torch.sin(phi))
 
 
-def cplx_linear_naive(input, weight, bias=None):
+def linear_naive(input, weight, bias=None):
     r"""Applies a complex linear transformation to the incoming complex
     data: :math:`y = x A^T + b`.
     """
@@ -455,22 +455,22 @@ def cplx_linear_naive(input, weight, bias=None):
     return output
 
 
-def cplx_linear_cat(input, weight, bias=None):
+def linear_cat(input, weight, bias=None):
     # [n_out, n_in] -> [2 * n_out, 2 * n_in] : [[U, V], [-V, U]]
     ww = torch.cat([
         torch.cat([ weight.real, weight.imag], dim=0),
         torch.cat([-weight.imag, weight.real], dim=0)
     ], dim=1)
 
-    xx = cplx_to_concatenated_real(input, dim=-1)  # [..., 2 * n_in]
-    output = concatenated_real_to_cplx(F.linear(xx, ww, None))
+    xx = to_concatenated_real(input, dim=-1)  # [..., 2 * n_in]
+    output = from_concatenated_real(F.linear(xx, ww, None))
     if bias is not None:
         output += bias
 
     return output
 
 
-def cplx_linear_3m(input, weight, bias=None):
+def linear_3m(input, weight, bias=None):
     r"""Applies a complex linear transformation to the incoming complex
     data: :math:`y = x A^T + b`.
 
@@ -495,7 +495,7 @@ def cplx_linear_3m(input, weight, bias=None):
 
 
 # use naive multiplication by default
-cplx_linear = cplx_linear_naive
+linear = linear_naive
 
 
 def symmetric_circular_padding(input, padding):
@@ -514,8 +514,8 @@ def symmetric_circular_padding(input, padding):
     return input.apply(F.pad, tuple(expanded_padding), mode="circular")
 
 
-def cplx_convnd_naive(conv, input, weight, stride=1,
-                      padding=0, dilation=1, groups=1):
+def convnd_naive(conv, input, weight, stride=1,
+                 padding=0, dilation=1, groups=1):
 
     re = conv(input.real, weight.real, None,
               stride, padding, dilation, groups) \
@@ -529,8 +529,8 @@ def cplx_convnd_naive(conv, input, weight, stride=1,
     return Cplx(re, im)
 
 
-def cplx_convnd_quick(conv, input, weight, stride=1,
-                      padding=0, dilation=1):
+def convnd_quick(conv, input, weight, stride=1,
+                 padding=0, dilation=1):
     n_out = weight.shape[0]
     ww = torch.cat([weight.real, weight.imag], dim=0)
     wr = conv(input.real, ww, None, stride, padding, dilation, 1)
@@ -541,8 +541,8 @@ def cplx_convnd_quick(conv, input, weight, stride=1,
     return Cplx(rwr - iwi, iwr + rwi)
 
 
-def cplx_convnd(conv, input, weight, bias=None, stride=1,
-                padding=0, dilation=1, groups=1, padding_mode="zeros"):
+def convnd(conv, input, weight, bias=None, stride=1,
+           padding=0, dilation=1, groups=1, padding_mode="zeros"):
     r"""Applies a complex n-d convolution to the incoming complex
     tensor `B x c_in x L_1 x ... L_n`: :math:`y = x \star W + b`.
     """
@@ -552,11 +552,11 @@ def cplx_convnd(conv, input, weight, bias=None, stride=1,
 
     if groups == 1:
         # ungroupped convolution can be done a little bit faster
-        output = cplx_convnd_quick(conv, input, weight, stride,
-                                   padding, dilation)
+        output = convnd_quick(conv, input, weight, stride,
+                              padding, dilation)
     else:
-        output = cplx_convnd_naive(conv, input, weight, stride,
-                                   padding, dilation, groups)
+        output = convnd_naive(conv, input, weight, stride,
+                              padding, dilation, groups)
 
     if bias is not None:
         broadcast = (input.dim() - 2) * [1]
@@ -565,30 +565,30 @@ def cplx_convnd(conv, input, weight, bias=None, stride=1,
     return output
 
 
-def cplx_conv1d(input, weight, bias=None, stride=1, padding=0,
-                dilation=1, groups=1, padding_mode="zeros"):
+def conv1d(input, weight, bias=None, stride=1, padding=0,
+           dilation=1, groups=1, padding_mode="zeros"):
     r"""Applies a complex 1d convolution to the incoming complex
     tensor `B x c_in x L`: :math:`y = x \star W + b`.
     """
 
-    return cplx_convnd(F.conv1d, input, weight, bias, stride,
-                       padding, dilation, groups, padding_mode)
+    return convnd(F.conv1d, input, weight, bias, stride,
+                  padding, dilation, groups, padding_mode)
 
 
-def cplx_conv2d(input, weight, bias=None, stride=1, padding=0,
-                dilation=1, groups=1, padding_mode="zeros"):
+def conv2d(input, weight, bias=None, stride=1, padding=0,
+           dilation=1, groups=1, padding_mode="zeros"):
     r"""Applies a complex 2d convolution to the incoming complex
     tensor `B x c_in x H x W`: :math:`y = x \star W + b`.
     """
 
-    return cplx_convnd(F.conv2d, input, weight, bias, stride,
-                       padding, dilation, groups, padding_mode)
+    return convnd(F.conv2d, input, weight, bias, stride,
+                  padding, dilation, groups, padding_mode)
 
 
-def cplx_einsum(equation, *tensors):
+def einsum(equation, *tensors):
     """2-tensor einstein summation."""
     if not tensors:
-        raise RuntimeError("""`cplx_einsum()` requires """
+        raise RuntimeError("""`einsum()` requires """
                            """at least one tensor.""")
 
     cplx1, *tensors = tensors
@@ -608,11 +608,11 @@ def cplx_einsum(equation, *tensors):
 
         return Cplx(re, im)
 
-    raise RuntimeError(f"""`cplx_einsum()` does not support more """
+    raise RuntimeError(f"""`einsum()` does not support more """
                        f"""than 2 tensors. Got {2 + len(tensors)}.""")
 
 
-def cplx_bilinear_naive(input1, input2, weight, bias=None, conjugate=True):
+def bilinear_naive(input1, input2, weight, bias=None, conjugate=True):
     r"""Applies a complex bilinear transformation to the incoming complex
     data: :math:`y = x^(T/H) W z + b`.
     """
@@ -640,10 +640,10 @@ def cplx_bilinear_naive(input1, input2, weight, bias=None, conjugate=True):
     return output
 
 
-cplx_bilinear = cplx_bilinear_naive
+bilinear = bilinear_naive
 
 
-def cplx_bilinear_cat(input1, input2, weight, bias=None, conjugate=True):
+def bilinear_cat(input1, input2, weight, bias=None, conjugate=True):
     # [n_out, n_in1, n_in2] -> [2 * n_out, 2 * n_in1, 2 * n_in2]
     U, V = weight.real, weight.imag
 
@@ -660,10 +660,10 @@ def cplx_bilinear_cat(input1, input2, weight, bias=None, conjugate=True):
             torch.cat([VU,  UV], dim=1)
         ], dim=0)
 
-    x1 = cplx_to_concatenated_real(input1, dim=-1)
-    x2 = cplx_to_concatenated_real(input2, dim=-1)
+    x1 = to_concatenated_real(input1, dim=-1)
+    x2 = to_concatenated_real(input2, dim=-1)
 
-    output = concatenated_real_to_cplx(F.bilinear(x1, x2, ww, None))
+    output = from_concatenated_real(F.bilinear(x1, x2, ww, None))
     if bias is not None:
         output += bias
 

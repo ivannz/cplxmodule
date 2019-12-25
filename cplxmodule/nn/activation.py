@@ -2,11 +2,11 @@ import torch
 import torch.nn
 import torch.nn.functional as F
 
-from .cplx import cplx_exp, cplx_log, cplx_modrelu
+from .. import cplx
 
 from .layers import CplxToCplx, BaseCplxToReal
 
-from .utils import torch_module
+from ..utils import torch_module
 
 
 class CplxActivation(CplxToCplx):
@@ -57,7 +57,7 @@ class CplxModReLU(CplxToCplx):
         self.threshold = threshold
 
     def forward(self, input):
-        return cplx_modrelu(input, self.threshold)
+        return cplx.modrelu(input, self.threshold)
 
 
 class CplxAdaptiveModReLU(CplxToCplx):
@@ -81,7 +81,7 @@ class CplxAdaptiveModReLU(CplxToCplx):
         self.threshold = torch.nn.Parameter(torch.randn(*self.dim) * 0.02)
 
     def forward(self, input):
-        return cplx_modrelu(input, self.threshold)
+        return cplx.modrelu(input, self.threshold)
 
     def __repr__(self):
         body = repr(self.dim)[1:-1] if len(self.dim) > 1 else repr(self.dim[0])
@@ -98,6 +98,6 @@ class CplxAngle(BaseCplxToReal):
         return input.angle
 
 
-CplxExp = torch_module(cplx_exp, (CplxToCplx,), "CplxExp")
+CplxExp = torch_module(cplx.exp, (CplxToCplx,), "CplxExp")
 
-CplxLog = torch_module(cplx_log, (CplxToCplx,), "CplxLog")
+CplxLog = torch_module(cplx.log, (CplxToCplx,), "CplxLog")
