@@ -5,16 +5,16 @@ import torch.nn.functional as F
 
 from torchvision import datasets, transforms
 
-from cplxmodule.relevance import penalties
+from cplxmodule.nn.relevance import penalties
 from cplxmodule.utils.stats import sparsity
 
 from torch.nn import Linear, Conv2d
-from cplxmodule.relevance.real import LinearARD, Conv2dARD
-from cplxmodule.masked.real import LinearMasked, Conv2dMasked
+from cplxmodule.nn.relevance.real import LinearARD, Conv2dARD
+from cplxmodule.nn.masked.real import LinearMasked, Conv2dMasked
 
-from cplxmodule.relevance import compute_ard_masks
-from cplxmodule.masked import binarize_masks, deploy_masks
-from cplxmodule.masked import named_masks
+from cplxmodule.nn.relevance import compute_ard_masks
+from cplxmodule.nn.masked import binarize_masks, deploy_masks
+from cplxmodule.nn.masked import named_masks
 from cplxmodule.utils.stats import named_sparsity
 
 
