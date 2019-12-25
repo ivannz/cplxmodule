@@ -2,7 +2,8 @@
 import math
 import torch
 
-from .cplx import Cplx, cplx_conv1d, cplx_conv2d
+from .. import cplx
+from ..cplx import Cplx
 from .layers import CplxToCplx, CplxParameter
 
 from . import init
@@ -98,7 +99,7 @@ class CplxConv1d(CplxConvNd):
             _single(padding), _single(dilation), groups, bias, padding_mode)
 
     def forward(self, input):
-        return cplx_conv1d(input, self.weight, self.bias,
+        return cplx.conv1d(input, self.weight, self.bias,
                            self.stride[0], self.padding[0], self.dilation[0],
                            self.groups, self.padding_mode)
 
@@ -131,6 +132,6 @@ class CplxConv2d(CplxConvNd):
             _pair(padding), _pair(dilation), groups, bias, padding_mode)
 
     def forward(self, input):
-        return cplx_conv2d(input, self.weight, self.bias,
+        return cplx.conv2d(input, self.weight, self.bias,
                            self.stride, self.padding, self.dilation,
                            self.groups, self.padding_mode)

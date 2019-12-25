@@ -4,7 +4,7 @@ import torch.nn
 import torch.nn.functional as F
 
 from .base import BaseARD
-from ..utils.stats import SparsityStats
+from ...utils.stats import SparsityStats
 
 
 class _BaseRelevanceReal(BaseARD, SparsityStats):

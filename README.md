@@ -9,15 +9,15 @@ The implementation is based on the ICLR 2018 parer on Deep Complex Networks
 
 # Installation
 
-Just run to install with `pip`
+Just run to install with `pip` from git
 ```bash
 pip install --upgrade git+https://github.com/ivannz/cplxmodule.git
 ```
-or
+or a developer install (editable) from the root of the local repo
 ```bash
-python setup.py install
+pip install -e .
 ```
-to install from the root of the repo.
+.
 
 
 # Example
@@ -30,17 +30,20 @@ Importing the building blocks.
 import torch
 import torch.nn
 
+# complex valeud tensor class
+from cplxmodule import cplx
+
 # converters
-from cplxmodule import RealToCplx, CplxToReal
+from cplxmodule.nn import RealToCplx, CplxToReal
 
 # layers of encapsulating other complex valued layers
-from cplxmodule.sequential import CplxSequential
+from cplxmodule.nn.sequential import CplxSequential
 
 # common layers
-from cplxmodule.layers import CplxConv1d, CplxLinear
+from cplxmodule.nn.layers import CplxConv1d, CplxLinear
 
 # activation layers
-from cplxmodule.activation import CplxModReLU, CplxActivation
+from cplxmodule.nn.activation import CplxModReLU, CplxActivation
 ```
 
 After `RealToCplx` layer the intermediate inputs are Cplx objects, which are abstractions

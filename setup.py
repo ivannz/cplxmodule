@@ -2,7 +2,7 @@ from distutils.core import setup, Extension
 
 setup(
     name="cplxmodule",
-    version="0.9.5",
+    version="0.9.6",
     description="""A lightweight extension for pytorch.nn for handling """
                 """complex valued computations.""",
     license="MIT License",
@@ -11,8 +11,9 @@ setup(
     packages=[
         "cplxmodule",
         "cplxmodule.utils",
-        "cplxmodule.relevance",
-        "cplxmodule.masked"
+        "cplxmodule.nn",
+        "cplxmodule.nn.relevance",
+        "cplxmodule.nn.masked"
     ],
     requires=["torch", "numpy"]
 )

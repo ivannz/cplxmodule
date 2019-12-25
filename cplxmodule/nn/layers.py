@@ -8,14 +8,9 @@ from functools import lru_cache
 
 from torch.nn import Parameter
 
-from .cplx import Cplx
-from .cplx import cplx_linear, cplx_bilinear
-from .cplx import cplx_phaseshift
-
-from .cplx import cplx_to_interleaved_real, cplx_to_concatenated_real
-from .cplx import interleaved_real_to_cplx, concatenated_real_to_cplx
-
 from . import init
+from .. import cplx
+from ..cplx import Cplx
 
 
 class CplxParameter(torch.nn.ParameterDict):
@@ -91,7 +86,7 @@ class InterleavedRealToCplx(BaseRealToCplx):
         self.copy, self.dim = copy, dim
 
     def forward(self, input):
-        return interleaved_real_to_cplx(input, self.copy, self.dim)
+        return cplx.from_interleaved_real(input, self.copy, self.dim)
 
 
 RealToCplx = InterleavedRealToCplx
@@ -115,7 +110,7 @@ class ConcatenatedRealToCplx(BaseRealToCplx):
         self.copy, self.dim = copy, dim
 
     def forward(self, input):
-        return concatenated_real_to_cplx(input, self.copy, self.dim)
+        return cplx.from_concatenated_real(input, self.copy, self.dim)
 
 
 class AsTypeCplx(BaseRealToCplx):
@@ -151,7 +146,7 @@ class CplxToInterleavedReal(BaseCplxToReal):
         self.dim = dim
 
     def forward(self, input):
-        return cplx_to_interleaved_real(input, True, self.dim)
+        return cplx.to_interleaved_real(input, True, self.dim)
 
 
 CplxToReal = CplxToInterleavedReal
@@ -173,7 +168,7 @@ class CplxToConcatenatedReal(BaseCplxToReal):
         self.dim = dim
 
     def forward(self, input):
-        return cplx_to_concatenated_real(input, None, self.dim)
+        return cplx.to_concatenated_real(input, None, self.dim)
 
 
 class _CplxToCplxMeta(type):
@@ -269,7 +264,7 @@ class CplxLinear(CplxToCplx):
             init.cplx_uniform_independent_(bias, -bound, bound)
 
     def forward(self, input):
-        return cplx_linear(input, self.weight, self.bias)
+        return cplx.linear(input, self.weight, self.bias)
 
     def extra_repr(self):
         return 'in_features={}, out_features={}, bias={}'.format(
@@ -295,7 +290,7 @@ class CplxDropout(torch.nn.Dropout2d, CplxToCplx):
         output = output.reshape(*head, -1)
 
         # [*head, n_last * 2] -> [*head, n_last]
-        return interleaved_real_to_cplx(output, False, -1)
+        return cplx.from_interleaved_real(output, False, -1)
 
 
 CplxDropout1d = CplxDropout
@@ -334,7 +329,7 @@ class CplxPhaseShift(CplxToCplx):
         self.phi = Parameter(torch.randn(*dim) * 0.02)
 
     def forward(self, input):
-        return cplx_phaseshift(input, self.phi)
+        return cplx.phaseshift(input, self.phi)
 
 
 class CplxBilinear(CplxToCplx):
@@ -366,7 +361,7 @@ class CplxBilinear(CplxToCplx):
             init.cplx_uniform_independent_(self.bias, -bound, bound)
 
     def forward(self, input1, input2):
-        return cplx_bilinear(input1, input2, self.weight,
+        return cplx.bilinear(input1, input2, self.weight,
                              self.bias, self.conjugate)
 
     def extra_repr(self):

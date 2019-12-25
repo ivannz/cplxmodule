@@ -12,29 +12,29 @@ import torch.nn.functional as F
 from cplxmodule import Cplx
 
 from torch.nn import Linear
-from cplxmodule.layers import CplxLinear
+from cplxmodule.nn.layers import CplxLinear
 
-from cplxmodule.relevance import LinearARD
-# from cplxmodule.relevance.extensions import LinearARD
-from cplxmodule.relevance import LinearL0ARD
-from cplxmodule.relevance import LinearLASSO
-from cplxmodule.relevance import CplxLinearARD
-# from cplxmodule.relevance.extensions import CplxLinearARD
+from cplxmodule.nn.relevance import LinearARD
+# from cplxmodule.nn.relevance.extensions import LinearARD
+from cplxmodule.nn.relevance import LinearL0ARD
+from cplxmodule.nn.relevance import LinearLASSO
+from cplxmodule.nn.relevance import CplxLinearARD
+# from cplxmodule.nn.relevance.extensions import CplxLinearARD
 
-from cplxmodule.masked import LinearMasked
-from cplxmodule.masked import CplxLinearMasked
+from cplxmodule.nn.masked import LinearMasked
+from cplxmodule.nn.masked import CplxLinearMasked
 
 from torch.nn import Bilinear
-from cplxmodule.relevance.real import BilinearARD
-from cplxmodule.masked.real import BilinearMasked
+from cplxmodule.nn.relevance.real import BilinearARD
+from cplxmodule.nn.masked.real import BilinearMasked
 
-from cplxmodule.layers import CplxBilinear
-from cplxmodule.relevance.complex import CplxBilinearARD
-from cplxmodule.masked.complex import CplxBilinearMasked
+from cplxmodule.nn.layers import CplxBilinear
+from cplxmodule.nn.relevance.complex import CplxBilinearARD
+from cplxmodule.nn.masked.complex import CplxBilinearMasked
 
-from cplxmodule.relevance import penalties, compute_ard_masks
-from cplxmodule.masked import deploy_masks, named_masks
-from cplxmodule.masked import binarize_masks
+from cplxmodule.nn.relevance import penalties, compute_ard_masks
+from cplxmodule.nn.masked import deploy_masks, named_masks
+from cplxmodule.nn.masked import binarize_masks
 from cplxmodule.utils.stats import sparsity, named_sparsity
 
 
@@ -45,7 +45,7 @@ def random_state():
 
 def test_torch_expi(random_state):
     from scipy.special import expi
-    from cplxmodule.relevance.complex import torch_expi
+    from cplxmodule.nn.relevance.complex import torch_expi
 
     npy = random_state.randn(200)
     trx = torch.tensor(npy)
@@ -117,8 +117,8 @@ def example(kind="cplx"):
 
     def construct_cplx(linear):
         from collections import OrderedDict
-        from cplxmodule.layers import RealToCplx, CplxToReal
-        from cplxmodule.activation import CplxAdaptiveModReLU
+        from cplxmodule.nn.layers import RealToCplx, CplxToReal
+        from cplxmodule.nn.activation import CplxAdaptiveModReLU
 
         return torch.nn.Sequential(OrderedDict([
             ("cplx", RealToCplx()),
@@ -238,8 +238,8 @@ def example(kind="cplx"):
 
 def example_bilinear(kind="real"):
     r"""An example, illustrating pre-training."""
-    from cplxmodule.layers import RealToCplx, CplxToReal
-    from cplxmodule.cplx import real_to_cplx, cplx_to_real
+    from cplxmodule.nn.layers import RealToCplx, CplxToReal
+    from cplxmodule.cplx import from_real, to_real
 
     class BilinearTest(torch.nn.Module):
         def __init__(self, bilinear):
@@ -291,8 +291,8 @@ def example_bilinear(kind="real"):
     X = torch.randn(10500, n_features)
     out = X[:, :n_output]
     if "cplx" in kind:
-        z = real_to_cplx(out, copy=False)
-        y = - cplx_to_real(z.conj * z, flatten=False).mean(dim=-2)
+        z = from_real(out, copy=False)
+        y = - to_real(z.conj * z, flatten=False).mean(dim=-2)
 
     else:
         y = - (out * out).mean(dim=-1, keepdim=True)
@@ -350,9 +350,9 @@ def example_bilinear(kind="real"):
 
 
 if __name__ == '__main__':
-    example("real-ard")
-    example("real-l0")
-    example("real-lasso")
-    example("cplx")
+    # example("real-ard")
+    # example("real-l0")
+    # example("real-lasso")
+    # example("cplx")
     example_bilinear("real")
     example_bilinear("cplx")

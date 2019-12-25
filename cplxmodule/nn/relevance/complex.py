@@ -12,9 +12,9 @@ from .base import BaseARD
 
 from ..layers import CplxLinear, CplxBilinear
 from ..conv import CplxConv1d, CplxConv2d
-from ..cplx import Cplx
+from ...cplx import Cplx
 
-from ..utils.stats import SparsityStats
+from ...utils.stats import SparsityStats
 
 
 class ExpiFunction(torch.autograd.Function):

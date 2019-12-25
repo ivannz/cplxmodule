@@ -6,7 +6,7 @@ import numpy as np
 from torch.nn import init
 from functools import wraps
 
-from .cplx import Cplx
+from ..cplx import Cplx
 
 
 def get_fans(cplxtensor):
