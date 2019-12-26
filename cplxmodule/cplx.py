@@ -322,10 +322,58 @@ def cat(tensors, dim):
                 torch.cat([z.imag for z in tensors], dim=dim))
 
 
+def split(input, split_size_or_sections, dim=0):
+    """see documetnation for `torch.split`"""
+    return tuple(Cplx(re, im) for re, im in zip(
+        torch.split(input.real, split_size_or_sections, dim),
+        torch.split(input.imag, split_size_or_sections, dim),
+    ))
+
+
+def chunk(input, chunks, dim=0):
+    """see documetnation for `torch.chunk`"""
+    return tuple(Cplx(re, im) for re, im in zip(
+        torch.chunk(input.real, chunks, dim),
+        torch.chunk(input.imag, chunks, dim),
+    ))
+
+
 def stack(tensors, dim):
     tensors = [*map(Cplx, tensors)]
     return Cplx(torch.stack([z.real for z in tensors], dim=dim),
                 torch.stack([z.imag for z in tensors], dim=dim))
+
+
+def unbind(input, dim=0):
+    """see documetnation for `torch.unbind`"""
+    return tuple(Cplx(re, im) for re, im in zip(
+        torch.unbind(input.real, dim),
+        torch.unbind(input.imag, dim),
+    ))
+
+
+def take(input, index):
+    """see documetnation for `torch.take`"""
+    return Cplx(torch.take(input.real, index),
+                torch.take(input.imag, index))
+
+
+def narrow(input, dim, start, length):
+    """see documetnation for `torch.narrow`"""
+    return Cplx(torch.narrow(input.real, dim, start, length),
+                torch.narrow(input.imag, dim, start, length))
+
+
+def squeeze(input, dim=None):
+    """see documetnation for `torch.squeeze`"""
+    return Cplx(torch.squeeze(input.real, dim),
+                torch.squeeze(input.imag, dim))
+
+
+def unsqueeze(input, dim):
+    """see documetnation for `torch.unsqueeze`"""
+    return Cplx(torch.unsqueeze(input.real, dim),
+                torch.unsqueeze(input.imag, dim))
 
 
 def from_interleaved_real(input, copy=True, dim=-1):
