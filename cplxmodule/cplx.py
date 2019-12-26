@@ -323,7 +323,7 @@ def cat(tensors, dim):
 
 
 def split(input, split_size_or_sections, dim=0):
-    """see documetnation for `torch.split`"""
+    """see documentation for `torch.split`"""
     return tuple(Cplx(re, im) for re, im in zip(
         torch.split(input.real, split_size_or_sections, dim),
         torch.split(input.imag, split_size_or_sections, dim),
@@ -331,7 +331,7 @@ def split(input, split_size_or_sections, dim=0):
 
 
 def chunk(input, chunks, dim=0):
-    """see documetnation for `torch.chunk`"""
+    """see documentation for `torch.chunk`"""
     return tuple(Cplx(re, im) for re, im in zip(
         torch.chunk(input.real, chunks, dim),
         torch.chunk(input.imag, chunks, dim),
@@ -345,7 +345,7 @@ def stack(tensors, dim):
 
 
 def unbind(input, dim=0):
-    """see documetnation for `torch.unbind`"""
+    """see documentation for `torch.unbind`"""
     return tuple(Cplx(re, im) for re, im in zip(
         torch.unbind(input.real, dim),
         torch.unbind(input.imag, dim),
@@ -353,25 +353,25 @@ def unbind(input, dim=0):
 
 
 def take(input, index):
-    """see documetnation for `torch.take`"""
+    """see documentation for `torch.take`"""
     return Cplx(torch.take(input.real, index),
                 torch.take(input.imag, index))
 
 
 def narrow(input, dim, start, length):
-    """see documetnation for `torch.narrow`"""
+    """see documentation for `torch.narrow`"""
     return Cplx(torch.narrow(input.real, dim, start, length),
                 torch.narrow(input.imag, dim, start, length))
 
 
 def squeeze(input, dim=None):
-    """see documetnation for `torch.squeeze`"""
+    """see documentation for `torch.squeeze`"""
     return Cplx(torch.squeeze(input.real, dim),
                 torch.squeeze(input.imag, dim))
 
 
 def unsqueeze(input, dim):
-    """see documetnation for `torch.unsqueeze`"""
+    """see documentation for `torch.unsqueeze`"""
     return Cplx(torch.unsqueeze(input.real, dim),
                 torch.unsqueeze(input.imag, dim))
 

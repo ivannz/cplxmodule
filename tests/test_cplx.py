@@ -502,3 +502,21 @@ def test_cat_stack(random_state):
 
     with pytest.raises(RuntimeError, match="Sizes of tensors must match"):
         cplx.cat(map(cplx.Cplx.from_numpy, np_tensors), dim=1)
+
+
+@pytest.mark.skip(reason="not implemented")
+def test_splitting(random_state):
+    # chunk, split, unbind
+    assert False
+
+
+@pytest.mark.skip(reason="not implemented")
+def test_mutating(random_state):
+    # squeeze, unsqueeze, reshape, t, transpose, permute
+    assert False
+
+
+@pytest.mark.skip(reason="not implemented")
+def test_indexing(random_state):
+    # take, narrow
+    assert False
