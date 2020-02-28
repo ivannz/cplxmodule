@@ -90,7 +90,7 @@ Since variational approximations use additive noise reparameterization, each var
 
 ```python
 from cplxmodule.nn.relevance import compute_ard_masks
-from cplxmodule.nn.masks import binarize_masks
+from cplxmodule.nn.masked import binarize_masks
 
 
 def state_dict_with_masks(model, **kwargs):
