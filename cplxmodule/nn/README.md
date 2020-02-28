@@ -60,7 +60,7 @@ Functions in `nn.init` implement various random initialization strategies suitab
 
 ## BatchNorm layers
 
-Whitening-based batch normalization layers proposed in [1]_ are provided by `nn.batchnorm`.
+Whitening-based batch normalization layers proposed in _[1]_ are provided by `nn.batchnorm`.
 
 * CplxBatchNorm1d
 * CplxBatchNorm2d
@@ -146,6 +146,4 @@ print(real_input_model(z).shape)
 
 # References
 
-.. [1] Trabelsi, C., Bilaniuk, O., Zhang, Y., Serdyuk, D., Subramanian,
-       S., Santos, J. F., ... & Pal, C. J. (2017). Deep complex networks.
-       arXiv preprint arXiv:1705.09792
+.. [1] Trabelsi, C., Bilaniuk, O., Zhang, Y., Serdyuk, D., Subramanian, S., Santos, J. F., Mehri, S., Rostamzadeh, N, Bengio, Y. & Pal, C. J. (2018). Deep complex networks. In International Conference on Learning Representations, 2018. URL https://openreview.net/forum?id=H1T2hmZAb.
