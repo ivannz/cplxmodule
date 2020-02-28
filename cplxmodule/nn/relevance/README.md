@@ -104,10 +104,12 @@ def state_dict_with_masks(model, **kwargs):
 
 
 # threshold of -0.5 lose in performance a little, but gives much stronger sparsity
-state_dict, masks = state_dict_with_masks(models["bayes"], theshold=-0.5, hard=True)
+state_dict, masks = state_dict_with_masks(models["bayes"], threshold=-0.5, hard=True)
 
 # state dict to loading, masks for analysis
-models["masked"].load_state_dict(state_dict)
+models["masked"].load_state_dict(state_dict,  strict=False)
+
+# ..., unexpected_keys=['classifier.0.log_sigma2', 'classifier.2.log_sigma2'])
 ```
 
 ## Implementation
