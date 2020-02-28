@@ -15,7 +15,7 @@ class BaseARD(torch.nn.Module):
                                   "mask of relevant coefficients.")
 
 
-def named_penalties(module, reduction="mean", prefix=""):
+def named_penalties(module, reduction="sum", prefix=""):
     """Generator of named penalty terms with specified reduction."""
     if reduction is not None and reduction not in ("mean", "sum"):
         raise ValueError(f"""`reduction` must be either `None`, "sum" """
@@ -34,7 +34,7 @@ def named_penalties(module, reduction="mean", prefix=""):
             yield name, penalty
 
 
-def penalties(module, reduction="mean"):
+def penalties(module, reduction="sum"):
     for name, penalty in named_penalties(module, reduction=reduction):
         yield penalty
 
