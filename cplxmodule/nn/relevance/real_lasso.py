@@ -1,7 +1,7 @@
 import torch
 
 from .base import BaseARD
-from ...utils.stats import SparsityStats
+from ..utils.sparsity import SparsityStats
 
 
 class LinearLASSO(torch.nn.Linear, BaseARD, SparsityStats):

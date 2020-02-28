@@ -4,7 +4,7 @@ import torch.nn.functional as F
 from torch.nn import Linear, Conv1d, Conv2d, Bilinear
 from .base import BaseMasked, MaskedWeightMixin
 
-from ...utils.stats import SparsityStats
+from ..utils.sparsity import SparsityStats
 
 
 class _BaseRealMixin(BaseMasked, SparsityStats):

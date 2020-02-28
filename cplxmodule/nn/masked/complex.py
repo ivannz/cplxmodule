@@ -7,7 +7,7 @@ from ..conv import CplxConv1d, CplxConv2d
 
 from .base import BaseMasked, MaskedWeightMixin
 
-from ...utils.stats import SparsityStats
+from ..utils.sparsity import SparsityStats
 
 
 class _BaseCplxMixin(BaseMasked, SparsityStats):

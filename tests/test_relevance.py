@@ -35,7 +35,7 @@ from cplxmodule.nn.masked.complex import CplxBilinearMasked
 from cplxmodule.nn.relevance import penalties, compute_ard_masks
 from cplxmodule.nn.masked import deploy_masks, named_masks
 from cplxmodule.nn.masked import binarize_masks
-from cplxmodule.utils.stats import sparsity, named_sparsity
+from cplxmodule.nn.utils.sparsity import sparsity, named_sparsity
 
 
 @pytest.fixture
@@ -350,9 +350,9 @@ def example_bilinear(kind="real"):
 
 
 if __name__ == '__main__':
-    # example("real-ard")
-    # example("real-l0")
-    # example("real-lasso")
-    # example("cplx")
-    example_bilinear("real")
-    example_bilinear("cplx")
+    example("real-ard")
+    example("real-l0")
+    example("real-lasso")
+    example("cplx")
+    # example_bilinear("real")
+    # example_bilinear("cplx")

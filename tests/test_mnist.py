@@ -6,7 +6,7 @@ import torch.nn.functional as F
 from torchvision import datasets, transforms
 
 from cplxmodule.nn.relevance import penalties
-from cplxmodule.utils.stats import sparsity
+from cplxmodule.nn.utils.sparsity import sparsity
 
 from torch.nn import Linear, Conv2d
 from cplxmodule.nn.relevance.real import LinearARD, Conv2dARD
@@ -15,7 +15,7 @@ from cplxmodule.nn.masked.real import LinearMasked, Conv2dMasked
 from cplxmodule.nn.relevance import compute_ard_masks
 from cplxmodule.nn.masked import binarize_masks, deploy_masks
 from cplxmodule.nn.masked import named_masks
-from cplxmodule.utils.stats import named_sparsity
+from cplxmodule.nn.utils.sparsity import named_sparsity
 
 
 def model_fit(model, feed, optim, n_steps=100, threshold=1.0,
