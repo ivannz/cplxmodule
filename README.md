@@ -1,11 +1,8 @@
 # CplxModule
 
-A lightweight extension for `pytorch.nn` that adds layers and activations,
-which respect algebraic operations over the field of complex numbers.
+A lightweight extension for `pytorch.nn` that adds layers and activations, which respect algebraic operations over the field of complex numbers.
 
-The implementation is based on the ICLR 2018 parer on Deep Complex Networks
-[1]_ and borrows ideas from their [implementation](https://github.com/ChihebTrabelsi/deep_complex_networks).
-
+The core implementation of the complex-valued batch normalization and weight initialization layers is inspired by the ICLR 2018 parer on Deep Complex Networks _[1]_ and borrows ideas from the [implementation](https://github.com/ChihebTrabelsi/deep_complex_networks). Real-valued variational dropout and automatic relevance determination are based on the profound works by Kingma _[2]_ and Molchanov _[3]_. Complex-valued Bayesian sparsification layers are based on original research.
 
 # Installation
 
@@ -19,92 +16,15 @@ pip install -e .
 ```
 .
 
+# Documentation
 
-# Example
+Please refer to README files located in `cplxmodule.nn`, `cplxmodule.nn.relevance`, and `cplxmodule.nn.masked` for the high-level description of the implementation, functionality and useful code patterns.
 
-Basically the module is designed in such a way as to be ready for plugging
-into the existing `torch.nn` sequential models.
-
-Importing the building blocks.
-```python
-import torch
-import torch.nn
-
-# complex valeud tensor class
-from cplxmodule import cplx
-
-# converters
-from cplxmodule.nn import RealToCplx, CplxToReal
-
-# layers of encapsulating other complex valued layers
-from cplxmodule.nn.sequential import CplxSequential
-
-# common layers
-from cplxmodule.nn.layers import CplxConv1d, CplxLinear
-
-# activation layers
-from cplxmodule.nn.activation import CplxModReLU, CplxActivation
-```
-
-After `RealToCplx` layer the intermediate inputs are Cplx objects, which are abstractions
-for complex valued tensors, represented by real and imaginary parts, and which obey complex
-arithmetic (currently no support for mixed-type arithmetic like `torch.Tensor +/-* Cplx`).
-```python
-n_features, n_channels = 16, 4
-z = torch.randn(3, n_features*2)
-
-cplx = RealToCplx()(z)
-print(cplx)
-```
-
-Stacking and constructing linear pipelines:
-```python
-n_features, n_channels = 16, 4
-z = torch.randn(256, n_features*2)
-
-# gain network works on the modulus of the complex input
-modulus_gain = torch.nn.Sequential(
-    torch.nn.Linear(n_features, n_channels * n_features),
-    torch.nn.Sigmoid(),
-)
-
-# purely complex-to-complex sequential container
-complex_model = CplxSequential(
-    CplxLinear(n_features, n_features, bias=True),
-
-    # complex: batch x n_channels x n_features
-    CplxConv1d(n_channels, 3 * n_channels, kernel_size=4, stride=1, bias=False),
-
-    # complex: batch x (3 * n_channels) x (n_features - (4-1))
-    CplxModReLU(threshold=0.15),
-
-    # complex: batch x (3 * n_channels) x (n_features - (4-1))
-    CplxActivation(torch.flatten, start_dim=-2),
-)
-
-# branching into complex within a real-to-real model
-real_input_model = torch.nn.Sequential(
-    # real: batch x (n_features * 2)
-    torch.nn.Linear(n_features * 2, n_features * 2),
-
-    # real: batch x (n_features * 2)
-    RealToCplx(),
-
-    # complex: batch x n_features
-    complex_model,
-
-    # complex: batch x (3 * n_channels * (n_features - (4-1)))
-    CplxToReal(),
-
-    # real: batch x ((3 * n_channels * (n_features - (4-1))) * 2)
-)
-
-print(real_input_model(z).shape)
-# >>> torch.Size([256, 312])
-```
 
 # References
 
-.. [1] Trabelsi, C., Bilaniuk, O., Zhang, Y., Serdyuk, D., Subramanian,
-       S., Santos, J. F., ... & Pal, C. J. (2017). Deep complex networks.
-       arXiv preprint arXiv:1705.09792
+.. [1] Trabelsi, C., Bilaniuk, O., Zhang, Y., Serdyuk, D., Subramanian, S., Santos, J. F., Mehri, S., Rostamzadeh, N, Bengio, Y. & Pal, C. J. (2018). Deep complex networks. In International Conference on Learning Representations, 2018. URL https://openreview.net/forum?id=H1T2hmZAb.
+
+.. [2] Kingma, D. P., Salimans, T., & Welling, M. (2015). Variational dropout and the local reparameterization trick. In Advances in neural information processing systems (pp. 2575-2583).
+
+.. [3] Molchanov, D., Ashukha, A., & Vetrov, D. (2017, August). Variational dropout sparsifies deep neural networks. In Proceedings of the 34th International Conference on Machine Learning-Volume 70 (pp. 2498-2507). JMLR. org.
