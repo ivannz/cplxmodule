@@ -4,7 +4,7 @@ This submodule implements maskable real- and complex- valued layers, e.g. for fi
 
 ## Usage
 
-The typical use case is covered in the README of `nn.relevance` since the masked layers are used after  sparsification methods did their job. Nevertheless, below is a simple illustration of the interface.
+The typical use case is covered in the README of `nn.relevance`, since it is reasonable to use maskable layers after sparsification methods did their job. Nevertheless, below is a simple illustration of the interface for standalone use:
 
 ```python
 from cplxmodule.nn.masked import LinearMasked
@@ -26,7 +26,7 @@ lin.weight_masked  # read-only masked weight for forward pass
 
 All subclasses of `BaseMasked`, unless explicitly redefined, have a readable and writable property `.mask`, and an alternative function interface `.mask_(tensor)`. Setting `.mask` to a tensor automatically does the necessary dtype conversion, device placement and broadcasting. The right-hand side value must be bradcastible to the real shape of the layer's weight.
 
-Setting `.mask` to `None` removes the currently set mask (if present). Without a set `.mask` the layer refused to function. This constrain was deliberately added to inform the user about absent masks, since the use of Masked layer implies that something should be masked.
+Setting `.mask` to `None` removes the currently set mask (if present). Without a set `.mask` the layer refused to function (raises a `RuntimeError` exception). This constraint was deliberately added to inform the user about absent masks, since the use of maskable layer implies that something should be masked.
 
 Masked layers fully support serializing and deserializing through the pytorch's standard `.state_dict()` and `.load_state_dict()` methods. `nn.masked` also provides `deploy_masks()` procedure, which accepts a properly keyed state dict, and sets masks through overwriting `.mask` of every compatible layer.
 
@@ -34,7 +34,7 @@ The `nn.masked` submodule has a function `named_masks()`, which returns a genera
 
 ### Cleaning masks and weights
 
-It is entirely possible for the masks to not be binary, and instead take any real value. Although layers with such masks would operate normally, their parameter values might be differently scaled due to non-binary masks. To address this possibility the `nn.masked` submodule provides `binarize_masks()` function, which takes in a `state_dict` of model's weights and compatible `masks` dictionary, and forces masks to 0-1 values by pre-multiplying and overwriting the corresponding weight in the `state_dict`. See the README in `nn.relevance` for a use case and a code snippet.
+It is entirely possible for the masks to not be binary, and instead take any real value. Although layers with such masks would operate normally, their parameter values might be differently scaled due to non-binary masks. To address this possibility the `nn.masked` submodule provides `binarize_masks()` function, which takes in a `state_dict` of model's weights and compatible `masks` dictionary, and forces masks to `0-1` values by pre-multiplying and overwriting the corresponding weight in the `state_dict`. See the README in `nn.relevance` for a use case and a code snippet.
 
 ## Implementation
 

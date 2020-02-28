@@ -31,11 +31,11 @@
 
 ### Subclassing CplxToCplx
 
-The base class for complex-valued layers is `CplxToCplx`. It has not `__init__` and thus can be placed anywhere in the base class list, however it is preferable to keep it as right as possible.
+The base class for complex-valued layers is `CplxToCplx`. It does not have `__init__` and thus can be placed anywhere in the base class list, however it is preferable to keep it as right as possible, but preceding `torch.nn.Module`.
 
 ### Promoting real layers
 
-It is possible to promote an existing real-valued module to complex-valued module, which is shared between the real and imaginary parts and acts on them independently. For example the typical use case is to convert an activation to split complex-valued acitvation:
+It is possible to promote an existing real-valued module to complex-valued module, which is *shared* between the real and imaginary parts and acts on them independently, i.e. the same layer is applied twice. For example, the typical use case is to convert a real-valued activation to split complex-valued acitvation:
 
 ```python
 from cplxmodule import cplx
@@ -56,7 +56,7 @@ CplxSharedLinear(1, 3, bias=False)(z)
 
 ## Initialization
 
-Functions in `nn.init` implement various random initialization strategies suitable for complex-valued layers.
+Functions in `nn.init` implement various random initialization strategies suitable for complex-valued layers, that were researched in _[1]_.
 
 ## BatchNorm layers
 
