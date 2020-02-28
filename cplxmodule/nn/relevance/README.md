@@ -1,10 +1,10 @@
 # Real- and Complex- valued Variational Dropout
 
-This is the core module for the real- and complex- valued bayesian sparsification.
+This is the core module for the real- and complex- valued Bayesian sparsification.
 
 ## Usage
 
-The basic pipeline for applying bayesian sparsification methods is to train a non-bayesian model and then promote the select layers to their bayesian variants. A non pytorch-friendly way is to perform surgery on the existing model, replacing layers (in `._modules` orderred dict) and copying weight. A more transparent and orthodox method is to pass a type substitution dict to `__init__` and propagate it to submodules.
+The basic pipeline for applying Bayesian sparsification methods is to train a non-Bayesian model and then promote the select layers to their Bayesian variants. A non pytorch-friendly way is to perform surgery on the existing model, replacing layers (in `._modules` ordered dict) and copying weight. A more transparent and orthodox method is to pass a type substitution dict to `__init__` and propagate it to submodules.
 
 Below is a real-valued classifier. Complex-valued is similar, but requires input of type `cplx.Cplx`.
 
@@ -45,6 +45,11 @@ models = {
 }
 ```
 
+Important, complex-valued alternatives can be readily plugged in instead of real-valued layers,
+except one would have to prepend a real-to-complex transformation layer to `features`, and
+append a complex-to-real transformation to the `classifier`.
+
+
 ### Collecting KL divergence terms
 
 The variational dropout and relevance determination techniques require a penalty term to be introduced to the loss objective. The term is given by the Kullback-Leibler divergences of the variational approximation from the assumed prior distribution.
@@ -71,11 +76,11 @@ loss = criterion(model(X), y) + coef * sum(penalties(model, reduction="sum"))
 
 ### Computing relevance masks
 
-The variational dropout and relevance determination methods use special Fully Factorised Gaussian approximation with mean `\mu` and variance `\alpha \lvert \mu \rvert^2`. The `\alpha` is essentially the ratio of mean to standard deviation and is learnt either directly, or through a additive reparameterization. It effectively scores the irrelevance of the parameter it is associated with: `\alpha` is close to zero, then the parameter is more relevant, rather than the parameter with `\alpha` above `1`.
+The variational dropout and relevance determination methods use special Fully Factorised Gaussian approximation with mean `\mu` and variance `\alpha \lvert \mu \rvert^2`. The `\alpha` is essentially the ratio of mean to standard deviation and is learnt either directly, or through an additive reparameterization. It effectively scores the irrelevance of the parameter it is associated with: `\alpha` is close to zero, then the parameter is more relevant, rather than the parameter with `\alpha` above `1`.
 
 In order to decide if a parameter is relevant it is necessary to compare its irrelevance score against a threshold. The following functions can be used for returning the masks of kept/dropped out (sparsified) parametersL
 
-* `named_relevance(module, threshold=..., hard=True)` much like the `.named_penalties`, this generator yields submodule's name and the computed relevance mask, which is `nonzero` at those parameter elements, which have `\log\alpha` below the given `threshold`. `hard` forces the returend mask to be binary.
+* `named_relevance(module, threshold=..., hard=True)` much like the `.named_penalties`, this generator yields submodule's name and the computed relevance mask, which is `nonzero` at those parameter elements, which have `\log\alpha` below the given `threshold`. `hard` forces the returned mask to be binary.
 
 * `compute_ard_masks(module, threshold=..., hard=True)` also returns the sparsity mask, but unlike `named_relevance` returns a dictionary of masks, keyed by parameter manes compatible with the masking interface of the layers in `nn.masked`.
 
