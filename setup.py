@@ -10,10 +10,11 @@ setup(
     author_email="ivan.nazarov@skolkovotech.ru",
     packages=[
         "cplxmodule",
-        "cplxmodule.utils",
         "cplxmodule.nn",
         "cplxmodule.nn.relevance",
-        "cplxmodule.nn.masked"
+        "cplxmodule.nn.masked",
+        "cplxmodule.nn.utils",
+        "cplxmodule.utils",
     ],
     requires=["torch", "numpy"]
 )
