@@ -135,12 +135,12 @@ The modules in `nn.relevance` implement both `real`- and `complex` valued variat
     - (real) LinearVD, Conv1dVD, Conv2dVD, BilinearVD
     - (complex) CplxLinearVD, CplxConv1dVD, CplxConv2dVD, CplxBilinearVD
 
-* Automatic Relevance Determination (ard prior: factorized gaussian with learnt precision)
+* Automatic Relevance Determination (factorized gaussian prior with learnt precision)
     - (real) LinearARD, Conv1dARD, Conv2dARD, BilinearARD
     - (complex) CplxLinearARD, CplxConv1dARD, CplxConv2dARD, CplxBilinearARD
 
 * Variational dropout with bogus forward values, but exact gradients
-    - (complex only) CplxLinearVDBogus, CplxConv1dVD, CplxConv2dVD, CplxBilinearVD
+    - (complex only) CplxLinearVDBogus, CplxConv1dVDBogus, CplxConv2dVDBogus, CplxBilinearVDBogus
 
 ### Subclassing Modules
 
