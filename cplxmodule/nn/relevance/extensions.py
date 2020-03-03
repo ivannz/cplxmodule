@@ -12,15 +12,15 @@ from numpy import euler_gamma
 
 from .base import BaseARD
 
-from .real import LinearARD as LinearVD
-from .real import Conv1dARD as Conv1dVD
-from .real import Conv2dARD as Conv2dVD
-from .real import BilinearARD as BilinearVD
+from .real import LinearVD
+from .real import Conv1dVD
+from .real import Conv2dVD
+from .real import BilinearVD
 
-from .complex import CplxLinearARD as CplxLinearVD
-from .complex import CplxBilinearARD as CplxBilinearVD
-from .complex import CplxConv1dARD as CplxConv1dVD
-from .complex import CplxConv2dARD as CplxConv2dVD
+from .complex import CplxLinearVD
+from .complex import CplxBilinearVD
+from .complex import CplxConv1dVD
+from .complex import CplxConv2dVD
 
 from .complex import ExpiFunction, torch_expi
 

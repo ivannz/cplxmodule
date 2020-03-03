@@ -9,8 +9,8 @@ from cplxmodule.nn.relevance import penalties
 from cplxmodule.nn.utils.sparsity import sparsity
 
 from torch.nn import Linear, Conv2d
-from cplxmodule.nn.relevance.real import LinearARD, Conv2dARD
-from cplxmodule.nn.masked.real import LinearMasked, Conv2dMasked
+from cplxmodule.nn.relevance import LinearARD, Conv2dARD
+from cplxmodule.nn.masked import LinearMasked, Conv2dMasked
 
 from cplxmodule.nn.relevance import compute_ard_masks
 from cplxmodule.nn.masked import binarize_masks, deploy_masks

@@ -14,23 +14,19 @@ from cplxmodule import Cplx
 from torch.nn import Linear
 from cplxmodule.nn.layers import CplxLinear
 
-from cplxmodule.nn.relevance import LinearARD
-# from cplxmodule.nn.relevance.extensions import LinearARD
-from cplxmodule.nn.relevance import LinearL0ARD
-from cplxmodule.nn.relevance import LinearLASSO
+from cplxmodule.nn.relevance import LinearARD, LinearL0, LinearLASSO
 from cplxmodule.nn.relevance import CplxLinearARD
-# from cplxmodule.nn.relevance.extensions import CplxLinearARD
 
 from cplxmodule.nn.masked import LinearMasked
 from cplxmodule.nn.masked import CplxLinearMasked
 
 from torch.nn import Bilinear
-from cplxmodule.nn.relevance.real import BilinearARD
-from cplxmodule.nn.masked.real import BilinearMasked
+from cplxmodule.nn.relevance import BilinearARD
+from cplxmodule.nn.masked import BilinearMasked
 
 from cplxmodule.nn.layers import CplxBilinear
-from cplxmodule.nn.relevance.complex import CplxBilinearARD
-from cplxmodule.nn.masked.complex import CplxBilinearMasked
+from cplxmodule.nn.relevance import CplxBilinearARD
+from cplxmodule.nn.masked import CplxBilinearMasked
 
 from cplxmodule.nn.relevance import penalties, compute_ard_masks
 from cplxmodule.nn.masked import deploy_masks, named_masks
@@ -152,12 +148,12 @@ def example(kind="cplx"):
         }
 
     elif kind == "real-l0":
-        layers = [Linear, LinearL0ARD, LinearMasked]
+        layers = [Linear, LinearL0, LinearMasked]
         construct = construct_real
         reduction = "sum"
         phases = {
             "Linear": (1000, 0.0),
-            "LinearL0ARD": (4000, 2e-2),
+            "LinearL0": (4000, 2e-2),
             "LinearMasked": (500, 0.0)
         }
 
@@ -354,5 +350,5 @@ if __name__ == '__main__':
     example("real-l0")
     example("real-lasso")
     example("cplx")
-    # example_bilinear("real")
-    # example_bilinear("cplx")
+    example_bilinear("real")
+    example_bilinear("cplx")

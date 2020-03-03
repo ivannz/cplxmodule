@@ -1,3 +1,5 @@
+import warnings
+
 import torch
 import torch.nn
 
@@ -55,7 +57,7 @@ class _BaseRelevanceReal(BaseARD, SparsityStats):
         return [(id(self.weight), self.weight.numel() - n_relevant)]
 
 
-class LinearARD(torch.nn.Linear, _BaseRelevanceReal):
+class LinearVD(torch.nn.Linear, _BaseRelevanceReal):
     r"""Linear layer with automatic relevance detection.
 
     Details
@@ -102,7 +104,7 @@ class LinearARD(torch.nn.Linear, _BaseRelevanceReal):
         return mu + torch.randn_like(s2) * torch.sqrt(torch.clamp(s2, 1e-8))
 
 
-class Conv1dARD(torch.nn.Conv1d, _BaseRelevanceReal):
+class Conv1dVD(torch.nn.Conv1d, _BaseRelevanceReal):
     r"""1D convolution layer with automatic relevance detection.
 
     Details
@@ -143,7 +145,7 @@ class Conv1dARD(torch.nn.Conv1d, _BaseRelevanceReal):
         return mu + torch.randn_like(s2) * torch.sqrt(torch.clamp(s2, 1e-8))
 
 
-class Conv2dARD(torch.nn.Conv2d, _BaseRelevanceReal):
+class Conv2dVD(torch.nn.Conv2d, _BaseRelevanceReal):
     r"""2D convolution layer with automatic relevance detection.
 
     Details
@@ -211,7 +213,7 @@ class Conv2dARD(torch.nn.Conv2d, _BaseRelevanceReal):
         return mu + torch.randn_like(s2) * torch.sqrt(torch.clamp(s2, 1e-8))
 
 
-class BilinearARD(torch.nn.Bilinear, _BaseRelevanceReal):
+class BilinearVD(torch.nn.Bilinear, _BaseRelevanceReal):
     r"""Bilinear layer with automatic relevance detection."""
 
     def __init__(self, in1_features, in2_features, out_features, bias=True):
@@ -234,3 +236,68 @@ class BilinearARD(torch.nn.Bilinear, _BaseRelevanceReal):
 
         # .normal reports a grad-fn, but weirdly does not pass grads!
         return mu + torch.randn_like(s2) * torch.sqrt(torch.clamp(s2, 1e-8))
+
+
+class LinearARD(object):
+    def __new__(cls, in_features, out_features, bias=True):
+        # Due to incorrect naming real-valued Automatic Relevance Determination
+        # (ARD) layers from `.real` are and have always been Variational Dropout
+        # layers (VD). The only difference is in the prior: ARD uses Gaussian
+        # prior with adaptive precision, while VD uses log-uniform prior.
+        # While empirical evidence suggests that they both sprasify similary,
+        # and yield close compression levels, VD layers tended to have higher
+        # arithmetic complexity due to the pentaly term.
+        warnings.warn("Importing real-valued Automatic Relevance Determination"
+                      " layers (ARD) from `cplxmodule.nn.relevance.real` has"
+                      " been deprecated due to misleading name. Starting with"
+                      " version `1.0` the `.real` submodule will export real-"
+                      "valued Variational Dropout (VD) layers only. Please"
+                      " import ARD layers from `relevance.extensions`.",
+                      FutureWarning)
+
+        return LinearVD(in_features, out_features, bias)
+
+
+class Conv1dARD(object):
+    def __new__(cls, in_channels, out_channels, kernel_size, stride=1,
+                padding=0, dilation=1, groups=1,
+                bias=True, padding_mode='zeros'):
+        warnings.warn("Importing real-valued Automatic Relevance Determination"
+                      " layers (ARD) from `cplxmodule.nn.relevance.real` has"
+                      " been deprecated due to misleading name. Starting with"
+                      " version `1.0` the `.real` submodule will export real-"
+                      "valued Variational Dropout (VD) layers only. Please"
+                      " import ARD layers from `relevance.extensions`.",
+                      FutureWarning)
+
+        return Conv1dVD(in_channels, out_channels, kernel_size, stride,
+                        padding, dilation, groups, bias, padding_mode)
+
+
+class Conv2dARD(object):
+    def __new__(cls, in_channels, out_channels, kernel_size, stride=1,
+                padding=0, dilation=1, groups=1,
+                bias=True, padding_mode='zeros'):
+        warnings.warn("Importing real-valued Automatic Relevance Determination"
+                      " layers (ARD) from `cplxmodule.nn.relevance.real` has"
+                      " been deprecated due to misleading name. Starting with"
+                      " version `1.0` the `.real` submodule will export real-"
+                      "valued Variational Dropout (VD) layers only. Please"
+                      " import ARD layers from `relevance.extensions`.",
+                      FutureWarning)
+
+        return Conv2dVD(in_channels, out_channels, kernel_size, stride,
+                        padding, dilation, groups, bias, padding_mode)
+
+
+class BilinearARD(object):
+    def __new__(cls, in1_features, in2_features, out_features, bias=True):
+        warnings.warn("Importing real-valued Automatic Relevance Determination"
+                      " layers (ARD) from `cplxmodule.nn.relevance.real` has"
+                      " been deprecated due to misleading name. Starting with"
+                      " version `1.0` the `.real` submodule will export real-"
+                      "valued Variational Dropout (VD) layers only. Please"
+                      " import ARD layers from `relevance.extensions`.",
+                      FutureWarning)
+
+        return BilinearVD(in1_features, in2_features, out_features, bias)
