@@ -28,6 +28,56 @@ class CplxParameter(torch.nn.ParameterDict):
         # save reference to the underlying cplx data
         self._cplx = cplx
 
+    def _load_from_state_dict(self, state_dict, prefix, local_metadata,
+                              strict, missing_keys, unexpected_keys,
+                              error_msgs):
+
+        missing, unexpected = [], []
+        super()._load_from_state_dict(state_dict, prefix, local_metadata,
+                                      strict, missing, unexpected, error_msgs)
+
+        if len(missing) == 2:
+            # By desgin of `__init__` we get here if the last call to
+            # `_load_from_state_dict` did not perform anything (only might
+            # possibly have found some unexpected keys), did not register any
+            # errors and could not change the state of the model. Hence, it
+            # is safe to call it once more below.
+
+            # So, we could not load either `.real` or `.imag`. Thus all parts
+            # are missing, and we must try to look if the dict contains a
+            # parameter that is being promoted from real to complex tensor.
+            real, dot, _ = prefix.rpartition(".")
+            if real not in state_dict:
+                # indicate that the parameter as a whole is missing (not
+                # just parts)
+                missing = [real]
+
+            else:
+                # state dict has a key that matches the name of this
+                # parameter dict, so we upcast from real to complex.
+                par, missing = state_dict[real], []
+
+                # recursively call on a special state_dict to promote R to C
+                # NO missing or unexpected items are possible by design, only
+                # shape mismatch or general exceptions are now possible.
+                self._load_from_state_dict(
+                    {f"{real}.real": par, f"{real}.imag": torch.zeros_like(par)},
+                    prefix, local_metadata, strict, [], [], error_msgs)
+
+        elif len(missing) == 1:
+            # Although loaded either `.real` or `.imag`, the state_dict
+            # contains only one of ".real" or ".imag", so the other part is
+            # missing. Therefore append to `error_msg`.
+            error_msgs.append(f"Complex parameter requires both `.imag`"
+                              f" and `.imag` parts. Missing `{missing[0]}`.")
+
+        if strict and unexpected:
+            error_msgs.append(f"Complex parameter disallows redundant key(s)"
+                              f" in state_dict: {unexpected}.")
+
+        unexpected_keys.extend(unexpected)
+        missing_keys.extend(missing)
+
     def extra_repr(self):
         return repr(tuple(self._cplx.shape))[1:-1]
 
