@@ -16,5 +16,15 @@ setup(
         "cplxmodule.nn.utils",
         "cplxmodule.utils",
     ],
-    requires=["torch", "numpy"]
+    install_requires=[
+        "torch>=1.4",
+        "numpy",
+        "scipy"
+    ],
+    tests_require=[
+        "tqdm",
+        "torchvision",
+        "matplotlib",
+        "pytest"
+    ]
 )

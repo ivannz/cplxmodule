@@ -128,18 +128,11 @@ def test_arithmetic_binary(random_state):
     assert_allclose_cplx(b * c, q * r)  # __mul__ cplx-other
     assert_allclose_cplx(b / c, q / r)  # __div__ cplx-other
 
-    # _r*__ with types like torch.Tensor raises TypeError
-    with pytest.raises(TypeError, match=r".*be Tensor, not Cplx.*"):
-        assert_allclose_cplx(c + b, r + q)  # __radd__ other-cplx
-
-    with pytest.raises(TypeError, match=r".*be Tensor, not Cplx.*"):
-        assert_allclose_cplx(c - b, r - q)  # __rsub__ other-cplx
-
-    with pytest.raises(TypeError, match=r".*be Tensor, not Cplx.*"):
-        assert_allclose_cplx(c * b, r * q)  # __rmul__ other-cplx
-
-    with pytest.raises(TypeError, match=r".*be Tensor, not Cplx.*"):
-        assert_allclose_cplx(c / b, r / q)  # __rdiv__ other-cplx
+    # _r*__ with types like torch.Tensor raised TypeError in pytroch<1.4
+    assert_allclose_cplx(c + b, r + q)  # __radd__ other-cplx
+    assert_allclose_cplx(c - b, r - q)  # __rsub__ other-cplx
+    assert_allclose_cplx(c * b, r * q)  # __rmul__ other-cplx
+    assert_allclose_cplx(c / b, r / q)  # __rdiv__ other-cplx
 
 
 def test_arithmetic_inplace(random_state):
