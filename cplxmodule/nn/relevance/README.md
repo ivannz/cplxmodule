@@ -12,7 +12,7 @@ Below is a real-valued classifier (Complex-valued is similar, but requires input
 from torch.nn import Module, Sequential, Flatten, ReLU
 from torch.nn import Linear
 
-from cplxmodule.nn.relevance.extensions import LinearARD
+from cplxmodule.nn.relevance import LinearARD
 from cplxmodule.nn.masked import LinearMasked
 
 
@@ -129,18 +129,22 @@ Masked layers have only the `.weight` parameter (optionally `.bias`), hence it i
 
 ### Modules
 
-The modules in `nn.relevance` implement both `real`- and `complex` valued variational dropout methods. Due to poor naming, used in earlier version of the library the naming of variational dropout method and automatic relevance determination were mixed up. As of *2020-02-28* the naming in `nn.relevance.real` and `nn.relevance.complex`  must be disregarded and correctly named real and complex valued layers must be imported from `nn.relevance.extensions`.
+The modules in `nn.relevance` implement both `real`- and `complex` valued Bayesian sparisfication methods.
 
-* Variational dropout (log-uniform prior)
-    - (real) LinearVD, Conv1dVD, Conv2dVD, BilinearVD
-    - (complex) CplxLinearVD, CplxConv1dVD, CplxConv2dVD, CplxBilinearVD
+* *Real*-valued Variational dropout layers (log-uniform prior)
+    - LinearVD, Conv1dVD, Conv2dVD, BilinearVD from `nn.relevance.real`
 
-* Automatic Relevance Determination (factorized gaussian prior with learnt precision)
-    - (real) LinearARD, Conv1dARD, Conv2dARD, BilinearARD
-    - (complex) CplxLinearARD, CplxConv1dARD, CplxConv2dARD, CplxBilinearARD
+* *Complex*-valued Variational dropout layers (log-uniform prior)
+    - CplxLinearVD, CplxConv1dVD, CplxConv2dVD, CplxBilinearVD from `nn.relevance.complex`
 
-* Variational dropout with bogus forward values, but exact gradients
-    - (complex only) CplxLinearVDBogus, CplxConv1dVDBogus, CplxConv2dVDBogus, CplxBilinearVDBogus
+* Automatic Relevance Determination (factorized gaussian prior with learnt precision) from `nn.relevance.extensions`
+    - (*real*) LinearARD, Conv1dARD, Conv2dARD, BilinearARD
+    - (*complex*) CplxLinearARD, CplxConv1dARD, CplxConv2dARD, CplxBilinearARD
+
+* Variational dropout with bogus forward values, but exact gradients from `nn.relevance.extensions`
+    - (**complex only**) CplxLinearVDBogus, CplxConv1dVDBogus, CplxConv2dVDBogus, CplxBilinearVDBogus
+
+Versions of the library prior to `1.0` had mixed up names of variational dropout (VD) and automatic relevance determination (ARD) layers: `nn.relevance.real` and `nn.relevance.complex` implemented log-uniform priors while incorrectly calling themselves ARD (Gaussian with learnable precision). From version `0.9.0` correctly named methods could be imported from `nn.relevance.extensions`, and starting with version `1.0` correct layers have become directly importable from `nn.relevance`.
 
 ### Subclassing Modules
 
