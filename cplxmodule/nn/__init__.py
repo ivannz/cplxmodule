@@ -2,7 +2,6 @@ from .modules import *
 
 from .modules.base import CplxParameter
 from . import init
-from . import utils
 
 # from .relevance.real import LinearARD
 # from .relevance.real import Conv1dARD, Conv2dARD
