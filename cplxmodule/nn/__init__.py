@@ -1,14 +1,8 @@
-from .layers import RealToCplx, AsTypeCplx
-from .layers import CplxToCplx, CplxToReal
+from .modules import *
 
-from .layers import CplxParameter
-
-from .layers import CplxLinear
-from .layers import CplxBilinear
-from .conv import CplxConv1d, CplxConv2d
-
-from .activation import CplxModulus, CplxAngle
-from .sequential import CplxSequential
+from .modules.base import CplxParameter
+from . import init
+from . import utils
 
 # from .relevance.real import LinearARD
 # from .relevance.real import Conv1dARD, Conv2dARD

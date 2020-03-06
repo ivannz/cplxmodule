@@ -12,7 +12,7 @@ import torch.nn.functional as F
 from cplxmodule import Cplx
 
 from torch.nn import Linear
-from cplxmodule.nn.layers import CplxLinear
+from cplxmodule.nn import CplxLinear
 
 from cplxmodule.nn.relevance import LinearARD, LinearL0, LinearLASSO
 from cplxmodule.nn.relevance import CplxLinearARD
@@ -24,7 +24,7 @@ from torch.nn import Bilinear
 from cplxmodule.nn.relevance import BilinearARD
 from cplxmodule.nn.masked import BilinearMasked
 
-from cplxmodule.nn.layers import CplxBilinear
+from cplxmodule.nn import CplxBilinear
 from cplxmodule.nn.relevance import CplxBilinearARD
 from cplxmodule.nn.masked import CplxBilinearMasked
 
@@ -113,8 +113,8 @@ def example(kind="cplx"):
 
     def construct_cplx(linear):
         from collections import OrderedDict
-        from cplxmodule.nn.layers import RealToCplx, CplxToReal
-        from cplxmodule.nn.activation import CplxAdaptiveModReLU
+        from cplxmodule.nn import RealToCplx, CplxToReal
+        from cplxmodule.nn import CplxAdaptiveModReLU
 
         return torch.nn.Sequential(OrderedDict([
             ("cplx", RealToCplx()),
@@ -234,7 +234,7 @@ def example(kind="cplx"):
 
 def example_bilinear(kind="real"):
     r"""An example, illustrating pre-training."""
-    from cplxmodule.nn.layers import RealToCplx, CplxToReal
+    from cplxmodule.nn import RealToCplx, CplxToReal
     from cplxmodule.cplx import from_real, to_real
 
     class BilinearTest(torch.nn.Module):

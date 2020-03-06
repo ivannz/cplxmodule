@@ -1,14 +1,11 @@
-# coding=utf-8
 import math
 import torch
 
-from .. import cplx
-from ..cplx import Cplx
-from .layers import CplxToCplx, CplxParameter
-
-from . import init
-
 from torch.nn.modules.utils import _single, _pair
+
+from .base import CplxToCplx, CplxParameter
+from .. import init
+from ... import cplx
 
 
 class CplxConvNd(CplxToCplx):
@@ -32,11 +29,11 @@ class CplxConvNd(CplxToCplx):
         self.groups, self.padding_mode = groups, padding_mode
         self.groups, self.padding_mode = groups, padding_mode
 
-        self.weight = CplxParameter(Cplx.empty(
+        self.weight = CplxParameter(cplx.Cplx.empty(
             out_channels, in_channels // groups, *kernel_size))
 
         if bias:
-            self.bias = CplxParameter(Cplx.empty(out_channels))
+            self.bias = CplxParameter(cplx.Cplx.empty(out_channels))
         else:
             self.register_parameter("bias", None)
 
@@ -72,8 +69,7 @@ class CplxConvNd(CplxToCplx):
 
 
 class CplxConv1d(CplxConvNd):
-    r"""
-    Complex 1D convolution:
+    r"""Complex 1D convolution:
     $$
         F
         \colon \mathbb{C}^{B \times c_{in} \times L}
@@ -105,8 +101,7 @@ class CplxConv1d(CplxConvNd):
 
 
 class CplxConv2d(CplxConvNd):
-    r"""
-    Complex 2D convolution:
+    r"""Complex 2D convolution:
     $$
         F
         \colon \mathbb{C}^{B \times c_{in} \times L}

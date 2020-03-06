@@ -12,8 +12,8 @@ from numpy import euler_gamma
 
 from .base import BaseARD
 
-from ..layers import CplxLinear, CplxBilinear
-from ..conv import CplxConv1d, CplxConv2d
+from ..modules.linear import CplxLinear, CplxBilinear
+from ..modules.conv import CplxConv1d, CplxConv2d
 from ...cplx import Cplx
 
 from ..utils.sparsity import SparsityStats

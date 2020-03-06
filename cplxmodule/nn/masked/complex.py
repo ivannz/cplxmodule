@@ -1,9 +1,9 @@
 import torch
 
 from ... import cplx
-from ..layers import CplxLinear, CplxBilinear
+from ..modules.linear import CplxLinear, CplxBilinear
 
-from ..conv import CplxConv1d, CplxConv2d
+from ..modules.conv import CplxConv1d, CplxConv2d
 
 from .base import BaseMasked, MaskedWeightMixin
 

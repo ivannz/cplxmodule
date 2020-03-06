@@ -2,8 +2,8 @@ import torch
 
 from torch.nn import init
 
-from .layers import CplxToCplx
-from ..cplx import Cplx
+from .base import CplxToCplx
+from ... import cplx
 
 
 def whiten2x2(tensor, training=True, running_mean=None, running_cov=None,
@@ -241,7 +241,7 @@ def cplx_batch_norm(
             z[0] * weight[1, 0] + z[1] * weight[1, 1],
         ], dim=0) + bias.reshape(2, *shape)
 
-    return Cplx(z[0], z[1])
+    return cplx.Cplx(z[0], z[1])
 
 
 class _CplxBatchNorm(CplxToCplx):
