@@ -16,12 +16,11 @@
 
 [ ] investigate reordering base classes in `LinearMasked(MaskedWeightMixin, Linear, _BaseRealMixin)` and similar in `nn.masked`.
 
-[ ] get rid of `torch_module` from `.utils` and declare `activations` explicitly
+[+] get rid of `torch_module` from `.utils` and declare `activations` explicitly
 
 [ ] See if it is possible to implement function promotion through CplxToCplx[...]
 
-[ ] clean up the `nn` module itself
-* `.activation` : CplxActivation is the same as CplxToCplx[...]
+[+] clean up the `nn` module itself
 * remove crap from `.sequential`: `CplxResidualBottleneck`, `CplxResidualSequential` and CplxBusResidualSequential must go, and move CplxSequential to base layers
 * split `.layers`, `.activation`, and `.sequential`
   * `.modules.base` : base classes (CplxToCplx, BaseRealToCplx, BaseCplxToReal), and parameter type (CplxParameter, CplxParameterAccessor)
@@ -34,13 +33,21 @@
 * move `.batchnorm` to modules, keep `.init` in `.nn`
 * fix imports from adjacent modules: `nn.masked` and `nn.relevance`.
 
+[ ] residual clean up in `nn` module
+* `.activation` : CplxActivation is the same as CplxToCplx[...]
+* `.modules.extra` : this needs cleaning
+
 [ ] documentation
 * in `nn.relevance.base`, making it like in `nn.masked`
 * classes in `nn.relevance`  `.real` and `.complex` should be also documented properly
-* nn.init : document the initializations according to Trabelsi et al. (2018)
+* `nn.init` : document the initializations according to Trabelsi et al. (2018)
 * go through README-s in each submodule to make sure that info there is correct and typical use cases described
 
 [ ] decide the fate of `lasso` class in `nn.relevance`:
 * it is irrelevant to Bayesian methods
 
-[ ] in `nn.relevance.complex` : drop `Cplx(*map(torch.randn_like, (s2, s2)))` and write `Cplx(torch.randn_like(s2), torch.randn_like(s2))` explicitly
+[+] in `nn.relevance.complex` : drop `Cplx(*map(torch.randn_like, (s2, s2)))` and write `Cplx(torch.randn_like(s2), torch.randn_like(s2))` explicitly
+* implemented `cplx.randn` and `cplx.randn_like`
+
+[ ] add missing test to the unit test suite
+
