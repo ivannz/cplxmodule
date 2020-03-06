@@ -3,6 +3,7 @@ import warnings
 import torch
 import torch.nn.functional as F
 
+from math import sqrt
 from .utils import complex_view, fix_dim
 
 
@@ -460,6 +461,24 @@ def tanh(input):
     tanh(z) = j tan(z)
     """
     return sinh(input) / cosh(input)
+
+
+def randn(*size, dtype=None, device=None, requires_grad=False):
+    """Generate standard complex Gaussian noise."""
+    normal = torch.randn(2, *size, dtype=dtype, layout=torch.strided,
+                         device=device, requires_grad=False) / sqrt(2)
+    z = Cplx(normal[0], normal[1])
+    return z.requires_grad_(True) if requires_grad else z
+
+
+def randn_like(input, dtype=None, device=None, requires_grad=False):
+    """Returns a tensor with the same size as `input` that is filled with
+    standard comlpex Gaussian random numbers.
+    """
+    return randn(*input.size(),
+                 dtype=input.dtype if dtype is None else dtype,
+                 device=input.device if device is None else device,
+                 requires_grad=requires_grad)
 
 
 def modrelu(input, threshold=0.5):

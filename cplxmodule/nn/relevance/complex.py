@@ -7,14 +7,13 @@ import scipy.special
 
 import torch.nn.functional as F
 
-from math import sqrt
 from numpy import euler_gamma
 
 from .base import BaseARD
 
 from ..modules.linear import CplxLinear, CplxBilinear
 from ..modules.conv import CplxConv1d, CplxConv2d
-from ...cplx import Cplx
+from ... import cplx
 
 from ..utils.sparsity import SparsityStats
 
@@ -136,9 +135,7 @@ class CplxLinearVD(CplxLinear, _BaseRelevanceCplx):
         s2 = F.linear(input.real * input.real + input.imag * input.imag,
                       torch.exp(self.log_sigma2), None)
 
-        # generate complex Gaussian noise with proper scale
-        noise = Cplx(*map(torch.randn_like, (s2, s2))) / sqrt(2)
-        return mu + noise * torch.sqrt(torch.clamp(s2, 1e-8))
+        return mu + cplx.randn_like(s2) * torch.sqrt(torch.clamp(s2, 1e-8))
 
 
 class CplxBilinearVD(CplxBilinear, _BaseRelevanceCplx):
@@ -163,8 +160,7 @@ class CplxBilinearVD(CplxBilinear, _BaseRelevanceCplx):
                         input2.real * input2.real + input2.imag * input2.imag,
                         torch.exp(self.log_sigma2), None)
 
-        noise = Cplx(*map(torch.randn_like, (s2, s2))) / sqrt(2)
-        return mu + noise * torch.sqrt(torch.clamp(s2, 1e-8))
+        return mu + cplx.randn_like(s2) * torch.sqrt(torch.clamp(s2, 1e-8))
 
 
 class CplxConv1dVD(CplxConv1d, _BaseRelevanceCplx):
@@ -194,8 +190,7 @@ class CplxConv1dVD(CplxConv1d, _BaseRelevanceCplx):
                       torch.exp(self.log_sigma2), None, self.stride,
                       self.padding, self.dilation, self.groups)
 
-        noise = Cplx(*map(torch.randn_like, (s2, s2))) / sqrt(2)
-        return mu + noise * torch.sqrt(torch.clamp(s2, 1e-8))
+        return mu + cplx.randn_like(s2) * torch.sqrt(torch.clamp(s2, 1e-8))
 
 
 class CplxConv2dVD(CplxConv2d, _BaseRelevanceCplx):
@@ -225,8 +220,7 @@ class CplxConv2dVD(CplxConv2d, _BaseRelevanceCplx):
                       torch.exp(self.log_sigma2), None, self.stride,
                       self.padding, self.dilation, self.groups)
 
-        noise = Cplx(*map(torch.randn_like, (s2, s2))) / sqrt(2)
-        return mu + noise * torch.sqrt(torch.clamp(s2, 1e-8))
+        return mu + cplx.randn_like(s2) * torch.sqrt(torch.clamp(s2, 1e-8))
 
 
 class CplxLinearARD(object):
