@@ -1,6 +1,6 @@
 import torch
 
-from functools import lru_cache
+from functools import lru_cache, wraps
 
 from ...cplx import Cplx
 
@@ -113,27 +113,64 @@ class BaseCplxToReal(torch.nn.Module):
     pass
 
 
+def _promote_callable_to_split(fn):
+    """Create a runtime class promoting a real function to split activation."""
+    class template(CplxToCplx):
+        @wraps(fn)
+        def __init__(self, *args, **kwargs):
+            super().__init__()
+            self.args, self.kwargs = args, kwargs
+
+        def extra_repr(self):
+            pieces = [f"{v!r}" for v in self.args]
+            pieces.extend(f"{k}={v!r}" for k, v in self.kwargs.items())
+            return ", ".join(pieces)
+
+        def forward(self, input):
+            return input.apply(fn, *self.args, **self.kwargs)
+
+    template.__name__ = f"CplxSplitFunc{fn.__name__.title()}"
+    template.__qualname__ = f"<runtime type `{template.__name__}`>"
+    template.__doc__ = f"Split activation based on `{fn.__name__}`"
+    template.forward.__doc__ = (f"Call `{fn.__name__}` on real and "
+                                "imaginary components independently.")
+    return template
+
+
+def _promote_module_to_split(Module):
+    """Make a runtime class promoting a Module subclass to split activation."""
+    class template(Module, CplxToCplx):
+        def forward(self, input):
+            """Apply to real and imaginary parts independently."""
+            return input.apply(super().forward)
+
+    template.__name__ = f"CplxSplitLayer{Module.__name__}"
+    template.__qualname__ = f"<runtime type `{template.__name__}`>"
+    template.__doc__ = f"Split activation based on `{Module.__name__}`"
+    return template
+
+
 class _CplxToCplxMeta(type):
-    """Meta class for bracketed creation of componentwise operations."""
+    """Meta class for promoting real activations to split complex ones."""
     @lru_cache(maxsize=None)
     def __getitem__(self, Base):
-        # make sure that base is not an instance, and that no
-        #  nested wrapping takes place.
-        assert isinstance(Base, type) and issubclass(Base, torch.nn.Module)
-        if issubclass(Base, (CplxToCplx, BaseRealToCplx)):
-            return Base
+        if not isinstance(Base, type) and callable(Base):
+            # we should probably check if this is a torch callable...
+            return _promote_callable_to_split(Base)
 
-        if Base is torch.nn.Module:
-            return CplxToCplx
+        elif isinstance(Base, type) and issubclass(Base, torch.nn.Module):
+            # make sure that base is not an instance, and that no
+            #  nested wrapping takes place.
+            if issubclass(Base, (CplxToCplx, BaseRealToCplx)):
+                return Base
 
-        class template(Base, CplxToCplx):
-            def forward(self, input):
-                """Apply to real and imaginary parts independently."""
-                return input.apply(super().forward)
+            if Base is torch.nn.Module:
+                return CplxToCplx
 
-        name = "Cplx" + Base.__name__
-        template.__name__ = template.__qualname__ = name
-        return template
+            return _promote_module_to_split(Base)
+
+        raise TypeError("Expecting either a torch.nn.Module subclass, or"
+                        f" a callable for promotion. Got `{type(Base)}`.")
 
 
 class CplxToCplx(CplxParameterAccessor, torch.nn.Module,

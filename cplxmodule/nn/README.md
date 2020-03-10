@@ -89,7 +89,6 @@ from cplxmodule.nn import CplxConv1d, CplxLinear
 
 # activation layers
 from cplxmodule.nn import CplxModReLU
-from cplxmodule.nn.modules.extra import CplxActivation
 ```
 
 After `RealToCplx` layer the intermediate inputs are `Cplx` objects, which are abstractions for complex valued tensors, represented by real and imaginary parts, and which obey complex arithmetic (currently no support for mixed-type arithmetic like `torch.Tensor +/-* Cplx`).
@@ -118,7 +117,7 @@ complex_model = CplxSequential(
     # complex: batch x (3 * n_channels) x (n_features - (4-1))
     CplxToCplx[torch.nn.Flatten](start_dim=-2),
 
-    CplxActivation(torch.tanh),
+    CplxToCplx[torch.tanh](),
 )
 ```
 
@@ -133,7 +132,7 @@ real_input_model = torch.nn.Sequential(
     RealToCplx(),
 
     # complex: batch x n_features
-    complex_model[0],
+    complex_model,
 
     # complex: batch x (3 * n_channels * (n_features - (4-1)))
     CplxToReal(),
