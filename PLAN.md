@@ -43,7 +43,14 @@
 * `.activation` : `CplxActivation` is the same as CplxToCplx[...]
   * CplxActivation promotes classic (real) torch functions to split activations, so yes.
   * See if it is possible to implement function promotion through CplxToCplx[...]
+    * it is possbile: just reuse CplxActivation
+  * Currently CplxToCplx promotes layers and real functions to inpdependently applied layers/functions (split)
+    * how should we proceed with cplx. trig functions? a wrapper, or hardcoded activations?
+      * the latter seems more natural, as the trig functions are vendored by this module
+      * since torch is the base, and implements a great number of univariate tensor functions and could potentially be extended, it is more natural to use a wrapper (rationale behind CplxToCplx[...]).
 * `.modules.extra` : this needs thorough cleaning
+  * drop CplxResidualBottleneck, CplxResidualSequential and CplxBusResidualSequential
+  * abandon `torch_module` and code the trig activations by hand.
 
 [ ] documentation
 * in `nn.relevance.base`, making it like in `nn.masked`
