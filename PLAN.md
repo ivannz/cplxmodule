@@ -41,6 +41,7 @@
 
 [ ] residual clean up in `nn` module
 * `.activation` : `CplxActivation` is the same as CplxToCplx[...]
+  * CplxActivation promotes classic (real) torch functions to split activations, so yes.
   * See if it is possible to implement function promotion through CplxToCplx[...]
 * `.modules.extra` : this needs thorough cleaning
 
