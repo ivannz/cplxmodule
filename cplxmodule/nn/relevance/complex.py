@@ -50,38 +50,7 @@ torch_expi = ExpiFunction.apply
 
 
 class _BaseRelevanceCplx(BaseARD, SparsityStats):
-    __sparsity_ignore__ = ("log_sigma2",)
-
-    def reset_variational_parameters(self):
-        self.log_sigma2.data.uniform_(-10, -10)  # wtf?
-
-    @property
-    def log_alpha(self):
-        r"""Get $\log \alpha$ from $(\theta, \sigma^2)$ parameterization."""
-        # $\alpha = \tfrac{\sigma^2}{\theta \bar{\theta}}$
-        return self.log_sigma2 - 2 * torch.log(abs(self.weight) + 1e-12)
-
-    @property
-    def penalty(self):
-        r"""Exact complex KL divergence."""
-        n_log_alpha = - self.log_alpha
-        return euler_gamma + n_log_alpha - torch_expi(- torch.exp(n_log_alpha))
-
-    def relevance(self, *, threshold, **kwargs):
-        r"""Get the relevance mask based on the threshold."""
-        with torch.no_grad():
-            return torch.le(self.log_alpha, threshold).to(self.log_alpha)
-
-    def sparsity(self, *, threshold, **kwargs):
-        relevance = self.relevance(threshold=threshold)
-
-        weight = self.weight
-        n_dropped = float(weight.real.numel()) - float(relevance.sum().item())
-        return [(id(weight.real), n_dropped), (id(weight.imag), n_dropped)]
-
-
-class CplxLinearVD(CplxLinear, _BaseRelevanceCplx):
-    r"""Complex valued linear layer with automatic relevance detection.
+    r"""Base class with kl-divergence penalty of the variational dropout.
 
     Details
     -------
@@ -117,6 +86,38 @@ class CplxLinearVD(CplxLinear, _BaseRelevanceCplx):
         value of the weight. The higher the log-alpha the less relevant the
         parameter is.
     """
+    __sparsity_ignore__ = ("log_sigma2",)
+
+    def reset_variational_parameters(self):
+        self.log_sigma2.data.uniform_(-10, -10)  # wtf?
+
+    @property
+    def log_alpha(self):
+        r"""Get $\log \alpha$ from $(\theta, \sigma^2)$ parameterization."""
+        # $\alpha = \tfrac{\sigma^2}{\theta \bar{\theta}}$
+        return self.log_sigma2 - 2 * torch.log(abs(self.weight) + 1e-12)
+
+    @property
+    def penalty(self):
+        """Exact complex KL divergence."""
+        n_log_alpha = - self.log_alpha
+        return euler_gamma + n_log_alpha - torch_expi(- torch.exp(n_log_alpha))
+
+    def relevance(self, *, threshold, **kwargs):
+        """Get the relevance mask based on the threshold."""
+        with torch.no_grad():
+            return torch.le(self.log_alpha, threshold).to(self.log_alpha)
+
+    def sparsity(self, *, threshold, **kwargs):
+        relevance = self.relevance(threshold=threshold)
+
+        weight = self.weight
+        n_dropped = float(weight.real.numel()) - float(relevance.sum().item())
+        return [(id(weight.real), n_dropped), (id(weight.imag), n_dropped)]
+
+
+class CplxLinearVD(CplxLinear, _BaseRelevanceCplx):
+    """Complex-valued linear layer with variational dropout."""
 
     def __init__(self, in_features, out_features, bias=True):
         super().__init__(in_features, out_features, bias=bias)
@@ -139,8 +140,7 @@ class CplxLinearVD(CplxLinear, _BaseRelevanceCplx):
 
 
 class CplxBilinearVD(CplxBilinear, _BaseRelevanceCplx):
-    r"""Complex valued bilinear layer with automatic relevance detection.
-    """
+    """Complex-valued bilinear layer with variational dropout."""
 
     def __init__(self, in1_features, in2_features, out_features, bias=True,
                  conjugate=True):
@@ -164,8 +164,7 @@ class CplxBilinearVD(CplxBilinear, _BaseRelevanceCplx):
 
 
 class CplxConv1dVD(CplxConv1d, _BaseRelevanceCplx):
-    r"""1D complex-valued convolution layer with automatic relevance detection.
-    """
+    """1D complex-valued convolution layer with variational dropout."""
 
     def __init__(self, in_channels, out_channels, kernel_size, stride=1,
                  padding=0, dilation=1, groups=1,
@@ -194,8 +193,7 @@ class CplxConv1dVD(CplxConv1d, _BaseRelevanceCplx):
 
 
 class CplxConv2dVD(CplxConv2d, _BaseRelevanceCplx):
-    r"""2D complex-valued convolution layer with automatic relevance detection.
-    """
+    """2D complex-valued convolution layer with variational dropout."""
 
     def __init__(self, in_channels, out_channels, kernel_size, stride=1,
                  padding=0, dilation=1, groups=1,

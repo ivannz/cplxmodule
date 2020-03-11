@@ -60,18 +60,22 @@ class RealARDMixin():
 
 
 class LinearARD(RealARDMixin, LinearVD):
+    """Linear layer with automatic relevance determination."""
     pass
 
 
 class Conv1dARD(RealARDMixin, Conv1dVD):
+    """Bilinear layer with automatic relevance determination."""
     pass
 
 
 class Conv2dARD(RealARDMixin, Conv2dVD):
+    """1D convolution layer with automatic relevance determination."""
     pass
 
 
 class BilinearARD(RealARDMixin, BilinearVD):
+    """2D convolution layer with automatic relevance determination."""
     pass
 
 
@@ -110,18 +114,30 @@ class CplxARDMixin():
 
 
 class CplxLinearARD(CplxARDMixin, CplxLinearVD):
+    """Complex-valued linear layer with automatic relevance
+    determination.
+    """
     pass
 
 
 class CplxBilinearARD(CplxARDMixin, CplxBilinearVD):
+    """Complex-valued bilinear layer with automatic relevance
+    determination.
+    """
     pass
 
 
 class CplxConv1dARD(CplxARDMixin, CplxConv1dVD):
+    """1D complex-valued convolution layer with automatic relevance
+    determination.
+    """
     pass
 
 
 class CplxConv2dARD(CplxARDMixin, CplxConv2dVD):
+    """2D complex-valued convolution layer with automatic relevance
+    determination.
+    """
     pass
 
 
@@ -155,18 +171,22 @@ class CplxVDScaleFreeMixin():
 
 
 class CplxLinearVDScaleFree(CplxVDScaleFreeMixin, CplxLinearVD):
+    """Complex-valued linear layer with scale-free prior."""
     pass
 
 
 class CplxBilinearVDScaleFree(CplxVDScaleFreeMixin, CplxBilinearVD):
+    """Complex-valued bilinear layer with scale-free prior."""
     pass
 
 
 class CplxConv1dVDScaleFree(CplxVDScaleFreeMixin, CplxConv1dVD):
+    """1D complex-valued convolution layer with scale-free prior."""
     pass
 
 
 class CplxConv2dVDScaleFree(CplxVDScaleFreeMixin, CplxConv2dVD):
+    """2D complex-valued convolution layer with scale-free prior."""
     pass
 
 
@@ -197,18 +217,30 @@ class CplxVDApproxMixin():
 
 
 class CplxLinearVDApprox(CplxVDApproxMixin, CplxLinearVD):
+    """Complex-valued linear layer with approximate
+    var-dropout penalty.
+    """
     pass
 
 
 class CplxBilinearVDApprox(CplxVDApproxMixin, CplxBilinearVD):
+    """Complex-valued bilinear layer with approximate
+    var-dropout penalty.
+    """
     pass
 
 
 class CplxConv1dVDApprox(CplxVDApproxMixin, CplxConv1dVD):
+    """1D complex-valued convolution layer with approximate
+    var-dropout penalty.
+    """
     pass
 
 
 class CplxConv2dVDApprox(CplxVDApproxMixin, CplxConv2dVD):
+    """2D complex-valued convolution layer with approximate
+    var-dropout penalty.
+    """
     pass
 
 
@@ -235,16 +267,28 @@ class CplxVDBogusMixin():
 
 
 class CplxLinearVDBogus(CplxVDBogusMixin, CplxLinearVD):
+    """Complex-valued linear layer with correct var dropout penalty
+    gradient, but bogus penalty values.
+    """
     pass
 
 
 class CplxBilinearVDBogus(CplxVDBogusMixin, CplxBilinearVD):
+    """Complex-valued bilinear layer with correct var dropout penalty
+    gradient, but bogus penalty values.
+    """
     pass
 
 
 class CplxConv1dVDBogus(CplxVDBogusMixin, CplxConv1dVD):
+    """1D complex-valued convolution layer with correct var dropout penalty
+    gradient, but bogus penalty values.
+    """
     pass
 
 
 class CplxConv2dVDBogus(CplxVDBogusMixin, CplxConv2dVD):
+    """2D complex-valued convolution layer with correct var dropout penalty
+    gradient, but bogus penalty values.
+    """
     pass

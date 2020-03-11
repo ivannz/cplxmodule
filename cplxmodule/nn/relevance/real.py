@@ -10,6 +10,37 @@ from ..utils.sparsity import SparsityStats
 
 
 class _BaseRelevanceReal(BaseARD, SparsityStats):
+    r"""Base class with kl-divergence penalty of the variational dropout.
+
+    Details
+    -------
+    This uses the ideas and formulae of Kingma et al. and Molchanov et al.
+    This module assumes the standard loss-minimization framework. Hence
+    instead of -ve KL divergence for ELBO and log-likelihood maximization,
+    this property computes and returns the divergence as is, which implies
+    minimization of minus log-likelihood (and, thus, minus ELBO).
+
+    Attributes
+    ----------
+    penalty : computed torch.Tensor, read-only
+        The Kullback-Leibler divergence between the mean field approximate
+        variational posterior of the weights and the scale-free log-uniform
+        prior:
+        $$
+            KL(\mathcal{N}(w\mid \theta, \alpha \theta^2) \|
+                    \tfrac1{\lvert w \rvert})
+                = \mathbb{E}_{\xi \sim \mathcal{N}(1, \alpha)}
+                    \log{\lvert \xi \rvert}
+                - \tfrac12 \log \alpha + C
+            \,. $$
+
+    log_alpha : computed torch.Tensor, read-only
+        Log-variance of the multiplicative scaling noise. Computed as a log
+        of the ratio of the variance of the weight to the squared absolute
+        value of the weight. The higher the log-alpha the less relevant the
+        parameter is.
+    """
+
     __sparsity_ignore__ = ("log_sigma2",)
 
     def reset_variational_parameters(self):
@@ -47,7 +78,7 @@ class _BaseRelevanceReal(BaseARD, SparsityStats):
         return F.softplus(n_log_alpha) / 2 + 0.63576 * sigmoid
 
     def relevance(self, *, threshold, **kwargs):
-        r"""Get the relevance mask based on the threshold."""
+        """Get the relevance mask based on the threshold."""
         with torch.no_grad():
             return torch.le(self.log_alpha, threshold).to(self.log_alpha)
 
@@ -58,35 +89,11 @@ class _BaseRelevanceReal(BaseARD, SparsityStats):
 
 
 class LinearVD(torch.nn.Linear, _BaseRelevanceReal):
-    r"""Linear layer with automatic relevance detection.
+    """Linear layer with variational dropout.
 
     Details
     -------
-    This uses the ideas and formulae of Kingma et al. and Molchanov et al.
-    This module assumes the standard loss-minimization framework. Hence
-    instead of -ve KL divergence for ELBO and log-likelihood maximization,
-    this property computes and returns the divergence as is, which implies
-    minimization of minus log-likelihood (and, thus, minus ELBO).
-
-    Attributes
-    ----------
-    penalty : computed torch.Tensor, read-only
-        The Kullback-Leibler divergence between the mean field approximate
-        variational posterior of the weights and the scale-free log-uniform
-        prior:
-        $$
-            KL(\mathcal{N}(w\mid \theta, \alpha \theta^2) \|
-                    \tfrac1{\lvert w \rvert})
-                = \mathbb{E}_{\xi \sim \mathcal{N}(1, \alpha)}
-                    \log{\lvert \xi \rvert}
-                - \tfrac12 \log \alpha + C
-            \,. $$
-
-    log_alpha : computed torch.Tensor, read-only
-        Log-variance of the multiplicative scaling noise. Computed as a log
-        of the ratio of the variance of the weight to the squared absolute
-        value of the weight. The higher the log-alpha the less relevant the
-        parameter is.
+    See `torch.nn.Linear` for reference on the dimensions and parameters.
     """
 
     def __init__(self, in_features, out_features, bias=True):
@@ -105,14 +112,13 @@ class LinearVD(torch.nn.Linear, _BaseRelevanceReal):
 
 
 class Conv1dVD(torch.nn.Conv1d, _BaseRelevanceReal):
-    r"""1D convolution layer with automatic relevance detection.
+    """1D convolution layer with variational dropout.
 
     Details
     -------
     See `torch.nn.Conv1d` for reference on the dimensions and parameters. See
-    `cplxmodule.relevance.Conv1dARD` for details about the implementation of
-    the automatic relevance detection via variational dropout and the chosen
-    parametrization.
+    `cplxmodule.nn.relevance.Conv2dVD` for details about the implementation of
+    the reparameterization trick.
     """
 
     def __init__(self, in_channels, out_channels, kernel_size, stride=1,
@@ -130,11 +136,11 @@ class Conv1dVD(torch.nn.Conv1d, _BaseRelevanceReal):
         self.reset_variational_parameters()
 
     def forward(self, input):
-        r"""Forward pass of the SGVB method for a 1d convolutional layer.
+        """Forward pass of the SGVB method for a 1d convolutional layer.
 
         Details
         -------
-        See `.forward` of Conv2dARD layer.
+        See `.forward` of Conv2dVD layer.
         """
         mu = super().forward(input)
         if not self.training:
@@ -146,14 +152,11 @@ class Conv1dVD(torch.nn.Conv1d, _BaseRelevanceReal):
 
 
 class Conv2dVD(torch.nn.Conv2d, _BaseRelevanceReal):
-    r"""2D convolution layer with automatic relevance detection.
+    """2D convolution layer with variational dropout.
 
     Details
     -------
-    See `torch.nn.Conv2d` for reference on the dimensions and parameters. See
-    `cplxmodule.relevance.Conv2dARD` for details about the implementation of
-    the automatic relevance detection via variational dropout and the chosen
-    parametrization.
+    See `torch.nn.Conv2d` for reference on the dimensions and parameters.
     """
 
     def __init__(self, in_channels, out_channels, kernel_size, stride=1,
@@ -214,7 +217,12 @@ class Conv2dVD(torch.nn.Conv2d, _BaseRelevanceReal):
 
 
 class BilinearVD(torch.nn.Bilinear, _BaseRelevanceReal):
-    r"""Bilinear layer with automatic relevance detection."""
+    """Bilinear layer with variational dropout.
+
+    Details
+    -------
+    See `torch.nn.Bilinear` for reference on the dimensions and parameters.
+    """
 
     def __init__(self, in1_features, in2_features, out_features, bias=True):
         super().__init__(in1_features, in2_features, out_features, bias=bias)
@@ -223,7 +231,7 @@ class BilinearVD(torch.nn.Bilinear, _BaseRelevanceReal):
         self.reset_variational_parameters()
 
     def forward(self, input1, input2):
-        r"""Forward pass of the SGVB method for a bilinear layer.
+        """Forward pass of the SGVB method for a bilinear layer.
 
         Straightforward generalization of the local reparameterization trick.
         """
