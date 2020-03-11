@@ -54,11 +54,13 @@
   * remove alias CplxDropout1d : use torch.nn names as much as possible
   * deprecate CplxAvgPool1d: it can be created in runtime with CplxToCplx\[torch.nn.AvgPool1d\]
 
-[ ] documentation
+[+] documentation for bayesian and maskable layers
 * in `nn.relevance.base`, making it like in `nn.masked`
-* classes in `nn.relevance`  `.real` and `.complex` should be also documented properly
-* `nn.init` : document the initializations according to Trabelsi et al. (2018)
+* classes in `nn.relevance`  `.real` and `.complex` should be also documented properly, the same goes for `.extensions`
+
+[ ] documentation
 * go through README-s in each submodule to make sure that info there is correct and typical use cases described
+* `nn.init` : document the initializations according to Trabelsi et al. (2018)
 
 [ ] decide the fate of `lasso` class in `nn.relevance`:
 * it is irrelevant to Bayesian methods
