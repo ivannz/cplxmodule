@@ -29,7 +29,6 @@ Batch normalization layers, based on 2d vector whitening proposed in _[1]_, are 
 ### Miscellaneous layers
 
 * CplxDropout
-* CplxAvgPool1d
 * CplxPhaseShift
 
 ### Complex-valued parameter representation

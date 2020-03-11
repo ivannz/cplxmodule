@@ -26,18 +26,6 @@ class CplxDropout(torch.nn.Dropout2d, CplxToCplx):
         return cplx.from_interleaved_real(output, False, -1)
 
 
-class CplxAvgPool1d(torch.nn.AvgPool1d, CplxToCplx):
-    r"""
-    Complex 1d average pooling layer: simultaneously pools both real
-    and imaginary parts.
-
-    See torch.nn.AvgPool1d for reference on the input dimensions and arguments.
-    """
-    def forward(self, input):
-        # apply parent.forward to re and im parts
-        return input.apply(super().forward)
-
-
 # i am lazy to rewrite code, so here is a factory
 def torch_module(fn, base, name=None):
     # a class template
