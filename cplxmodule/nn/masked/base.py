@@ -17,10 +17,17 @@ class BaseMasked(torch.nn.Module):
 
     Details
     -------
-    As of pytorch 1.1.0 there is no mechanism to preallocate runtime
-    buffers before loading state_dict. Therefore as such masks should
-    be loaded with `deploy_masks` and the whole model -- with
-    `model.load_state_dict(..., strict=False)`.
+    As of pytorch 1.1.0 there is no mechanism to preallocate runtime buffers
+    before loading state_dict. Thus we use a custom `__init__` and 'piggy-back'
+    on the documented, but private method `Module._load_from_state_dict` to
+    conditionally allocate or free mask buffers via `.mask_` method. This API
+    places a restriction on the order of bases classes when subclassing. In
+    order for `super().__init__` in subclasses to do the necessary mask setting
+    up and initialize the `torch.nn.Module` itself, the `BaseMasked` should be
+    placed as far to the right in base class list, but before `torch.nn.Module`.
+
+    The masks could be set either manually through setting `.mask`, or loaded in
+    bulk with `deploy_masks`, or via `model.load_state_dict(..., strict=False)`.
     """
     def __init__(self):
         super().__init__()
@@ -85,14 +92,7 @@ class BaseMasked(torch.nn.Module):
     def _load_from_state_dict(self, state_dict, prefix, local_metadata,
                               strict, missing_keys, unexpected_keys,
                               error_msgs):
-        """Surgically load the state with the runtime masks from a dict.
-
-        Details
-        -------
-        As of pytorch 1.1.0 there is no mechanism to preallocate runtime
-        buffers before loading state_dict. Therefore we overload documented
-        but hidden `_load_from_state_dict` to load the masks conditionally.
-        """
+        """Surgically load the state with the runtime masks from a dict."""
         # this next call loads into this module only!
         missing, unexpected = [], []
         super()._load_from_state_dict(state_dict, prefix, local_metadata,
@@ -143,7 +143,27 @@ def is_sparse(module):
 
 
 def named_masks(module, prefix=""):
-    """Walk over the submodule tree yielding names and masks."""
+    """Returns an iterator over all masks in the network, yielding both
+    the name of a maskable submodule as well as its current mask.
+
+    Parameters
+    ----------
+    module : torch.nn.Module
+        The network, which is scanned for variational modules.
+
+    prefix : string, default empty
+        The prefix for the yielded names.
+
+    Yields
+    ------
+    (string, torch.Tensor):
+        Name and the mask used to activate/deactivate the parameters.
+
+    Note
+    ----
+    Masks from duplicate (shared or recurrent) modules are returned only once.
+    """
+
     # yields own mask and masks of every descendant
     for name, mod in module.named_modules(prefix=prefix):
         if isinstance(mod, BaseMasked):
