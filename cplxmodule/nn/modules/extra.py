@@ -26,9 +26,6 @@ class CplxDropout(torch.nn.Dropout2d, CplxToCplx):
         return cplx.from_interleaved_real(output, False, -1)
 
 
-CplxDropout1d = CplxDropout
-
-
 class CplxAvgPool1d(torch.nn.AvgPool1d, CplxToCplx):
     r"""
     Complex 1d average pooling layer: simultaneously pools both real
@@ -39,54 +36,6 @@ class CplxAvgPool1d(torch.nn.AvgPool1d, CplxToCplx):
     def forward(self, input):
         # apply parent.forward to re and im parts
         return input.apply(super().forward)
-
-
-class CplxResidualBottleneck(CplxToCplx):
-    r"""A tag for Complex Linear layer, that alters the behaviour
-    of the residual container.
-    """
-    pass
-
-
-class CplxResidualSequential(CplxSequential):
-    r"""
-    Sequence of complex-to-complex residual modules:
-    $$
-        z_l = F_l(z_{l-1}) + z_{l-1}
-        \,, $$
-    for $l=1..L$ and the complex input $z_0$. In the case when $F_l$ is
-    of type `CplxResidualBottleneck`, the update becomes:
-    $$
-        z_l = F_l(z_{l-1})
-        \,. $$
-    """
-    def forward(self, input):
-        for module in self:
-            if isinstance(module, CplxResidualBottleneck):
-                input = module(input)
-
-            else:
-                input = input + module(input)
-
-        return input
-
-
-class CplxBusResidualSequential(CplxSequential):
-    r"""
-    Sequence of complex-to-complex residual modules with a common ground
-    bus `z_{bus}`:
-    $$
-        z_l = F_l(z_{l-1}) + z_{bus}
-        \,, $$
-    for $l=1..L$ and the complex input $z_0 = z_{bus}$.
-    """
-    def forward(self, input):
-        # loop over the layers in sequence and add them to the bus
-        bus = input
-        for module in self:
-            input = bus + module(input)
-
-        return input
 
 
 # i am lazy to rewrite code, so here is a factory
