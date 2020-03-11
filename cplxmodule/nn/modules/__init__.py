@@ -15,3 +15,5 @@ from .activation import CplxModReLU, CplxAdaptiveModReLU
 from .activation import CplxModulus, CplxAngle
 
 from .batchnorm import CplxBatchNorm1d, CplxBatchNorm2d, CplxBatchNorm3d
+
+from .extra import CplxDropout

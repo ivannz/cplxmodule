@@ -5,8 +5,7 @@ from ... import cplx
 
 
 class CplxDropout(torch.nn.Dropout2d, CplxToCplx):
-    r"""
-    Complex 1d dropout layer: simultaneous dropout on both real and
+    r"""Complex 1d dropout layer: simultaneous dropout on both real and
     imaginary parts.
 
     See torch.nn.Dropout1d for reference on the input dimensions and arguments.
