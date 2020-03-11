@@ -1,7 +1,6 @@
 import torch
 
 from .base import CplxToCplx
-from .container import CplxSequential
 from ... import cplx
 
 
@@ -24,33 +23,3 @@ class CplxDropout(torch.nn.Dropout2d, CplxToCplx):
 
         # [*head, n_last * 2] -> [*head, n_last]
         return cplx.from_interleaved_real(output, False, -1)
-
-
-# i am lazy to rewrite code, so here is a factory
-def torch_module(fn, base, name=None):
-    # a class template
-    class template_(*base):
-        def forward(self, input):
-            return fn(input)
-
-    # update the name and qualname
-    name_ = name if name is not None else fn.__name__.title()
-    setattr(template_, "__name__", name_)
-    setattr(template_, "__qualname__", name_)
-
-    # update defaults
-    for attr in ('__module__', '__doc__'):
-        try:
-            value = getattr(fn, attr)
-        except AttributeError:
-            pass
-        else:
-            setattr(template_, attr, value)
-    # end for
-
-    return template_
-
-
-CplxExp = torch_module(cplx.exp, (CplxToCplx,), "CplxExp")
-
-CplxLog = torch_module(cplx.log, (CplxToCplx,), "CplxLog")
