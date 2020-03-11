@@ -39,7 +39,7 @@
 [+] in `nn.relevance.complex` : drop `Cplx(*map(torch.randn_like, (s2, s2)))` and write `Cplx(torch.randn_like(s2), torch.randn_like(s2))` explicitly
 * implemented `cplx.randn` and `cplx.randn_like`
 
-[ ] residual clean up in `nn` module
+[+] residual clean up in `nn` module
 * `.activation` : `CplxActivation` is the same as CplxToCplx[...]
   * CplxActivation promotes classic (real) torch functions to split activations, so yes.
   * See if it is possible to implement function promotion through CplxToCplx[...]
@@ -51,6 +51,8 @@
 * `.modules.extra` : this needs thorough cleaning
   * drop CplxResidualBottleneck, CplxResidualSequential and CplxBusResidualSequential
   * abandon `torch_module` and code the trig activations by hand.
+  * remove alias CplxDropout1d : use torch.nn names as much as possible
+  * deprecate CplxAvgPool1d: it can be created in runtime with CplxToCplx\[torch.nn.AvgPool1d\]
 
 [ ] documentation
 * in `nn.relevance.base`, making it like in `nn.masked`
@@ -62,4 +64,9 @@
 * it is irrelevant to Bayesian methods
 
 [ ] add missing tests to the unit test suite
+
+[ ] Improve implementation
+* (Bernoulli Dropout) need 1d (exists), 2d and 3d
+* (Convolutions) implement 3d convolutions and 3d vardropout convolutions both real and complex
+* (Transposed Convolutions) figure out the math and implement var dropout for transposed convos
 
