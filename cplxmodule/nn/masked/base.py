@@ -93,31 +93,31 @@ class BaseMasked(torch.nn.Module):
                               strict, missing_keys, unexpected_keys,
                               error_msgs):
         """Surgically load the state with the runtime masks from a dict."""
-        # this next call loads into this module only!
-        missing, unexpected = [], []
-        super()._load_from_state_dict(state_dict, prefix, local_metadata,
-                                      strict, missing, unexpected, error_msgs)
-
+        # this next call loads everything, expect mask into this module only!
         mask = prefix + "mask"
-        # mask was explicitly given: set own mask
+        super()._load_from_state_dict(
+            {k: v for k, v in state_dict.items() if k != mask}, prefix,
+            local_metadata, strict, missing_keys, unexpected_keys, error_msgs)
+
+        # here: mask in missing <=> buffer exists and not None <=> is_sparse
+        # https://github.com/pytorch/pytorch/blob/master/torch/nn/modules/module.py#L758
+        mask_in_missing = mask in missing_keys
+
+        # mask was explicitly given: set own mask, mask cannot be in unexpected
         if mask in state_dict:
+            if mask_in_missing:
+                missing_keys.remove(mask)
+
             self.mask_(state_dict[mask])
 
-            # mask not in self => mask might be in unexpected (not in missing)
-            if mask in unexpected:
-                unexpected.remove(mask)
+        # must report absent mask, regardless if self is sparse or not
+        elif strict:
+            if not mask_in_missing:
+                missing_keys.append(mask)
 
-        # mask was not given => mask might be in missing (not in unexpected)
-        elif mask not in missing and strict:
-            # report missing mask if self has mask
-            missing.append(mask)
-
-        # mask was not given, and is either in missing, or not strict
-        else:
-            pass
-
-        unexpected_keys.extend(unexpected)
-        missing_keys.extend(missing)
+        # ignore missing mask if not strict
+        elif mask_in_missing:  # mask not in state_dict and not strict
+            missing_keys.remove(mask)
 
 
 class MaskedWeightMixin():
