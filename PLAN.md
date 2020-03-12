@@ -72,7 +72,7 @@
 * `nn.init` : document the initializations according to Trabelsi et al. (2018)
   * seems to be automatically documented using `functools.wraps` from the original `torch.nn.init` procedures.
 
-[ ] add missing tests to the unit test suite
+[+] add missing tests to the unit test suite
 * tests for `*state_dict` api compliance of `nn.masked` and `nn.base.CplxParameter`
   * implementing these test helped figure out and fix edge cases and fix them, so yay for TDD!
 
