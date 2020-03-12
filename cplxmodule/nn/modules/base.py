@@ -47,14 +47,19 @@ class CplxParameter(torch.nn.ParameterDict):
             else:
                 # state dict has a key that matches the name of this
                 # parameter dict, so we upcast from real to complex.
-                par, missing = state_dict[real], []
+                par, missing, unexpected = state_dict[real], [], []
+                # `real` might get captured by `unexpected`, for example in the
+                # first call to _load.
+                if real in unexpected:
+                    unexpected.remove(real)
 
                 # recursively call on a special state_dict to promote R to C
                 # NO missing or unexpected items are possible by design, only
                 # shape mismatch or general exceptions are now possible.
-                self._load_from_state_dict(
-                    {f"{real}.real": par, f"{real}.imag": torch.zeros_like(par)},
-                    prefix, local_metadata, strict, [], [], error_msgs)
+                self._load_from_state_dict({
+                        f"{prefix}real": par,
+                        f"{prefix}imag": torch.zeros_like(par)
+                    }, prefix, local_metadata, strict, [], [], error_msgs)
 
         elif len(missing) == 1:
             # Although loaded either `.real` or `.imag`, the state_dict
