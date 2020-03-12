@@ -62,6 +62,13 @@ z = cplx.Cplx(torch.ones(1, 1), - torch.ones(1, 1))
 CplxSharedLinear(1, 3, bias=False)(z)
 ```
 
+It is also possible to promote a unary and not-inplace real-valued function from `torch.` to a complex-valued split activation of tranformation, i.e.
+```python
+CplxSplitSin = CplxToCplx[torch.sin]
+
+CplxSplitSin()(z)
+```
+
 ## Initialization
 
 Functions in `nn.init` implement various random initialization strategies suitable for complex-valued layers, that were researched in _[1]_.
@@ -99,7 +106,7 @@ cplx = RealToCplx()(z)
 print(cplx)
 ```
 
-Stacking and constructing purely complex-to-complex pipelines with troch.nn.Sequential:
+Stacking and constructing purely complex-to-complex pipelines with `torch.nn.Sequential`:
 ```python
 n_features, n_channels = 16, 4
 z = torch.randn(256, n_channels, n_features * 2)

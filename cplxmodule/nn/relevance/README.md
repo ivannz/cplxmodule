@@ -9,6 +9,8 @@ The basic pipeline for applying Bayesian sparsification methods is to train a no
 Below is a real-valued classifier (Complex-valued is similar, but requires input of type `cplx.Cplx`):
 
 ```python
+import torch
+
 from torch.nn import Module, Sequential, Flatten, ReLU
 from torch.nn import Linear
 
@@ -18,6 +20,7 @@ from cplxmodule.nn.masked import LinearMasked
 
 class MNISTFullyConnected(Module):
     def __init__(self, n_hidden=400, **types):
+        # types dict serves as the layer class substitution table
         super().__init__()
 
         linear = types.get("linear", Linear)
@@ -51,7 +54,7 @@ Important: complex-valued alternatives can be readily plugged in instead of real
 
 The variational dropout and relevance determination techniques require a penalty term to be introduced to the loss objective. The term is given by the Kullback-Leibler divergences of the variational approximation from the assumed prior distribution.
 
-Each layer, which inherits from `BaseARD`, is responsible for computing the KL divergence terms related to the variational approximations of and only its own parameters, e.g. children submodules in turn compute their own divergences. Therefore the layer must implement a the `.penalty` read-only property, which is responsible for computing the divergence.
+Each layer, which inherits from `BaseARD`, is responsible for computing the KL divergence terms related to the variational approximations of and only its own parameters, e.g. children submodules in turn compute their own divergences. Therefore the layer must implement a the `.penalty` read-only property, which is responsible for computing the divergence, based on its current variational distribution.
 
 The following functions return generators, that yield the penalties of all eligible submodules. If a layer is not a subclass of `BaseARD` then it is ignored.
 
@@ -81,25 +84,25 @@ state_dict = models["dense"].state_dict()
 
 models["bayes"].load_state_dict(state_dict,  strict=False)
 ```
-Since non-Bayesian models do not model their parameters through factorized Gaussian variational approximation, the above operation transfers copies weight into the means of these distributions. It is necessary to set `strict=False` in `.load_state_dict()`, since non-Bayesian models lack `.log_sigma2` parameters, which are initialized to `-10` upon Bayesian layer instantiation. This effectively renders the great bulk of copied weights relevant.
+Since non-Bayesian models do not model their parameters through factorized Gaussian variational approximation, the above operation copies weights of the `dense` network into the means of the distributions of appropriate layers in the `bayes` network. It is necessary to set `strict=False` in `.load_state_dict()`, since non-Bayesian models lack `.log_sigma2` parameters, which are initialized to `-10` upon Bayesian layer instantiation. This effectively renders the great bulk of copied weights relevant.
 
-Transferring in the opposiute direction requires `strict=False` as well, since `.log_sigma2` have to be ignored by the receiving model.
+Transferring in the opposite direction requires `strict=False` as well, since `.log_sigma2` have to be ignored by the receiving model.
 
 ### Computing relevance masks
 
-The variational dropout and relevance determination methods use special Fully Factorised Gaussian approximation with mean `\mu` and variance `\alpha \lvert \mu \rvert^2`. The `\alpha` is essentially the ratio of mean to standard deviation and is learnt either directly, or through additive reparameterization. It effectively scores the irrelevance of the parameter it is associated with: `\alpha` is close to zero, then the parameter is more relevant, rather than the parameter with `\alpha` above `1`.
+The variational dropout and relevance determination methods use special fully factorised Gaussian approximation with mean `\mu` and variance `\alpha \lvert \mu \rvert^2`. The `\alpha` is essentially the ratio of mean to standard deviation and is learnt either directly, or through additive reparameterization (used in this implementation). It effectively scores the irrelevance of the parameter it is associated with: `\alpha` is close to zero, then the parameter is more relevant, rather than the parameter with `\alpha` above `1`.
 
-In order to decide if a parameter is relevant it is necessary to compare its irrelevance score against a threshold. The following functions can be used for returning the masks of kept/dropped out (sparsified) parametersL
+In order to decide if a parameter is relevant it is necessary to compare its irrelevance score against a threshold. The following functions can be used for returning the masks of kept/dropped out (sparsified) parameters:
 
-* `named_relevance(module, threshold=..., hard=True)` much like the `.named_penalties`, this generator yields submodule's name and the computed relevance mask, which is `nonzero` at those parameter elements, which have `\log\alpha` below the given `threshold`. `hard` forces the returned mask to be binary.
+* `named_relevance(module, threshold=...)` much like the `.named_penalties`, this generator yields submodule's name and the computed relevance mask, which is `nonzero` at those parameter elements, which have `\log\alpha` below the given `threshold`. This generator accepts keyworded parameters for future extensions. For example, `\ell_0` regularization layers uses `hard` to force the returned mask to be binary, while Bayesian layers (VD and ARD) ignore it.
 
-* `compute_ard_masks(module, threshold=..., hard=True)` also returns the sparsity mask, but unlike `named_relevance` returns a dictionary of masks, keyed by parameter manes compatible with the masking interface of the layers in `nn.masked`.
+* `compute_ard_masks(module, threshold=...)` also returns the sparsity mask, but unlike `named_relevance` returns a dictionary of masks, keyed by parameter manes compatible with the masking interface of the layers in `nn.masked`. Like `named_relevance`, this generator accepts keyworded parameters for future extensions.
 
 ### Interfacing with masked layers
 
 Layer sparsification with Bayesian dropout layers is performed in two steps:
 1. relevance masks are computed based on the used-supplied threshold for `\log \alpha`
-2. masks are merged the layers parameters and deployed into a maskable layer
+2. masks are merged the layers parameters and deployed onto a maskable layer
 
 Below is a handy recipe to facilitate mask transfer:
 
@@ -118,12 +121,12 @@ def state_dict_with_masks(model, **kwargs):
     return state_dict, masks
 
 # threshold of -0.5 lose in performance a little, but gives much stronger sparsity
-state_dict, masks = state_dict_with_masks(models["bayes"], threshold=-0.5, hard=True)
+state_dict, masks = state_dict_with_masks(models["bayes"], threshold=-0.5)
 
 # state dict for loading, masks for analysis
 models["masked"].load_state_dict(state_dict,  strict=False)
 ```
-Masked layers have only the `.weight` parameter (optionally `.bias`), hence it is necessary to set `strict=False` in `.load_state_dict()`.
+Masked layers have only the `.weight` parameter and optionally `.bias`, hence it is necessary to set `strict=False` in `.load_state_dict()`.
 
 ## Implementation
 
@@ -134,17 +137,17 @@ The modules in `nn.relevance` implement both `real`- and `complex` valued Bayesi
 * *Real*-valued Variational dropout layers (log-uniform prior)
     - LinearVD, Conv1dVD, Conv2dVD, BilinearVD from `nn.relevance.real`
 
-* *Complex*-valued Variational dropout layers (log-uniform prior)
+* *Complex*-valued Variational dropout layers (log-uniform prior pow-2)
     - CplxLinearVD, CplxConv1dVD, CplxConv2dVD, CplxBilinearVD from `nn.relevance.complex`
 
-* Automatic Relevance Determination (factorized gaussian prior with learnt precision) from `nn.relevance.ard`
+* Automatic Relevance Determination (factorized Gaussian prior with learnt precision) from `nn.relevance.ard`
     - (*real*) LinearARD, Conv1dARD, Conv2dARD, BilinearARD
     - (*complex*) CplxLinearARD, CplxConv1dARD, CplxConv2dARD, CplxBilinearARD
 
-* Variational dropout with bogus forward values, but exact gradients from `nn.relevance.extensions`
+* Variational dropout with bogus forward values, but exact gradients from `nn.relevance.extensions`. This layer avoids device-host-device transfer, and specifically bypasses a single-threaded computation of a special function, which is slow, especially for large dense layers.
     - (**complex only**) CplxLinearVDBogus, CplxConv1dVDBogus, CplxConv2dVDBogus, CplxBilinearVDBogus
 
-Versions of the library prior to `1.0` had mixed up names of variational dropout (VD) and automatic relevance determination (ARD) layers: `nn.relevance.real` and `nn.relevance.complex` implemented log-uniform priors while incorrectly calling themselves ARD (Gaussian with learnable precision). From version `0.9.0` correctly named methods could be imported from `nn.relevance.extensions`, and starting with version `1.0` correct layers have become directly importable from `nn.relevance`.
+Versions of the library prior to `1.0` had mixed up names of variational dropout (VD) and automatic relevance determination (ARD) layers: `nn.relevance.real` and `nn.relevance.complex` implemented log-uniform priors while incorrectly calling themselves ARD (Gaussian with learnable precision). From version `0.9.0` correctly named methods could be imported from `nn.relevance.extensions`, which was renamed to `nn.relevance.ard` prior to `0.9.8`. Starting with version `1.0` correct layers have become directly importable from `nn.relevance`.
 
 ### Subclassing Modules
 
