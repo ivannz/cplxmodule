@@ -260,7 +260,7 @@ class LinearARD(object):
                       " been deprecated due to misleading name. Starting with"
                       " version `1.0` the `.real` submodule will export real-"
                       "valued Variational Dropout (VD) layers only. Please"
-                      " import ARD layers from `relevance.extensions`.",
+                      " import ARD layers from `relevance.ard`.",
                       FutureWarning)
 
         return LinearVD(in_features, out_features, bias)
@@ -275,7 +275,7 @@ class Conv1dARD(object):
                       " been deprecated due to misleading name. Starting with"
                       " version `1.0` the `.real` submodule will export real-"
                       "valued Variational Dropout (VD) layers only. Please"
-                      " import ARD layers from `relevance.extensions`.",
+                      " import ARD layers from `relevance.ard`.",
                       FutureWarning)
 
         return Conv1dVD(in_channels, out_channels, kernel_size, stride,
@@ -291,7 +291,7 @@ class Conv2dARD(object):
                       " been deprecated due to misleading name. Starting with"
                       " version `1.0` the `.real` submodule will export real-"
                       "valued Variational Dropout (VD) layers only. Please"
-                      " import ARD layers from `relevance.extensions`.",
+                      " import ARD layers from `relevance.ard`.",
                       FutureWarning)
 
         return Conv2dVD(in_channels, out_channels, kernel_size, stride,
@@ -305,7 +305,7 @@ class BilinearARD(object):
                       " been deprecated due to misleading name. Starting with"
                       " version `1.0` the `.real` submodule will export real-"
                       "valued Variational Dropout (VD) layers only. Please"
-                      " import ARD layers from `relevance.extensions`.",
+                      " import ARD layers from `relevance.ard`.",
                       FutureWarning)
 
         return BilinearVD(in1_features, in2_features, out_features, bias)

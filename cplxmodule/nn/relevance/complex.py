@@ -228,7 +228,7 @@ class CplxLinearARD(object):
                       " been deprecated due to misleading name. Starting with"
                       " version `1.0` the `.real` submodule will export complex-"
                       "valued Variational Dropout (VD) layers only. Please"
-                      " import ARD layers from `relevance.extensions`.",
+                      " import ARD layers from `relevance.ard`.",
                       FutureWarning)
 
         return CplxLinearVD(in_features, out_features, bias)
@@ -242,7 +242,7 @@ class CplxBilinearARD(object):
                       " been deprecated due to misleading name. Starting with"
                       " version `1.0` the `.real` submodule will export complex-"
                       "valued Variational Dropout (VD) layers only. Please"
-                      " import ARD layers from `relevance.extensions`.",
+                      " import ARD layers from `relevance.ard`.",
                       FutureWarning)
 
         return CplxBilinearVD(in1_features, in2_features, out_features, bias,
@@ -258,7 +258,7 @@ class CplxConv1dARD(object):
                       " been deprecated due to misleading name. Starting with"
                       " version `1.0` the `.real` submodule will export complex-"
                       "valued Variational Dropout (VD) layers only. Please"
-                      " import ARD layers from `relevance.extensions`.",
+                      " import ARD layers from `relevance.ard`.",
                       FutureWarning)
 
         return CplxConv1dVD(in_channels, out_channels, kernel_size, stride,
@@ -274,7 +274,7 @@ class CplxConv2dARD(object):
                       " been deprecated due to misleading name. Starting with"
                       " version `1.0` the `.real` submodule will export complex-"
                       "valued Variational Dropout (VD) layers only. Please"
-                      " import ARD layers from `relevance.extensions`.",
+                      " import ARD layers from `relevance.ard`.",
                       FutureWarning)
 
         return CplxConv2dVD(in_channels, out_channels, kernel_size, stride,

@@ -17,6 +17,7 @@ setup(
         "cplxmodule.nn.modules",
         "cplxmodule.nn.relevance",
         "cplxmodule.nn.relevance.extensions",
+        "cplxmodule.nn.relevance.extensions.real",
         "cplxmodule.nn.masked",
         "cplxmodule.nn.utils",
         "cplxmodule.utils",

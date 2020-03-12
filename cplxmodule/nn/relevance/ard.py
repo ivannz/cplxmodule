@@ -73,7 +73,7 @@ class CplxARDMixin():
 
         Naming
         ------
-        See `cplxmodule.relevance.extensions.LinearARD`
+        See `LinearARD`
 
         Notes
         -----

@@ -13,5 +13,4 @@ from .ard import Conv1dARD, Conv2dARD
 from .ard import CplxLinearARD, CplxBilinearARD
 from .ard import CplxConv1dARD, CplxConv2dARD
 
-from .real_l0 import LinearL0
-from .real_lasso import LinearLASSO
+from .extensions import LinearL0, LinearLASSO

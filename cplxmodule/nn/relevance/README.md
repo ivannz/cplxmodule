@@ -137,7 +137,7 @@ The modules in `nn.relevance` implement both `real`- and `complex` valued Bayesi
 * *Complex*-valued Variational dropout layers (log-uniform prior)
     - CplxLinearVD, CplxConv1dVD, CplxConv2dVD, CplxBilinearVD from `nn.relevance.complex`
 
-* Automatic Relevance Determination (factorized gaussian prior with learnt precision) from `nn.relevance.extensions`
+* Automatic Relevance Determination (factorized gaussian prior with learnt precision) from `nn.relevance.ard`
     - (*real*) LinearARD, Conv1dARD, Conv2dARD, BilinearARD
     - (*complex*) CplxLinearARD, CplxConv1dARD, CplxConv2dARD, CplxBilinearARD
 

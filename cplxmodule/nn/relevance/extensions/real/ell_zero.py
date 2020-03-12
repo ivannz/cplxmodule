@@ -6,8 +6,8 @@ import torch.nn
 
 import torch.nn.functional as F
 
-from .base import BaseARD
-from ..utils.sparsity import SparsityStats
+from ...base import BaseARD
+from ....utils.sparsity import SparsityStats
 
 
 class LinearL0(torch.nn.Linear, BaseARD, SparsityStats):
