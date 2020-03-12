@@ -67,9 +67,10 @@
 * decide the fate of `lasso` class in `nn.relevance`:
   * it is irrelevant to Bayesian methods: move it to `extensions/real`
 
-[ ] documentation
+[+] documentation
 * go through README-s in each submodule to make sure that info there is correct and typical use cases described
 * `nn.init` : document the initializations according to Trabelsi et al. (2018)
+  * seems to be automatically documented using `functools.wraps` from the original `torch.nn.init` procedures.
 
 [ ] add missing tests to the unit test suite
 * tests for `*state_dict` api compliance of `nn.masked` and `nn.base.CplxParameter`
