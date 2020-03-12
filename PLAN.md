@@ -74,6 +74,7 @@
 
 [ ] add missing tests to the unit test suite
 * tests for `*state_dict` api compliance of `nn.masked` and `nn.base.CplxParameter`
+  * implementing these test helped figure out and fix edge cases and fix them, so yay for TDD!
 
 [ ] Improve implementation
 * (Bernoulli Dropout) need 1d (exists), 2d and 3d
