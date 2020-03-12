@@ -1,14 +1,16 @@
+import warnings
+
 import math
 import torch
 import torch.nn
 
 import torch.nn.functional as F
 
-from .base import BaseARD
-from ..utils.sparsity import SparsityStats
+from ...base import BaseARD
+from ....utils.sparsity import SparsityStats
 
 
-class LinearL0ARD(torch.nn.Linear, BaseARD, SparsityStats):
+class LinearL0(torch.nn.Linear, BaseARD, SparsityStats):
     """L0 regularized linear layer according to [1]_.
 
     Details
@@ -172,3 +174,16 @@ class LinearL0ARD(torch.nn.Linear, BaseARD, SparsityStats):
     def sparsity(self, *, hard, **kwargs):
         n_relevant = float(self.relevance(hard=hard).sum().item())
         return [(id(self.weight), self.weight.numel() - n_relevant)]
+
+
+class LinearL0ARD(torch.nn.Linear, BaseARD, SparsityStats):
+    def __new__(self, in_features, out_features, bias=True, group=None):
+        warnings.warn("L0 layer learns probabilities of each parameter being"
+                      " nonzero and has little relation to Variational methods."
+                      " It was a serious oversight to name it as such. Thus"
+                      " starting with version `1.0` importing this layer under"
+                      " the incorrect name will be deprecated, and the name"
+                      " will be reverted to `LinearL0`.",
+                      FutureWarning)
+
+        return LinearL0(in_features, out_features, bias, group)

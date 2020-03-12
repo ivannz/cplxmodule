@@ -1,128 +1,17 @@
-r"""Naming convention is thus:
-VD* -- var dropout -- 'scale free' or otherwise improper prior;
-VDBogus -- improper prior, but with fake forward outputs
-
-ARD* -- automatic relevance determination -- proper Gaussian prior,
-    aka empirical Bayes (prior parameters learnt from observations);
+"""Naming convention is thus:
+VDApprox -- approximate KL-div from improper pow2 prior for complex VD
+VDScaleFree -- exact KL-div (improper pow1 prior) for complex VD
+VDBogus -- improper pow2 prior, but with fake forward outputs for complex VD
 """
 import torch
 import torch.nn.functional as F
 
-from numpy import euler_gamma
+from ..complex import CplxLinearVD
+from ..complex import CplxBilinearVD
+from ..complex import CplxConv1dVD
+from ..complex import CplxConv2dVD
 
-from .base import BaseARD
-
-from .real import LinearARD as LinearVD
-from .real import Conv1dARD as Conv1dVD
-from .real import Conv2dARD as Conv2dVD
-from .real import BilinearARD as BilinearVD
-
-from .complex import CplxLinearARD as CplxLinearVD
-from .complex import CplxBilinearARD as CplxBilinearVD
-from .complex import CplxConv1dARD as CplxConv1dVD
-from .complex import CplxConv2dARD as CplxConv2dVD
-
-from .complex import ExpiFunction, torch_expi
-
-
-class RealARDMixin():
-    @property
-    def penalty(self):
-        r"""Penalty from arxiv:1811.00596.
-
-        Naming
-        ------
-        In fact this is the true ARD setup, and the all layers in other
-        files are in fact ordinary Variational Dropout. The difference
-        is in the prior.
-
-        Notes
-        -----
-        Computes the KL-divergence of $q_\theta(W)$ from $p(W; \tau)$ in
-        the (true) ARD setup, suggested in arxiv:1811.00596. Uses mean
-        field gaussian variational approximation $q_\theta(W)$ against
-        the assumed proper (mean field) prior $p(W; \tau)$ gaussian with
-        elementwise precision parameter $\tau$ optimised in the ELBO.
-        $$
-            \mathop{KL}\bigl(q_\theta(W) \| p(W)\bigr)
-                = \mathbb{E}_{W \sim q_\theta}
-                    \log \tfrac{q_\theta(W)}{p(W)}
-                = \frac12 \sum_{ij} \bigl(
-                    \tau_{ij} \sigma^2_{ij} + \tau_{ij} \mu_{ij}^2
-                    - \log \sigma^2_{ij} - \log \tau_{ij} - 1
-                \bigr)
-            \,, $$
-        at $\tau_{ij} = (\sigma^2_{ij} + \mu_{ij}^2)^{-1}$.
-        """
-
-        # `softplus` is $x \mapsto \log(1 + e^x)$
-        return 0.5 * F.softplus(- self.log_alpha)
-
-
-class LinearARD(RealARDMixin, LinearVD):
-    pass
-
-
-class Conv1dARD(RealARDMixin, Conv1dVD):
-    pass
-
-
-class Conv2dARD(RealARDMixin, Conv2dVD):
-    pass
-
-
-class BilinearARD(RealARDMixin, BilinearVD):
-    pass
-
-
-class CplxARDMixin():
-    @property
-    def penalty(self):
-        r"""Empricial Bayes penalty for complex layer with complex gaussian vi.
-
-        Naming
-        ------
-        See `cplxmodule.relevance.extensions.LinearARD`
-
-        Notes
-        -----
-        Computes the KL-divergence of $q_\theta(W)$ from the emprical Bayes
-        prior $\pi(W; \tau)$ given by a circular symmetric complex gaussian
-        with optimal precision parameter $\tau$.
-        $$
-            \mathop{KL}\bigl(q_\theta(W) \| \pi(W; \tau_{ij} \bigr)
-                = \mathbb{E}_{W \sim q_\theta}
-                    \log \tfrac{q_\theta(W)}{\pi(W; \tau_{ij})}
-                = \sum_{ij} \bigl(
-                    \tau_{ij} \sigma^2_{ij}
-                    + \tau_{ij} \lvert \mu_{ij} \rvert^2
-                    - \log \sigma^2_{ij} \tau_{ij}
-                    - 1
-                \bigr)
-            \,, $$
-        at $\tau_{ij} = (\sigma^2_{ij} + \mu_{ij}^2)^{-1}$.
-
-        Note the absence of $\tfrac12$!
-        """
-
-        # `softplus` is $x \mapsto \log(1 + e^x)$
-        return F.softplus(- self.log_alpha)
-
-
-class CplxLinearARD(CplxARDMixin, CplxLinearVD):
-    pass
-
-
-class CplxBilinearARD(CplxARDMixin, CplxBilinearVD):
-    pass
-
-
-class CplxConv1dARD(CplxARDMixin, CplxConv1dVD):
-    pass
-
-
-class CplxConv2dARD(CplxARDMixin, CplxConv2dVD):
-    pass
+from ..complex import ExpiFunction, torch_expi
 
 
 class CplxVDScaleFreeMixin():
@@ -155,18 +44,22 @@ class CplxVDScaleFreeMixin():
 
 
 class CplxLinearVDScaleFree(CplxVDScaleFreeMixin, CplxLinearVD):
+    """Complex-valued linear layer with scale-free prior."""
     pass
 
 
 class CplxBilinearVDScaleFree(CplxVDScaleFreeMixin, CplxBilinearVD):
+    """Complex-valued bilinear layer with scale-free prior."""
     pass
 
 
 class CplxConv1dVDScaleFree(CplxVDScaleFreeMixin, CplxConv1dVD):
+    """1D complex-valued convolution layer with scale-free prior."""
     pass
 
 
 class CplxConv2dVDScaleFree(CplxVDScaleFreeMixin, CplxConv2dVD):
+    """2D complex-valued convolution layer with scale-free prior."""
     pass
 
 
@@ -197,18 +90,30 @@ class CplxVDApproxMixin():
 
 
 class CplxLinearVDApprox(CplxVDApproxMixin, CplxLinearVD):
+    """Complex-valued linear layer with approximate
+    var-dropout penalty.
+    """
     pass
 
 
 class CplxBilinearVDApprox(CplxVDApproxMixin, CplxBilinearVD):
+    """Complex-valued bilinear layer with approximate
+    var-dropout penalty.
+    """
     pass
 
 
 class CplxConv1dVDApprox(CplxVDApproxMixin, CplxConv1dVD):
+    """1D complex-valued convolution layer with approximate
+    var-dropout penalty.
+    """
     pass
 
 
 class CplxConv2dVDApprox(CplxVDApproxMixin, CplxConv2dVD):
+    """2D complex-valued convolution layer with approximate
+    var-dropout penalty.
+    """
     pass
 
 
@@ -235,16 +140,28 @@ class CplxVDBogusMixin():
 
 
 class CplxLinearVDBogus(CplxVDBogusMixin, CplxLinearVD):
+    """Complex-valued linear layer with correct var dropout penalty
+    gradient, but bogus penalty values.
+    """
     pass
 
 
 class CplxBilinearVDBogus(CplxVDBogusMixin, CplxBilinearVD):
+    """Complex-valued bilinear layer with correct var dropout penalty
+    gradient, but bogus penalty values.
+    """
     pass
 
 
 class CplxConv1dVDBogus(CplxVDBogusMixin, CplxConv1dVD):
+    """1D complex-valued convolution layer with correct var dropout penalty
+    gradient, but bogus penalty values.
+    """
     pass
 
 
 class CplxConv2dVDBogus(CplxVDBogusMixin, CplxConv2dVD):
+    """2D complex-valued convolution layer with correct var dropout penalty
+    gradient, but bogus penalty values.
+    """
     pass

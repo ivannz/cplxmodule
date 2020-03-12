@@ -2,7 +2,7 @@
 
 A lightweight extension for `torch.nn` that adds layers and activations, which respect algebraic operations over the field of complex numbers.
 
-The core implementation of the complex-valued batch normalization and weight initialization layers is based on the ICLR 2018 parer by Chiheb Trabelsi et al. on Deep Complex Networks _[1]_ and borrows ideas from the [implementation](https://github.com/ChihebTrabelsi/deep_complex_networks). Real-valued variational dropout and automatic relevance determination are based on the profound works by Diederik Kingma et al. (2015) _[2]_ and Dmitry Molchanov et al. (2017) _[3]_. Complex-valued Bayesian sparsification layers are based on original research.
+The core implementation of the complex-valued batch normalization and weight initialization layers is based on the ICLR 2018 parer by Chiheb Trabelsi et al. on Deep Complex Networks _[1]_ and borrows ideas from the [implementation](https://github.com/ChihebTrabelsi/deep_complex_networks). Real-valued variational dropout and automatic relevance determination are original implementations based on the profound works by Diederik Kingma et al. (2015) _[2]_ and Dmitry Molchanov et al. (2017) _[3]_. Complex-valued Bayesian sparsification layers are based on original research.
 
 # Installation
 

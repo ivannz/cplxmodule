@@ -4,25 +4,31 @@
 
 ### Real-Complex Conversion layers
 
-* ConcatenatedRealToCplx
-* CplxToConcatenatedReal
-* InterleavedRealToCplx
-* CplxToInterleavedReal
+* ConcatenatedRealToCplx, CplxToConcatenatedReal
+* InterleavedRealToCplx (RealToCplx), CplxToInterleavedReal (CplxToReal)
 * AsTypeCplx
-* CplxReal
-* CplxImag
 
-### Base building blocks
+### Basic building blocks
 
-* CplxLinear
-* CplxConv1d
-* CplxConv2d
-* CplxBilinear
+* CplxReal, CplxImag
+* CplxIdentity, CplxLinear, CplxBilinear
+* CplxConv1d, CplxConv2d
+* CplxSequential
+
+### Complex activation layers
+
+* CplxModulus, CplxAngle
+* CplxModReLU, CplxAdaptiveModReLU
+
+### Complex batch normalization
+
+Batch normalization layers, based on 2d vector whitening proposed in _[1]_, are provided by `nn.modules.batchnorm`.
+
+* CplxBatchNorm1d, CplxBatchNorm2d, CplxBatchNorm3d
 
 ### Miscellaneous layers
 
 * CplxDropout
-* CplxAvgPool1d
 * CplxPhaseShift
 
 ### Complex-valued parameter representation
@@ -38,6 +44,8 @@ The base class for complex-valued layers is `CplxToCplx`. It does not have `__in
 It is possible to promote an existing real-valued module to complex-valued module, which is *shared* between the real and imaginary parts and acts on them independently, i.e. the same layer is applied twice. For example, the typical use case is to convert a real-valued activation to split complex-valued acitvation:
 
 ```python
+import torch
+
 from cplxmodule import cplx
 from cplxmodule.nn import CplxToCplx
 
@@ -54,17 +62,16 @@ z = cplx.Cplx(torch.ones(1, 1), - torch.ones(1, 1))
 CplxSharedLinear(1, 3, bias=False)(z)
 ```
 
+It is also possible to promote a unary and not-inplace real-valued function from `torch.` to a complex-valued split activation of tranformation, i.e.
+```python
+CplxSplitSin = CplxToCplx[torch.sin]
+
+CplxSplitSin()(z)
+```
+
 ## Initialization
 
 Functions in `nn.init` implement various random initialization strategies suitable for complex-valued layers, that were researched in _[1]_.
-
-## BatchNorm layers
-
-Whitening-based batch normalization layers proposed in _[1]_ are provided by `nn.batchnorm`.
-
-* CplxBatchNorm1d
-* CplxBatchNorm2d
-* CplxBatchNorm3d
 
 ## Usage
 
@@ -73,7 +80,6 @@ Basically the module is designed in such a way as to be ready for plugging into 
 Importing the building blocks.
 ```python
 import torch
-import torch.nn
 
 # complex valued tensor class
 from cplxmodule import cplx
@@ -82,13 +88,13 @@ from cplxmodule import cplx
 from cplxmodule.nn import RealToCplx, CplxToReal
 
 # layers of encapsulating other complex valued layers
-from cplxmodule.nn.sequential import CplxSequential
+from cplxmodule.nn import CplxSequential
 
 # common layers
-from cplxmodule.nn.layers import CplxConv1d, CplxLinear
+from cplxmodule.nn import CplxConv1d, CplxLinear
 
 # activation layers
-from cplxmodule.nn.activation import CplxModReLU, CplxActivation
+from cplxmodule.nn import CplxModReLU
 ```
 
 After `RealToCplx` layer the intermediate inputs are `Cplx` objects, which are abstractions for complex valued tensors, represented by real and imaginary parts, and which obey complex arithmetic (currently no support for mixed-type arithmetic like `torch.Tensor +/-* Cplx`).
@@ -100,10 +106,10 @@ cplx = RealToCplx()(z)
 print(cplx)
 ```
 
-Stacking and constructing purely complex-to-complex pipelines with troch.nn.Sequential:
+Stacking and constructing purely complex-to-complex pipelines with `torch.nn.Sequential`:
 ```python
 n_features, n_channels = 16, 4
-z = torch.randn(256, n_features*2)
+z = torch.randn(256, n_channels, n_features * 2)
 
 complex_model = CplxSequential(
     CplxLinear(n_features, n_features, bias=True),
@@ -117,7 +123,7 @@ complex_model = CplxSequential(
     # complex: batch x (3 * n_channels) x (n_features - (4-1))
     CplxToCplx[torch.nn.Flatten](start_dim=-2),
 
-    CplxActivation(torch.tanh),
+    CplxToCplx[torch.tanh](),
 )
 ```
 
@@ -141,7 +147,7 @@ real_input_model = torch.nn.Sequential(
 )
 
 print(real_input_model(z).shape)
-# >>> torch.Size([256, 312])
+# >>> torch.Size([256, 4, 32])
 ```
 
 # References

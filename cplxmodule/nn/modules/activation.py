@@ -1,46 +1,12 @@
 import torch
 import torch.nn
-import torch.nn.functional as F
 
-from .. import cplx
-
-from .layers import CplxToCplx, BaseCplxToReal
-
-from ..utils import torch_module
-
-
-class CplxActivation(CplxToCplx):
-    r"""
-    Applies the function elementwise passing positional and keyword arguments.
-    """
-    def __init__(self, f, *a, **k):
-        super().__init__()
-        self.f, self.a, self.k = f, a, k
-
-    def forward(self, input):
-        return input.apply(self.f, *self.a, **self.k)
-
-    def extra_repr(self):
-        body = "."
-        if len(self.a) > 1:
-            body += f", {repr(self.a)[1:-1]}"
-        elif self.a:
-            body += f", {repr(self.a[0])}"
-
-        if self.k:
-            vals = map(repr, self.k.values())
-            body += ", " + ", ".join(map("=".join, zip(self.k, vals)))
-
-        return f"{self.f.__name__}({body})"
-
-
-class CplxIdentity(torch.nn.Identity, CplxToCplx):
-    pass
+from .base import CplxToCplx, BaseCplxToReal
+from ... import cplx
 
 
 class CplxModReLU(CplxToCplx):
-    r"""
-    Applies soft thresholding to the complex modulus:
+    r"""Applies soft thresholding to the complex modulus:
     $$
         F
         \colon \mathbb{C} \to \mathbb{C}
@@ -61,8 +27,7 @@ class CplxModReLU(CplxToCplx):
 
 
 class CplxAdaptiveModReLU(CplxToCplx):
-    r"""
-    Applies soft thresholding to the complex modulus:
+    r"""Applies soft thresholding to the complex modulus:
     $$
         F
         \colon \mathbb{C}^d \to \mathbb{C}^d
@@ -96,8 +61,3 @@ class CplxModulus(BaseCplxToReal):
 class CplxAngle(BaseCplxToReal):
     def forward(self, input):
         return input.angle
-
-
-CplxExp = torch_module(cplx.exp, (CplxToCplx,), "CplxExp")
-
-CplxLog = torch_module(cplx.log, (CplxToCplx,), "CplxLog")

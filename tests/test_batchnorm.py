@@ -7,9 +7,9 @@ import torch.nn.functional as F
 
 from itertools import starmap
 from cplxmodule import cplx
-from cplxmodule.nn.batchnorm import CplxBatchNorm1d, cplx_batch_norm
-from cplxmodule.nn.layers import RealToCplx, CplxToReal
-from cplxmodule.nn.batchnorm import whiten2x2, whitendxd
+from cplxmodule.nn import CplxBatchNorm1d, RealToCplx, CplxToReal
+from cplxmodule.nn.modules.batchnorm import cplx_batch_norm
+from cplxmodule.nn.modules.batchnorm import whiten2x2, whitendxd
 
 
 @pytest.fixture

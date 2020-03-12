@@ -63,7 +63,7 @@ def cplx_xavier_uniform_(tensor, gain=1.0):
 
 
 def cplx_trabelsi_standard_(cplx, kind="glorot"):
-    """Standard complex initialization proposed in Trabelsi et al. (2017)."""
+    """Standard complex initialization proposed in Trabelsi et al. (2018)."""
     kind = kind.lower()
     assert kind in ("glorot", "xavier", "kaiming", "he")
 
@@ -86,7 +86,7 @@ def cplx_trabelsi_standard_(cplx, kind="glorot"):
 
 
 def cplx_trabelsi_independent_(cplx, kind="glorot"):
-    """Orthogonal complex initialization proposed in Trabelsi et al. (2017)."""
+    """Orthogonal complex initialization proposed in Trabelsi et al. (2018)."""
     kind = kind.lower()
     assert kind in ("glorot", "xavier", "kaiming", "he")
 
