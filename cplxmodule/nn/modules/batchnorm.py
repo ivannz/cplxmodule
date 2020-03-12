@@ -42,7 +42,7 @@ def whiten2x2(tensor, training=True, running_mean=None, running_cov=None,
     Details
     -------
     Using (tril) L L^T = V seems to 'favour' the first dimension (re), so
-    Trabelsi et al. (2017) used explicit 2x2 root of M: such R that M = RR.
+    Trabelsi et al. (2018) used explicit 2x2 root of M: such R that M = RR.
 
     For M = [[a, b], [c, d]] we have the following facts:
         (1) inv M = \frac1{ad - bc} [[d, -b], [-c, a]]
@@ -90,9 +90,9 @@ def whiten2x2(tensor, training=True, running_mean=None, running_cov=None,
         cov_vu, cov_vv = running_cov[1, 0], running_cov[1, 1]
 
     # 3. get R = [[p, q], [r, s]], with E R c c^T R^T = R M R = I
-    # (unsure if intentional, but the inv-root in Trabelsi (2017) uses numpy
-    # `np.sqrt` instead of `K.sqrt` so grads are not passed through  properly,
-    # i.e. constants, [complex_standardization](bn.py#L56-57).
+    # (unsure if intentional, but the inv-root in Trabelsi et al. (2018) uses
+    # numpy `np.sqrt` instead of `K.sqrt` so grads are not passed through
+    # properly, i.e. constants, [complex_standardization](bn.py#L56-57).
     sqrdet = torch.sqrt(cov_uu * cov_vv - cov_uv * cov_vu)
     # torch.det uses svd, so may yield -ve machine zero
 
@@ -174,7 +174,7 @@ def cplx_batch_norm(
     eps=1e-05,
 ):
     """Applies complex-valued Batch Normalization as described in
-    (Trabelsi et al., 2017) for each channel across a batch of data.
+    (Trabelsi et al., 2018) for each channel across a batch of data.
 
     Arguments
     ---------
