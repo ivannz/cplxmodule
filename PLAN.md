@@ -58,14 +58,21 @@
 * in `nn.relevance.base`, making it like in `nn.masked`
 * classes in `nn.relevance`  `.real` and `.complex` should be also documented properly, the same goes for `.extensions`
 
+[+] restrucure the extensions and non-bayesian layers
+* new folder structure
+  * take ard-related declarations and move them to `relevance/ard.py`, everythin else to a submodule
+  * `.extensions` submodule:
+    * `complex` for cplx specific etended layers: bogus penalties, approximations and other stuff, -- not directly related to variational dropout or automatic relevance determination
+    * `real` for supplementary real-valued layers
+* decide the fate of `lasso` class in `nn.relevance`:
+  * it is irrelevant to Bayesian methods: move it to `extensions/real`
+
 [ ] documentation
 * go through README-s in each submodule to make sure that info there is correct and typical use cases described
 * `nn.init` : document the initializations according to Trabelsi et al. (2018)
 
-[ ] decide the fate of `lasso` class in `nn.relevance`:
-* it is irrelevant to Bayesian methods
-
 [ ] add missing tests to the unit test suite
+* tests for `*state_dict` api compliance of `nn.masked` and `nn.base.CplxParameter`
 
 [ ] Improve implementation
 * (Bernoulli Dropout) need 1d (exists), 2d and 3d
