@@ -81,3 +81,8 @@
 * (Convolutions) implement 3d convolutions and 3d vardropout convolutions both real and complex
 * (Transposed Convolutions) figure out the math and implement var dropout for transposed convos
 
+[ ] Implement schduled mag-pruning of [Zhu and Gupta (2017)](http://arxiv.org/abs/1710.01878) or thresholded of [Wu et al. (2019)](https://arxiv.org/abs/1903.02358).
+* use `nn.masked` as a `backend` -- this will automatically support real and Cplx layers!!!!
+* implement as either wrapper around optimizer (bad), or as a separate entity (better)
+  * settings of the target sparsity per eligible layer (`dict`)
+  * method `.step()` which updates the masks accoding to the schedule and the current sorted magintues of the parameters
