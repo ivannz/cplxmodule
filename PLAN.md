@@ -81,8 +81,15 @@
 * (Convolutions) implement 3d convolutions and 3d vardropout convolutions both real and complex
 * (Transposed Convolutions) figure out the math and implement var dropout for transposed convos
 
-[ ] Implement schduled mag-pruning of [Zhu and Gupta (2017)](http://arxiv.org/abs/1710.01878) or thresholded of [Wu et al. (2019)](https://arxiv.org/abs/1903.02358).
+[ ] Implement scheduled mag-pruning of [Zhu and Gupta (2017)](http://arxiv.org/abs/1710.01878) or thresholded of [Wu et al. (2019)](https://arxiv.org/abs/1903.02358).
 * use `nn.masked` as a `backend` -- this will automatically support real and Cplx layers!!!!
 * implement as either wrapper around optimizer (bad), or as a separate entity (better)
   * settings of the target sparsity per eligible layer (`dict`)
-  * method `.step()` which updates the masks accoding to the schedule and the current sorted magintues of the parameters
+  * method `.step()` which updates the masks according to the schedule and the current sorted magnitudes of the parameters
+
+[ ] Consider replacing `Real` with `Tensor` in format-conversion layers, like `RealToCplx`, `CplxToReal`
+* the term Real has connotations with real numbers, making it very unintuitive to convert between Cplx, which is perceived as a complex number, to a torch Tensor, which serves merely as a storage format.
+* need a deprecation cycle for these and related functions
+  * in `cplx`: `from_interleaved_real`, `from_concatenated_real`, `to_interleaved_real`, `to_concatenated_real`, aliases `from_real` and `to_real` (affects `__init__.py`)
+  * `nn.modules.casting`: `InterleavedRealToCplx`, `ConcatenatedRealToCplx`, `CplxToInterleavedReal`, `CplxToConcatenatedReal`, also base classes `BaseRealToCplx` and `BaseCplxToReal`.
+    * three basic types? Tensor -- aka Storage, Real -- real-valued tensor, Cplx -- complex-valued tensor
