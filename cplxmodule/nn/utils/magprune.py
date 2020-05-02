@@ -31,13 +31,32 @@ def compute_sparsity_mask(weight, sparsity):
         return tensor.gt(val).to(val)
 
 
-def propagate_sparsity_targets(modules, sparsity):
-    # if sparsity has a layer, but module does not, then raise
-    unexpected = sparsity.keys() - modules.keys()
-    if unexpected:
-        raise RuntimeError(f"Unexpected layers `{unexpected}`.")
+def _propagate(modules, values, prefix=""):
+    yield prefix, values.get("")
 
-    return sparsity
+    children = {}
+    for name in modules:
+        parent, dot, child = name.partition(".")
+        if parent:
+            children.setdefault(parent, set()).add(child)
+
+    for parent, submodules in children.items():
+        # by default children inherit value from parent
+        value = values.get(parent, values.get(""))
+        subvalues = dict.fromkeys(submodules, value)
+
+        # add child-specific values
+        for name, value in values.items():
+            if name.startswith(parent + "."):
+                subvalues[name[len(parent) + 1:]] = value
+
+        subprefix = prefix + ("." if prefix else "") + parent
+        yield from _propagate(submodules, subvalues, subprefix)
+
+
+def propagate_sparsity_targets(modules, sparsity):
+    return {k: v for k, v in _propagate(modules, sparsity)
+            if k in modules and v is not None}
 
 
 def magprune(module, **sparsity):
