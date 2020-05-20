@@ -55,8 +55,9 @@ class BaseMasked(torch.nn.Module):
             raise TypeError(f"`mask` must be either a Tensor or "
                             f"`None`. Got {type(mask).__name__}.")
 
-        if not self.is_sparse and mask is not None:
+        if mask is not None:
             # None -> sparse : register mask, turning on sparsity
+            # sparse -> sparse : mask update
 
             # Detach (storage no-copy), move to device (likely no-copy) ...
             mask = mask.detach().to(self.weight.device, self.weight.dtype)
@@ -65,10 +66,6 @@ class BaseMasked(torch.nn.Module):
             #  ... expand (no-copy) and make contiguous (copy).
             mask = mask.expand(self.weight.shape).contiguous()
             self.register_buffer("mask", mask)
-
-        elif self.is_sparse and mask is not None:
-            # sparse -> sparse : mask update
-            self.mask.copy_(mask.detach())
 
         elif self.is_sparse and mask is None:
             # sparse -> None : remove the mask and re-register the buffer
