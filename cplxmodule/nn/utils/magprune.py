@@ -31,32 +31,34 @@ def compute_sparsity_mask(weight, sparsity):
         return tensor.gt(val).to(val)
 
 
-def _propagate(modules, values, prefix=""):
-    yield prefix, values.get("")
+def propagate(lookup, G, prefix="", value=None):
+    """Assign values propagating if necessary.
 
-    children = {}
-    for name in modules:
-        parent, dot, child = name.partition(".")
-        if parent:
-            children.setdefault(parent, set()).add(child)
+    Details
+    -------
+    Yields all prefixes of `G` with valued taken from `lookup` or
+    propagated from parent.
+    """
+    # '' is a the parent of all nodes (except itself)
+    if "" in G:
+        yield from propagate(lookup, set(n for n in G if n), prefix, value)
+        return
 
-    for parent, submodules in children.items():
-        # by default children inherit value from parent
-        value = values.get(parent, values.get(""))
-        subvalues = dict.fromkeys(submodules, value)
+    # lookup (or inherit) the parent's value
+    value = lookup.get(prefix, value)  # lookup.get(prefix, 1.) * value
+    yield prefix, value
 
-        # add child-specific values
-        for name, value in values.items():
-            if name.startswith(parent + "."):
-                subvalues[name[len(parent) + 1:]] = value
+    # collect children of the current prefix (aka `parent`)
+    children, prefix = {}, prefix + ("." if prefix else "")
+    for node in G:
+        name, dot, child = node.partition(".")
+        children.setdefault(prefix + name, set())
+        if child:
+            children[prefix + name].add(child)
 
-        subprefix = prefix + ("." if prefix else "") + parent
-        yield from _propagate(submodules, subvalues, subprefix)
-
-
-def propagate_sparsity_targets(modules, sparsity):
-    return {k: v for k, v in _propagate(modules, sparsity)
-            if k in modules and v is not None}
+    # propagate this parent's value to its children
+    for prefix, G in children.items():
+        yield from propagate(lookup, G, prefix, value)
 
 
 def magprune(module, **sparsity):
@@ -64,9 +66,8 @@ def magprune(module, **sparsity):
     if not modules:
         raise TypeError(f"No maskable modules found.")
 
-    sparsity = propagate_sparsity_targets(modules, sparsity)
-
     # if module has a layer, but sparsity does not, then leave mask as is
-    for name, level in sparsity.items():
-        mod = modules[name]
-        mod.mask = compute_sparsity_mask(mod.weight, level)
+    sparsity = dict(propagate(sparsity, modules))
+    for name, mod in modules.items():
+        if sparsity[name] is not None:
+            mod.mask = compute_sparsity_mask(mod.weight, sparsity[name])
