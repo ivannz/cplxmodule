@@ -1,4 +1,5 @@
 import torch
+import warnings
 
 
 class SparsityStats(object):
@@ -19,6 +20,9 @@ def named_sparsity(module, prefix="", **kwargs):
     incorrect estimation in case of parameter sharing.
     """
 
+    warnings.warn("Since v2020.06 module's buffers are also accounted "
+                  "by `named_sparsity`.", FutureWarning)
+
     # gather the dropout statistics and service parameters to ignore
     n_dropout, p_service = {}, set()
 
@@ -35,6 +39,10 @@ def named_sparsity(module, prefix="", **kwargs):
     for name, par in module.named_parameters(prefix=prefix):
         if name not in p_service:
             yield name, (n_dropout.get(id(par), 0.), par.numel())
+
+    for name, buf in module.named_buffers(prefix=prefix):
+        if name not in p_service:
+            yield name, (n_dropout.get(id(buf), 0.), buf.numel())
 
 
 def sparsity(module, **kwargs):
