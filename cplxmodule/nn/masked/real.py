@@ -8,6 +8,8 @@ from ..utils.sparsity import SparsityStats
 
 
 class _BaseRealMixin(MaskedWeightMixin, BaseMasked, SparsityStats):
+    __sparsity_ignore__ = ("mask",)
+
     def sparsity(self, *, hard=True, **kwargs):
         if self.is_sparse:
             mask = torch.gt(self.mask, 0) if hard else self.mask

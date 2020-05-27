@@ -11,6 +11,8 @@ from ..utils.sparsity import SparsityStats
 
 
 class _BaseCplxMixin(MaskedWeightMixin, BaseMasked, SparsityStats):
+    __sparsity_ignore__ = ("mask",)
+
     def sparsity(self, *, hard=True, **kwargs):
         weight = self.weight
 
