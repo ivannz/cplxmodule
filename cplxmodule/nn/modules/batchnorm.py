@@ -47,7 +47,7 @@ def whiten2x2(tensor, training=True, running_mean=None, running_cov=None,
     For M = [[a, b], [c, d]] we have the following facts:
         (1) inv M = \frac1{ad - bc} [[d, -b], [-c, a]]
         (2) \sqrt{M} = \frac1{t} [[a + s, b], [c, d + s]]
-            for s = \sqrt{ad - bc}, t = \sqrt{a + d + 2 \sqrt{s}}
+            for s = \sqrt{ad - bc}, t = \sqrt{a + d + 2 s}
             det \sqrt{M} = t^{-2} (ad + s(d + a) + s^2 - bc) = s
 
     Therefore `inv \sqrt{M} = [[p, q], [r, s]]`, where
