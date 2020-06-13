@@ -48,11 +48,11 @@ def test_setattr_interface():
     assert torch.allclose(*torch.broadcast_tensors(lin.mask, mask))
     assert torch.allclose(lin.weight_masked, mask * lin.weight)
 
-    # mask is overwritten, to `.copy_` raises
-    with pytest.raises(RuntimeError, match=r"must match the size"):
+    # mask is overwritten (recreated), so `torch.expand` raises
+    with pytest.raises(RuntimeError, match=r"must match the existing size"):
         lin.mask = torch.ones(shape[1], 2)
 
-    # mask is set anew, to `torch.expand` raises
+    # mask is set anew, so `torch.expand` raises
     lin.mask = None
     with pytest.raises(RuntimeError, match=r"must match the existing size"):
         lin.mask = torch.ones(0, shape[0])
@@ -97,11 +97,11 @@ def test_method_interface():
     assert torch.allclose(*torch.broadcast_tensors(lin.mask, mask))
     assert torch.allclose(lin.weight_masked, mask * lin.weight)
 
-    # mask is overwritten, to `.copy_` raises
-    with pytest.raises(RuntimeError, match=r"must match the size"):
+    # mask is overwritten (recreated), so `torch.expand` raises
+    with pytest.raises(RuntimeError, match=r"must match the existing size"):
         lin.mask_(torch.ones(shape[1], 2))
 
-    # mask is set anew, to `torch.expand` raises
+    # mask is set anew, so `torch.expand` raises
     lin.mask_(None)
     with pytest.raises(RuntimeError, match=r"must match the existing size"):
         lin.mask_(torch.ones(0, shape[0]))
