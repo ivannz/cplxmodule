@@ -11,6 +11,7 @@ from .complex import CplxLinearVD
 from .complex import CplxBilinearVD
 from .complex import CplxConv1dVD
 from .complex import CplxConv2dVD
+from .complex import CplxConv3dVD
 
 
 class RealARDMixin():
@@ -129,6 +130,13 @@ class CplxConv1dARD(CplxARDMixin, CplxConv1dVD):
 
 class CplxConv2dARD(CplxARDMixin, CplxConv2dVD):
     """2D complex-valued convolution layer with automatic relevance
+    determination.
+    """
+    pass
+
+
+class CplxConv3dARD(CplxARDMixin, CplxConv3dVD):
+    """3D complex-valued convolution layer with automatic relevance
     determination.
     """
     pass

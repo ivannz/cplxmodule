@@ -12,7 +12,7 @@ from numpy import euler_gamma
 from .base import BaseARD
 
 from ..modules.linear import CplxLinear, CplxBilinear
-from ..modules.conv import CplxConv1d, CplxConv2d
+from ..modules.conv import CplxConv1d, CplxConv2d, CplxConv3d
 from ... import cplx
 
 from ..utils.sparsity import SparsityStats
@@ -215,6 +215,35 @@ class CplxConv2dVD(CplxConv2d, _BaseRelevanceCplx):
             return mu
 
         s2 = F.conv2d(input.real * input.real + input.imag * input.imag,
+                      torch.exp(self.log_sigma2), None, self.stride,
+                      self.padding, self.dilation, self.groups)
+
+        return mu + cplx.randn_like(s2) * torch.sqrt(torch.clamp(s2, 1e-8))
+
+
+class CplxConv3dVD(CplxConv3d, _BaseRelevanceCplx):
+    """3D complex-valued convolution layer with variational dropout."""
+
+    def __init__(self, in_channels, out_channels, kernel_size, stride=1,
+                 padding=0, dilation=1, groups=1,
+                 bias=True, padding_mode='zeros'):
+        super().__init__(in_channels, out_channels, kernel_size, stride=stride,
+                         padding=padding, dilation=dilation, groups=groups,
+                         bias=bias, padding_mode=padding_mode)
+
+        if self.padding_mode != "zeros":
+            raise ValueError(f"Only `zeros` padding mode is supported. "
+                             f"Got `{self.padding_mode}`.")
+
+        self.log_sigma2 = torch.nn.Parameter(torch.Tensor(*self.weight.shape))
+        self.reset_variational_parameters()
+
+    def forward(self, input):
+        mu = super().forward(input)
+        if not self.training:
+            return mu
+
+        s2 = F.conv3d(input.real * input.real + input.imag * input.imag,
                       torch.exp(self.log_sigma2), None, self.stride,
                       self.padding, self.dilation, self.groups)
 
