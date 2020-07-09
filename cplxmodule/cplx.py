@@ -652,6 +652,16 @@ def conv2d(input, weight, bias=None, stride=1, padding=0,
                   padding, dilation, groups, padding_mode)
 
 
+def conv3d(input, weight, bias=None, stride=1, padding=0,
+           dilation=1, groups=1, padding_mode="zeros"):
+    r"""Applies a complex 3d convolution to the incoming complex
+    tensor `B x c_in x H x W x D`: :math:`y = x \star W + b`.
+    """
+
+    return convnd(F.conv3d, input, weight, bias, stride,
+                  padding, dilation, groups, padding_mode)
+
+
 def einsum(equation, *tensors):
     """2-tensor einstein summation."""
     if not tensors:
