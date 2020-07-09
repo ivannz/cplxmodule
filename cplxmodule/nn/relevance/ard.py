@@ -4,6 +4,7 @@ import torch.nn.functional as F
 from .real import LinearVD
 from .real import Conv1dVD
 from .real import Conv2dVD
+from .real import Conv3dVD
 from .real import BilinearVD
 
 from .complex import CplxLinearVD
@@ -58,6 +59,11 @@ class Conv1dARD(RealARDMixin, Conv1dVD):
 
 class Conv2dARD(RealARDMixin, Conv2dVD):
     """2D convolution layer with automatic relevance determination."""
+    pass
+
+
+class Conv3dARD(RealARDMixin, Conv3dVD):
+    """3D convolution layer with automatic relevance determination."""
     pass
 
 
