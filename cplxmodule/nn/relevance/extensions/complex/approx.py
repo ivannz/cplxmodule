@@ -6,13 +6,13 @@ VDBogus -- improper pow2 prior, but with fake forward outputs for complex VD
 import torch
 import torch.nn.functional as F
 
-from ..complex import CplxLinearVD
-from ..complex import CplxBilinearVD
-from ..complex import CplxConv1dVD
-from ..complex import CplxConv2dVD
-from ..complex import CplxConv3dVD
+from ...complex import CplxLinearVD
+from ...complex import CplxBilinearVD
+from ...complex import CplxConv1dVD
+from ...complex import CplxConv2dVD
+from ...complex import CplxConv3dVD
 
-from ..complex import ExpiFunction, torch_expi
+from ...complex import ExpiFunction, torch_expi
 
 
 class CplxVDScaleFreeMixin:
