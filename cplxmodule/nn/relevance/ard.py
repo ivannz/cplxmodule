@@ -52,17 +52,17 @@ class LinearARD(RealARDMixin, LinearVD):
 
 
 class Conv1dARD(RealARDMixin, Conv1dVD):
-    """Bilinear layer with automatic relevance determination."""
-    pass
-
-
-class Conv2dARD(RealARDMixin, Conv2dVD):
     """1D convolution layer with automatic relevance determination."""
     pass
 
 
-class BilinearARD(RealARDMixin, BilinearVD):
+class Conv2dARD(RealARDMixin, Conv2dVD):
     """2D convolution layer with automatic relevance determination."""
+    pass
+
+
+class BilinearARD(RealARDMixin, BilinearVD):
+    """Bilinear layer with automatic relevance determination."""
     pass
 
 
