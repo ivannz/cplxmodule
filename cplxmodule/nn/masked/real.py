@@ -1,7 +1,7 @@
 import torch
 import torch.nn.functional as F
 
-from torch.nn import Linear, Conv1d, Conv2d, Bilinear
+from torch.nn import Linear, Conv1d, Conv2d, Conv3d, Bilinear
 from .base import BaseMasked, MaskedWeightMixin
 
 from ..utils.sparsity import SparsityStats
@@ -36,6 +36,12 @@ class Conv1dMasked(Conv1d, _BaseRealMixin):
 class Conv2dMasked(Conv2d, _BaseRealMixin):
     def forward(self, input):
         return F.conv2d(input, self.weight_masked, self.bias,
+                        self.stride, self.padding, self.dilation, self.groups)
+
+
+class Conv3dMasked(Conv3d, _BaseRealMixin):
+    def forward(self, input):
+        return F.conv3d(input, self.weight_masked, self.bias,
                         self.stride, self.padding, self.dilation, self.groups)
 
 

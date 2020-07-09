@@ -3,7 +3,7 @@ import torch
 from ... import cplx
 from ..modules.linear import CplxLinear, CplxBilinear
 
-from ..modules.conv import CplxConv1d, CplxConv2d
+from ..modules.conv import CplxConv1d, CplxConv2d, CplxConv3d
 
 from .base import BaseMasked, MaskedWeightMixin
 
@@ -47,5 +47,12 @@ class CplxConv1dMasked(CplxConv1d, _BaseCplxMixin):
 class CplxConv2dMasked(CplxConv2d, _BaseCplxMixin):
     def forward(self, input):
         return cplx.conv2d(input, self.weight_masked, self.bias,
+                           self.stride, self.padding, self.dilation,
+                           self.groups, self.padding_mode)
+
+
+class CplxConv3dMasked(CplxConv3d, _BaseCplxMixin):
+    def forward(self, input):
+        return cplx.conv3d(input, self.weight_masked, self.bias,
                            self.stride, self.padding, self.dilation,
                            self.groups, self.padding_mode)
