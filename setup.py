@@ -1,13 +1,14 @@
-from distutils.core import setup
+from setuptools import setup
 
 setup(
     name="cplxmodule",
-    version="2020.06",
+    version="2020.07",
     description="An extension for pytorch providing essential building blocks"
-                " for complex-valued networks and `torch.nn`-compatible"
-                " Bayesian sparsification methods. Implements the tools"
-                " necessary to train and sparsify both real and complex-valued"
-                " models, and seamlessly integrate them into existing models.",
+                " for Complex-valued Neural Networks and `torch.nn`-compatible"
+                " Variational Dropout methods. Implements the tools necessary"
+                " to train and sparsify both real and complex-valued models,"
+                " and seamlessly integrate them into existing pipelines.",
+    url="https://github.com/ivannz/cplxmodule",
     license="MIT License",
     author="Ivan Nazarov",
     author_email="ivan.nazarov@skolkovotech.ru",
