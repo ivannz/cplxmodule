@@ -12,7 +12,7 @@
 
 * CplxReal, CplxImag
 * CplxIdentity, CplxLinear, CplxBilinear
-* CplxConv1d, CplxConv2d
+* CplxConv1d, CplxConv2d, CplxConv3d
 * CplxSequential
 
 ### Complex activation layers

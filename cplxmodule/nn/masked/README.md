@@ -45,8 +45,8 @@ At the time of the original design and implementation (around may of 2019) spars
 
 The modules in `nn.masked` implement both `real`- and `complex` valued maskable layers.
 
-* (real) LinearMasked, Conv1dMasked, Conv2dMasked, BilinearMasked
-* (complex) CplxLinearMasked, CplxConv1dMasked, CplxConv2dMasked, CplxBilinearMasked
+* (real) LinearMasked, Conv1dMasked, Conv2dMasked, Conv3dMasked, BilinearMasked
+* (complex) CplxLinearMasked, CplxConv1dMasked, CplxConv2dMasked, CplxConv3dMasked, CplxBilinearMasked
 
 ### Subclassing Modules
 
