@@ -6,11 +6,15 @@ The core implementation of the complex-valued batch normalization and weight ini
 
 # Installation
 
-To install with `pip` from the remote git repo just run
+You can install this package with `pip`:
+```bash
+pip install cplxmodule
+```
+or from the git repo to get the latest version:
 ```bash
 pip install --upgrade git+https://github.com/ivannz/cplxmodule.git
 ```
-or a developer install (editable) from the root of the locally cloned repo
+If you prefer a developer install (editable), then run the following from the root of the locally cloned repo
 ```bash
 pip install -e .
 ```
