@@ -1,7 +1,7 @@
 import math
 import torch
 
-from torch.nn.modules.utils import _single, _pair
+from torch.nn.modules.utils import _single, _pair, _triple
 
 from .base import CplxToCplx, CplxParameter
 from .. import init
@@ -128,5 +128,37 @@ class CplxConv2d(CplxConvNd):
 
     def forward(self, input):
         return cplx.conv2d(input, self.weight, self.bias,
+                           self.stride, self.padding, self.dilation,
+                           self.groups, self.padding_mode)
+
+
+class CplxConv3d(CplxConvNd):
+    r"""Complex 3D convolution:
+    $$
+        F
+        \colon \mathbb{C}^{B \times c_{in} \times L}
+                \to \mathbb{C}^{B \times c_{out} \times L'}
+        \colon u + i v \mapsto (W_\mathrm{re} \star u - W_\mathrm{im} \star v)
+                                + i (W_\mathrm{im} \star u + W_\mathrm{re} \star v)
+        \,. $$
+
+    See torch.nn.Conv2d for reference on the input dimensions.
+    """
+    def __init__(self,
+                 in_channels,
+                 out_channels,
+                 kernel_size,
+                 stride=1,
+                 padding=0,
+                 dilation=1,
+                 groups=1,
+                 bias=True,
+                 padding_mode="zeros"):
+        super().__init__(
+            in_channels, out_channels, _triple(kernel_size), _triple(stride),
+            _triple(padding), _triple(dilation), groups, bias, padding_mode)
+
+    def forward(self, input):
+        return cplx.conv3d(input, self.weight, self.bias,
                            self.stride, self.padding, self.dilation,
                            self.groups, self.padding_mode)

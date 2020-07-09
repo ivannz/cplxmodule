@@ -7,7 +7,7 @@ from .casting import InterleavedRealToCplx as RealToCplx
 from .linear import CplxLinear, CplxBilinear
 from .linear import CplxReal, CplxImag, CplxIdentity
 
-from .conv import CplxConv1d, CplxConv2d
+from .conv import CplxConv1d, CplxConv2d, CplxConv3d
 
 from .container import CplxSequential
 
