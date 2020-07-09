@@ -1,7 +1,6 @@
 import os
 from setuptools import setup
 
-
 if __name__ == "__main__":
     # update the version number from the file at the root
     version = open("VERSION", "r").read().strip()
@@ -39,6 +38,7 @@ if __name__ == "__main__":
             "cplxmodule.nn.relevance.complex",
             "cplxmodule.nn.relevance.extensions",
             "cplxmodule.nn.relevance.extensions.real",
+            "cplxmodule.nn.relevance.extensions.complex",
             "cplxmodule.nn.masked",
             "cplxmodule.nn.utils",
             "cplxmodule.utils",
