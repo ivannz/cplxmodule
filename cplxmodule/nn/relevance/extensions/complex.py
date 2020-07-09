@@ -10,6 +10,7 @@ from ..complex import CplxLinearVD
 from ..complex import CplxBilinearVD
 from ..complex import CplxConv1dVD
 from ..complex import CplxConv2dVD
+from ..complex import CplxConv3dVD
 
 from ..complex import ExpiFunction, torch_expi
 
@@ -60,6 +61,11 @@ class CplxConv1dVDScaleFree(CplxVDScaleFreeMixin, CplxConv1dVD):
 
 class CplxConv2dVDScaleFree(CplxVDScaleFreeMixin, CplxConv2dVD):
     """2D complex-valued convolution layer with scale-free prior."""
+    pass
+
+
+class CplxConv3dVDScaleFree(CplxVDScaleFreeMixin, CplxConv3dVD):
+    """3D complex-valued convolution layer with scale-free prior."""
     pass
 
 
@@ -117,6 +123,13 @@ class CplxConv2dVDApprox(CplxVDApproxMixin, CplxConv2dVD):
     pass
 
 
+class CplxConv3dVDApprox(CplxVDApproxMixin, CplxConv3dVD):
+    """3D complex-valued convolution layer with approximate
+    var-dropout penalty.
+    """
+    pass
+
+
 class BogusExpiFunction(ExpiFunction):
     """The Dummy Expi function, that computes bogus values on the forward pass,
     but correct values on the backwards pass, provided there is no downstream
@@ -162,6 +175,13 @@ class CplxConv1dVDBogus(CplxVDBogusMixin, CplxConv1dVD):
 
 class CplxConv2dVDBogus(CplxVDBogusMixin, CplxConv2dVD):
     """2D complex-valued convolution layer with correct var dropout penalty
+    gradient, but bogus penalty values.
+    """
+    pass
+
+
+class CplxConv3dVDBogus(CplxVDBogusMixin, CplxConv3dVD):
+    """3D complex-valued convolution layer with correct var dropout penalty
     gradient, but bogus penalty values.
     """
     pass
