@@ -1,3 +1,14 @@
+# Version 2020.08
+* structure of the `.nn.relevance` was simplified
+    - importing from `ard` has been deprecated, and ARD layers have been moved
+    to `.real` or `.complex` depending on their type
+* changed relevance layers class hierarchy in `.relevance.real` and `.relevance.complex`:
+    - factored out Gaussian Local Reparameterization into pure `*Gaussian` layers,
+    that reside in `real.base` and `complex.base`
+    - subclassed Variational Dropout layers (`*VD`) from `*Gaussian` with improper prior KL mixin
+    - subclassed ARD layers (`*ARD`) from Variational Dropout layers `*VD` with ARD Gaussian prior KL mixin
+
+
 # Version 2020.03
 
 ## Major changes in `.nn`
