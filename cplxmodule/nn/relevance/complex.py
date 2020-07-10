@@ -122,8 +122,7 @@ class CplxLinearVD(CplxLinear, _BaseRelevanceCplx):
     def __init__(self, in_features, out_features, bias=True):
         super().__init__(in_features, out_features, bias=bias)
 
-        self.log_sigma2 = torch.nn.Parameter(
-            torch.Tensor(out_features, in_features))
+        self.log_sigma2 = torch.nn.Parameter(torch.Tensor(*self.weight.shape))
         self.reset_variational_parameters()
 
     def forward(self, input):
@@ -147,8 +146,7 @@ class CplxBilinearVD(CplxBilinear, _BaseRelevanceCplx):
         super().__init__(in1_features, in2_features, out_features,
                          bias=bias, conjugate=conjugate)
 
-        self.log_sigma2 = torch.nn.Parameter(
-            torch.Tensor(out_features, in1_features, in2_features))
+        self.log_sigma2 = torch.nn.Parameter(torch.Tensor(*self.weight.shape))
         self.reset_variational_parameters()
 
     def forward(self, input1, input2):
