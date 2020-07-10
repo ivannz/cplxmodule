@@ -2,7 +2,7 @@ from setuptools import setup
 
 setup(
     name="cplxmodule",
-    version="2020.07",
+    version="2020.07.10",
     description="An extension for pytorch providing essential building blocks"
                 " for Complex-valued Neural Networks and `torch.nn`-compatible"
                 " Variational Dropout methods. Implements the tools necessary"
@@ -17,6 +17,8 @@ setup(
         "cplxmodule.nn",
         "cplxmodule.nn.modules",
         "cplxmodule.nn.relevance",
+        "cplxmodule.nn.relevance.real",
+        "cplxmodule.nn.relevance.complex",
         "cplxmodule.nn.relevance.extensions",
         "cplxmodule.nn.relevance.extensions.real",
         "cplxmodule.nn.masked",
