@@ -130,7 +130,7 @@ class CplxLinearARD(object):
         warnings.warn("Importing complex-valued Automatic Relevance Determination"
                       " layers (ARD) from `cplxmodule.nn.relevance.complex` has"
                       " been deprecated due to misleading name. Starting with"
-                      " version `1.0` the `.real` submodule will export complex-"
+                      " version `2021` the `.complex` submodule will export complex-"
                       "valued Variational Dropout (VD) layers only. Please"
                       " import ARD layers from `relevance.ard`.",
                       FutureWarning)
@@ -144,7 +144,7 @@ class CplxBilinearARD(object):
         warnings.warn("Importing complex-valued Automatic Relevance Determination"
                       " layers (ARD) from `cplxmodule.nn.relevance.complex` has"
                       " been deprecated due to misleading name. Starting with"
-                      " version `1.0` the `.real` submodule will export complex-"
+                      " version `2021` the `.complex` submodule will export complex-"
                       "valued Variational Dropout (VD) layers only. Please"
                       " import ARD layers from `relevance.ard`.",
                       FutureWarning)
@@ -160,7 +160,7 @@ class CplxConv1dARD(object):
         warnings.warn("Importing complex-valued Automatic Relevance Determination"
                       " layers (ARD) from `cplxmodule.nn.relevance.complex` has"
                       " been deprecated due to misleading name. Starting with"
-                      " version `1.0` the `.real` submodule will export complex-"
+                      " version `2021` the `.complex` submodule will export complex-"
                       "valued Variational Dropout (VD) layers only. Please"
                       " import ARD layers from `relevance.ard`.",
                       FutureWarning)
@@ -176,7 +176,7 @@ class CplxConv2dARD(object):
         warnings.warn("Importing complex-valued Automatic Relevance Determination"
                       " layers (ARD) from `cplxmodule.nn.relevance.complex` has"
                       " been deprecated due to misleading name. Starting with"
-                      " version `1.0` the `.real` submodule will export complex-"
+                      " version `2021` the `.complex` submodule will export complex-"
                       "valued Variational Dropout (VD) layers only. Please"
                       " import ARD layers from `relevance.ard`.",
                       FutureWarning)

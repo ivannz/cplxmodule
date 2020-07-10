@@ -146,7 +146,7 @@ class LinearARD(object):
         warnings.warn("Importing real-valued Automatic Relevance Determination"
                       " layers (ARD) from `cplxmodule.nn.relevance.real` has"
                       " been deprecated due to misleading name. Starting with"
-                      " version `1.0` the `.real` submodule will export real-"
+                      " version `2021` the `.real` submodule will export real-"
                       "valued Variational Dropout (VD) layers only. Please"
                       " import ARD layers from `relevance.ard`.",
                       FutureWarning)
@@ -161,7 +161,7 @@ class Conv1dARD(object):
         warnings.warn("Importing real-valued Automatic Relevance Determination"
                       " layers (ARD) from `cplxmodule.nn.relevance.real` has"
                       " been deprecated due to misleading name. Starting with"
-                      " version `1.0` the `.real` submodule will export real-"
+                      " version `2021` the `.real` submodule will export real-"
                       "valued Variational Dropout (VD) layers only. Please"
                       " import ARD layers from `relevance.ard`.",
                       FutureWarning)
@@ -177,7 +177,7 @@ class Conv2dARD(object):
         warnings.warn("Importing real-valued Automatic Relevance Determination"
                       " layers (ARD) from `cplxmodule.nn.relevance.real` has"
                       " been deprecated due to misleading name. Starting with"
-                      " version `1.0` the `.real` submodule will export real-"
+                      " version `2021` the `.real` submodule will export real-"
                       "valued Variational Dropout (VD) layers only. Please"
                       " import ARD layers from `relevance.ard`.",
                       FutureWarning)
@@ -191,7 +191,7 @@ class BilinearARD(object):
         warnings.warn("Importing real-valued Automatic Relevance Determination"
                       " layers (ARD) from `cplxmodule.nn.relevance.real` has"
                       " been deprecated due to misleading name. Starting with"
-                      " version `1.0` the `.real` submodule will export real-"
+                      " version `2021` the `.real` submodule will export real-"
                       "valued Variational Dropout (VD) layers only. Please"
                       " import ARD layers from `relevance.ard`.",
                       FutureWarning)
