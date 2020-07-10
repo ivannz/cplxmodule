@@ -2,7 +2,7 @@ import warnings
 
 warnings.warn("Importing Automatic Relevance Determination layers from"
               " `cplxmodule.nn.relevance.ard` has been deprecated since"
-              " version `2020.7` and will be removed in version `2020.8`."
+              " version `2020.8` and will be removed in a later version."
               " Please, import from `cplxmodule.nn.relevance.real.ard` or"
               " `cplxmodule.nn.relevance.complex.ard`.",
               DeprecationWarning)
