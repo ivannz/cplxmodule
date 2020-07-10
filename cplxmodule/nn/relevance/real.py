@@ -9,40 +9,17 @@ from .base import BaseARD
 from ..utils.sparsity import SparsityStats
 
 
-class _BaseRelevanceReal(BaseARD, SparsityStats):
-    r"""Base class with kl-divergence penalty of the variational dropout.
-
-    Details
-    -------
-    This uses the ideas and formulae of Kingma et al. and Molchanov et al.
-    This module assumes the standard loss-minimization framework. Hence
-    instead of -ve KL divergence for ELBO and log-likelihood maximization,
-    this property computes and returns the divergence as is, which implies
-    minimization of minus log-likelihood (and, thus, minus ELBO).
+class GaussianMixin:
+    r"""Trait class with log-alpha property for variational dropout.
 
     Attributes
     ----------
-    penalty : computed torch.Tensor, read-only
-        The Kullback-Leibler divergence between the mean field approximate
-        variational posterior of the weights and the scale-free log-uniform
-        prior:
-        $$
-            KL(\mathcal{N}(w\mid \theta, \alpha \theta^2) \|
-                    \tfrac1{\lvert w \rvert})
-                = \mathbb{E}_{\xi \sim \mathcal{N}(1, \alpha)}
-                    \log{\lvert \xi \rvert}
-                - \tfrac12 \log \alpha + C
-            \,. $$
-
     log_alpha : computed torch.Tensor, read-only
         Log-variance of the multiplicative scaling noise. Computed as a log
         of the ratio of the variance of the weight to the squared absolute
         value of the weight. The higher the log-alpha the less relevant the
         parameter is.
     """
-
-    __sparsity_ignore__ = ("log_sigma2",)
-
     def reset_variational_parameters(self):
         # initially everything is relevant
         self.log_sigma2.data.uniform_(-10, -10)
@@ -52,43 +29,8 @@ class _BaseRelevanceReal(BaseARD, SparsityStats):
         r"""Get $\log \alpha$ from $(\theta, \sigma^2)$ parameterization."""
         return self.log_sigma2 - 2 * torch.log(abs(self.weight) + 1e-12)
 
-    @property
-    def penalty(self):
-        r"""Sofplus-sigmoid approximation of the Kl divergence from
-        arxiv:1701.05369:
-        $$
-            \alpha \mapsto
-                \tfrac12 \log (1 + e^{-\log \alpha}) - C
-                - k_1 \sigma(k_2 + k_3 \log \alpha)
-            \,, $$
-        with $C$ chosen to be $- k_1$. Note that $x \mapsto \log(1 + e^x)$
-        is known as `softplus` and in fact needs different compute paths
-        depending on the sign of $x$, much like the stable method for the
-        `log-sum-exp`:
-        $$
-            x \mapsto
-                \log(1 + e^{-\lvert x\rvert}) + \max{\{x, 0\}}
-            \,. $$
-        See the paper eq. (14) (mind the overall negative sign) or the
-        accompanying notebook for the MC estimation of the constants:
-        `k1, k2, k3 = 0.63576, 1.87320, 1.48695`
-        """
-        n_log_alpha = - self.log_alpha
-        sigmoid = torch.sigmoid(1.48695 * n_log_alpha - 1.87320)
-        return F.softplus(n_log_alpha) / 2 + 0.63576 * sigmoid
 
-    def relevance(self, *, threshold, **kwargs):
-        """Get the relevance mask based on the threshold."""
-        with torch.no_grad():
-            return torch.le(self.log_alpha, threshold).to(self.log_alpha)
-
-    def sparsity(self, *, threshold, **kwargs):
-        relevance = self.relevance(threshold=threshold)
-        n_relevant = float(relevance.sum().item())
-        return [(id(self.weight), self.weight.numel() - n_relevant)]
-
-
-class LinearVD(torch.nn.Linear, _BaseRelevanceReal):
+class LinearGaussian(GaussianMixin, torch.nn.Linear):
     """Linear layer with variational dropout.
 
     Details
@@ -111,7 +53,7 @@ class LinearVD(torch.nn.Linear, _BaseRelevanceReal):
         return mu + torch.randn_like(s2) * torch.sqrt(torch.clamp(s2, 1e-8))
 
 
-class BilinearVD(torch.nn.Bilinear, _BaseRelevanceReal):
+class BilinearGaussian(GaussianMixin, torch.nn.Bilinear):
     """Bilinear layer with variational dropout.
 
     Details
@@ -141,7 +83,7 @@ class BilinearVD(torch.nn.Bilinear, _BaseRelevanceReal):
         return mu + torch.randn_like(s2) * torch.sqrt(torch.clamp(s2, 1e-8))
 
 
-class ConvNdGaussianMixin:
+class ConvNdGaussianMixin(GaussianMixin):
     def __init__(self, in_channels, out_channels, kernel_size, stride=1,
                  padding=0, dilation=1, groups=1,
                  bias=True, padding_mode='zeros'):
@@ -199,7 +141,7 @@ class ConvNdGaussianMixin:
         return mu + torch.randn_like(s2) * torch.sqrt(torch.clamp(s2, 1e-8))
 
 
-class Conv1dVD(ConvNdGaussianMixin, torch.nn.Conv1d, _BaseRelevanceReal):
+class Conv1dGaussian(ConvNdGaussianMixin, torch.nn.Conv1d):
     """1D convolution layer with variational dropout.
 
     Details
@@ -213,7 +155,7 @@ class Conv1dVD(ConvNdGaussianMixin, torch.nn.Conv1d, _BaseRelevanceReal):
         return self._forward_impl(input, F.conv1d)
 
 
-class Conv2dVD(ConvNdGaussianMixin, torch.nn.Conv2d, _BaseRelevanceReal):
+class Conv2dGaussian(ConvNdGaussianMixin, torch.nn.Conv2d):
     """2D convolution layer with variational dropout.
 
     Details
@@ -227,7 +169,7 @@ class Conv2dVD(ConvNdGaussianMixin, torch.nn.Conv2d, _BaseRelevanceReal):
         return self._forward_impl(input, F.conv2d)
 
 
-class Conv3dVD(ConvNdGaussianMixin, torch.nn.Conv3d, _BaseRelevanceReal):
+class Conv3dGaussian(ConvNdGaussianMixin, torch.nn.Conv3d):
     """3D convolution layer with variational dropout.
 
     Details
@@ -239,6 +181,128 @@ class Conv3dVD(ConvNdGaussianMixin, torch.nn.Conv3d, _BaseRelevanceReal):
 
     def forward(self, input):
         return self._forward_impl(input, F.conv3d)
+
+
+class RelevanceMixin(SparsityStats):
+    __sparsity_ignore__ = ("log_sigma2",)
+
+    def relevance(self, *, threshold, **kwargs):
+        """Get the relevance mask based on the threshold."""
+        with torch.no_grad():
+            return torch.le(self.log_alpha, threshold).to(self.log_alpha)
+
+    def sparsity(self, *, threshold, **kwargs):
+        relevance = self.relevance(threshold=threshold)
+        n_relevant = float(relevance.sum().item())
+        return [(id(self.weight), self.weight.numel() - n_relevant)]
+
+
+class RealVDMixin(GaussianMixin):
+    r"""Trait class with kl-divergence penalty of the variational dropout.
+
+    Details
+    -------
+    This uses the ideas and formulae of Kingma et al. and Molchanov et al.
+    This module assumes the standard loss-minimization framework. Hence
+    instead of -ve KL divergence for ELBO and log-likelihood maximization,
+    this property computes and returns the divergence as is, which implies
+    minimization of minus log-likelihood (and, thus, minus ELBO).
+
+    Attributes
+    ----------
+    penalty : computed torch.Tensor, read-only
+        The Kullback-Leibler divergence between the mean field approximate
+        variational posterior of the weights and the scale-free log-uniform
+        prior:
+        $$
+            KL(\mathcal{N}(w\mid \theta, \alpha \theta^2) \|
+                    \tfrac1{\lvert w \rvert})
+                = \mathbb{E}_{\xi \sim \mathcal{N}(1, \alpha)}
+                    \log{\lvert \xi \rvert}
+                - \tfrac12 \log \alpha + C
+            \,. $$
+    """
+
+    @property
+    def penalty(self):
+        r"""Sofplus-sigmoid approximation of the Kl divergence from
+        arxiv:1701.05369:
+        $$
+            \alpha \mapsto
+                \tfrac12 \log (1 + e^{-\log \alpha}) - C
+                - k_1 \sigma(k_2 + k_3 \log \alpha)
+            \,, $$
+        with $C$ chosen to be $- k_1$. Note that $x \mapsto \log(1 + e^x)$
+        is known as `softplus` and in fact needs different compute paths
+        depending on the sign of $x$, much like the stable method for the
+        `log-sum-exp`:
+        $$
+            x \mapsto
+                \log(1 + e^{-\lvert x\rvert}) + \max{\{x, 0\}}
+            \,. $$
+        See the paper eq. (14) (mind the overall negative sign) or the
+        accompanying notebook for the MC estimation of the constants:
+        `k1, k2, k3 = 0.63576, 1.87320, 1.48695`
+        """
+        n_log_alpha = - self.log_alpha
+        sigmoid = torch.sigmoid(1.48695 * n_log_alpha - 1.87320)
+        return F.softplus(n_log_alpha) / 2 + 0.63576 * sigmoid
+
+
+class LinearVD(RealVDMixin, RelevanceMixin, LinearGaussian, BaseARD):
+    """Linear layer with variational dropout.
+
+    Details
+    -------
+    See `torch.nn.Linear` for reference on the dimensions and parameters.
+    """
+    pass
+
+
+class BilinearVD(RealVDMixin, RelevanceMixin, BilinearGaussian, BaseARD):
+    """Bilinear layer with variational dropout.
+
+    Details
+    -------
+    See `torch.nn.Bilinear` for reference on the dimensions and parameters.
+    """
+    pass
+
+
+class Conv1dVD(RealVDMixin, RelevanceMixin, Conv1dGaussian, BaseARD):
+    """1D convolution layer with variational dropout.
+
+    Details
+    -------
+    See `torch.nn.Conv1d` for reference on the dimensions and parameters. See
+    `cplxmodule.nn.relevance.ConvNdGaussianMixin` for details about the
+    implementation of the reparameterization trick.
+    """
+    pass
+
+
+class Conv2dVD(RealVDMixin, RelevanceMixin, Conv2dGaussian, BaseARD):
+    """2D convolution layer with variational dropout.
+
+    Details
+    -------
+    See `torch.nn.Conv2d` for reference on the dimensions and parameters. See
+    `cplxmodule.nn.relevance.ConvNdGaussianMixin` for details about the
+    implementation of the reparameterization trick.
+    """
+    pass
+
+
+class Conv3dVD(RealVDMixin, RelevanceMixin, Conv3dGaussian, BaseARD):
+    """3D convolution layer with variational dropout.
+
+    Details
+    -------
+    See `torch.nn.Conv3d` for reference on the dimensions and parameters. See
+    `cplxmodule.nn.relevance.ConvNdGaussianMixin` for details about the
+    implementation of the reparameterization trick.
+    """
+    pass
 
 
 class LinearARD(object):
