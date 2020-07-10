@@ -111,16 +111,7 @@ class LinearVD(torch.nn.Linear, _BaseRelevanceReal):
         return mu + torch.randn_like(s2) * torch.sqrt(torch.clamp(s2, 1e-8))
 
 
-class Conv1dVD(torch.nn.Conv1d, _BaseRelevanceReal):
-    """1D convolution layer with variational dropout.
-
-    Details
-    -------
-    See `torch.nn.Conv1d` for reference on the dimensions and parameters. See
-    `cplxmodule.nn.relevance.Conv2dVD` for details about the implementation of
-    the reparameterization trick.
-    """
-
+class ConvNdGaussianMixin:
     def __init__(self, in_channels, out_channels, kernel_size, stride=1,
                  padding=0, dilation=1, groups=1,
                  bias=True, padding_mode='zeros'):
@@ -135,46 +126,8 @@ class Conv1dVD(torch.nn.Conv1d, _BaseRelevanceReal):
         self.log_sigma2 = torch.nn.Parameter(torch.Tensor(*self.weight.shape))
         self.reset_variational_parameters()
 
-    def forward(self, input):
-        """Forward pass of the SGVB method for a 1d convolutional layer.
-
-        Details
-        -------
-        See `.forward` of Conv2dVD layer.
-        """
-        mu = super().forward(input)
-        if not self.training:
-            return mu
-
-        s2 = F.conv1d(input * input, torch.exp(self.log_sigma2), None,
-                      self.stride, self.padding, self.dilation, self.groups)
-        return mu + torch.randn_like(s2) * torch.sqrt(torch.clamp(s2, 1e-8))
-
-
-class Conv2dVD(torch.nn.Conv2d, _BaseRelevanceReal):
-    """2D convolution layer with variational dropout.
-
-    Details
-    -------
-    See `torch.nn.Conv2d` for reference on the dimensions and parameters.
-    """
-
-    def __init__(self, in_channels, out_channels, kernel_size, stride=1,
-                 padding=0, dilation=1, groups=1,
-                 bias=True, padding_mode='zeros'):
-        super().__init__(in_channels, out_channels, kernel_size, stride=stride,
-                         padding=padding, dilation=dilation, groups=groups,
-                         bias=bias, padding_mode=padding_mode)
-
-        if self.padding_mode != "zeros":
-            raise ValueError(f"Only `zeros` padding mode is supported. "
-                             f"Got `{self.padding_mode}`.")
-
-        self.log_sigma2 = torch.nn.Parameter(torch.Tensor(*self.weight.shape))
-        self.reset_variational_parameters()
-
-    def forward(self, input):
-        r"""Forward pass of the SGVB method for a 2d convolutional layer.
+    def _forward_impl(self, input, conv):
+        r"""Forward pass of the SGVB method for a Nd convolutional layer.
 
         Details
         -------
@@ -211,49 +164,51 @@ class Conv2dVD(torch.nn.Conv2d, _BaseRelevanceReal):
         if not self.training:
             return mu
 
-        s2 = F.conv2d(input * input, torch.exp(self.log_sigma2), None,
-                      self.stride, self.padding, self.dilation, self.groups)
+        s2 = conv(input * input, torch.exp(self.log_sigma2), None,
+                  self.stride, self.padding, self.dilation, self.groups)
         return mu + torch.randn_like(s2) * torch.sqrt(torch.clamp(s2, 1e-8))
 
 
-class Conv3dVD(torch.nn.Conv3d, _BaseRelevanceReal):
+class Conv1dVD(ConvNdGaussianMixin, torch.nn.Conv1d, _BaseRelevanceReal):
+    """1D convolution layer with variational dropout.
+
+    Details
+    -------
+    See `torch.nn.Conv1d` for reference on the dimensions and parameters. See
+    `cplxmodule.nn.relevance.ConvNdGaussianMixin` for details about the
+    implementation of the reparameterization trick.
+    """
+
+    def forward(self, input):
+        return self._forward_impl(input, F.conv1d)
+
+
+class Conv2dVD(ConvNdGaussianMixin, torch.nn.Conv2d, _BaseRelevanceReal):
+    """2D convolution layer with variational dropout.
+
+    Details
+    -------
+    See `torch.nn.Conv2d` for reference on the dimensions and parameters. See
+    `cplxmodule.nn.relevance.ConvNdGaussianMixin` for details about the
+    implementation of the reparameterization trick.
+    """
+
+    def forward(self, input):
+        return self._forward_impl(input, F.conv2d)
+
+
+class Conv3dVD(ConvNdGaussianMixin, torch.nn.Conv3d, _BaseRelevanceReal):
     """3D convolution layer with variational dropout.
 
     Details
     -------
     See `torch.nn.Conv3d` for reference on the dimensions and parameters. See
-    `cplxmodule.nn.relevance.Conv2dVD` for details about the implementation of
-    the reparameterization trick.
+    `cplxmodule.nn.relevance.ConvNdGaussianMixin` for details about the
+    implementation of the reparameterization trick.
     """
 
-    def __init__(self, in_channels, out_channels, kernel_size, stride=1,
-                 padding=0, dilation=1, groups=1,
-                 bias=True, padding_mode='zeros'):
-        super().__init__(in_channels, out_channels, kernel_size, stride=stride,
-                         padding=padding, dilation=dilation, groups=groups,
-                         bias=bias, padding_mode=padding_mode)
-
-        if self.padding_mode != "zeros":
-            raise ValueError(f"Only `zeros` padding mode is supported. "
-                             f"Got `{self.padding_mode}`.")
-
-        self.log_sigma2 = torch.nn.Parameter(torch.Tensor(*self.weight.shape))
-        self.reset_variational_parameters()
-
     def forward(self, input):
-        """Forward pass of the SGVB method for a 1d convolutional layer.
-
-        Details
-        -------
-        See `.forward` of Conv2dVD layer.
-        """
-        mu = super().forward(input)
-        if not self.training:
-            return mu
-
-        s2 = F.conv3d(input * input, torch.exp(self.log_sigma2), None,
-                      self.stride, self.padding, self.dilation, self.groups)
-        return mu + torch.randn_like(s2) * torch.sqrt(torch.clamp(s2, 1e-8))
+        return self._forward_impl(input, F.conv3d)
 
 
 class BilinearVD(torch.nn.Bilinear, _BaseRelevanceReal):
