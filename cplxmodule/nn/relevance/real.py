@@ -111,6 +111,36 @@ class LinearVD(torch.nn.Linear, _BaseRelevanceReal):
         return mu + torch.randn_like(s2) * torch.sqrt(torch.clamp(s2, 1e-8))
 
 
+class BilinearVD(torch.nn.Bilinear, _BaseRelevanceReal):
+    """Bilinear layer with variational dropout.
+
+    Details
+    -------
+    See `torch.nn.Bilinear` for reference on the dimensions and parameters.
+    """
+
+    def __init__(self, in1_features, in2_features, out_features, bias=True):
+        super().__init__(in1_features, in2_features, out_features, bias=bias)
+
+        self.log_sigma2 = torch.nn.Parameter(torch.Tensor(*self.weight.shape))
+        self.reset_variational_parameters()
+
+    def forward(self, input1, input2):
+        """Forward pass of the SGVB method for a bilinear layer.
+
+        Straightforward generalization of the local reparameterization trick.
+        """
+        mu = super().forward(input1, input2)
+        if not self.training:
+            return mu
+
+        s2 = F.bilinear(input1 * input1, input2 * input2,
+                        torch.exp(self.log_sigma2), None)
+
+        # .normal reports a grad-fn, but weirdly does not pass grads!
+        return mu + torch.randn_like(s2) * torch.sqrt(torch.clamp(s2, 1e-8))
+
+
 class ConvNdGaussianMixin:
     def __init__(self, in_channels, out_channels, kernel_size, stride=1,
                  padding=0, dilation=1, groups=1,
@@ -209,36 +239,6 @@ class Conv3dVD(ConvNdGaussianMixin, torch.nn.Conv3d, _BaseRelevanceReal):
 
     def forward(self, input):
         return self._forward_impl(input, F.conv3d)
-
-
-class BilinearVD(torch.nn.Bilinear, _BaseRelevanceReal):
-    """Bilinear layer with variational dropout.
-
-    Details
-    -------
-    See `torch.nn.Bilinear` for reference on the dimensions and parameters.
-    """
-
-    def __init__(self, in1_features, in2_features, out_features, bias=True):
-        super().__init__(in1_features, in2_features, out_features, bias=bias)
-
-        self.log_sigma2 = torch.nn.Parameter(torch.Tensor(*self.weight.shape))
-        self.reset_variational_parameters()
-
-    def forward(self, input1, input2):
-        """Forward pass of the SGVB method for a bilinear layer.
-
-        Straightforward generalization of the local reparameterization trick.
-        """
-        mu = super().forward(input1, input2)
-        if not self.training:
-            return mu
-
-        s2 = F.bilinear(input1 * input1, input2 * input2,
-                        torch.exp(self.log_sigma2), None)
-
-        # .normal reports a grad-fn, but weirdly does not pass grads!
-        return mu + torch.randn_like(s2) * torch.sqrt(torch.clamp(s2, 1e-8))
 
 
 class LinearARD(object):
