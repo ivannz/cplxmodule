@@ -1,8 +1,8 @@
-from distutils.core import setup, Extension
+from distutils.core import setup
 
 setup(
     name="cplxmodule",
-    version="2020.03",
+    version="2020.06rc",
     description="An extension for pytorch providing essential building blocks"
                 " for complex-valued networks and `torch.nn`-compatible"
                 " Bayesian sparsification methods. Implements the tools"
