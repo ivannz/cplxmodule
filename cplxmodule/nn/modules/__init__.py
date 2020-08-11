@@ -8,6 +8,7 @@ from .linear import CplxLinear, CplxBilinear
 from .linear import CplxReal, CplxImag, CplxIdentity
 
 from .conv import CplxConv1d, CplxConv2d, CplxConv3d
+from .conv import CplxConvTranspose1d, CplxConvTranspose2d, CplxConvTranspose3d
 
 from .container import CplxSequential
 
