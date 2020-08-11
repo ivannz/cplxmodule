@@ -207,7 +207,7 @@ class CplxConvTransposeNd(CplxConvNd):
             min_sizes = []
             max_sizes = []
             for d in range(k):
-                dim_size = ((input.size(d + 2) - 1) * stride[d] -
+                dim_size = ((input.shape[d + 2] - 1) * stride[d] -
                             2 * padding[d] + kernel_size[d])
                 min_sizes.append(dim_size)
                 max_sizes.append(min_sizes[d] + stride[d] - 1)
@@ -220,7 +220,7 @@ class CplxConvTransposeNd(CplxConvNd):
                     raise ValueError((
                         "requested an output size of {}, but valid sizes range "
                         "from {} to {} (for an input of {})").format(
-                            output_size, min_sizes, max_sizes, input.size()[2:]))
+                            output_size, min_sizes, max_sizes, input.shape[2:]))
 
             res = []
             for d in range(k):
