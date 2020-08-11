@@ -218,6 +218,24 @@ class Cplx(object):
         shape = shape[0] if shape and isinstance(shape[0], tuple) else shape
         return type(self)(self.__real.reshape(*shape), self.__imag.reshape(*shape))
 
+    def squeeze(self, dim=None):
+        r"""Returns the complex tensor with all the dimensions of input of size 1 removed."""
+        if dim is None:
+            return type(self)(self.__real.squeeze(), self.__imag.squeeze())
+        else:
+            return type(self)(
+                self.__real.squeeze(dim=dim), self.__imag.squeeze(dim=dim)
+            )
+
+    def unsqueeze(self, dim=None):
+        r"""Returns a new complex tensor with a dimension of size one inserted at the specified position."""
+        if dim is None:
+            return type(self)(self.__real.unsqueeze(), self.__imag.unsqueeze())
+        else:
+            return type(self)(
+                self.__real.unsqueeze(dim=dim), self.__imag.unsqueeze(dim=dim)
+            )
+
     def item(self):
         r"""The scalar value of zero-dim complex tensor."""
         return float(self.__real) + 1j * float(self.__imag)
