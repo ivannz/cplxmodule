@@ -678,7 +678,7 @@ def conv_transposend_naive(conv_t, input, weight, stride=1,
     return Cplx(re, im)
 
 
-def conv_transposednd(conv, input, weight, bias=None, stride=1,
+def conv_transposend(conv, input, weight, bias=None, stride=1,
                       padding=0, output_padding=1, groups=1,
                       dilation=1, padding_mode="zeros"):
     r"""Applies a complex n-d transposed convolution to the
@@ -701,37 +701,37 @@ def conv_transposednd(conv, input, weight, bias=None, stride=1,
     return output
 
 
-def conv_transposed1d(input, weight, bias=None, stride=1,
+def conv_transpose1d(input, weight, bias=None, stride=1,
                       padding=0, output_padding=0, groups=0,
                       dilation=1, padding_mode="zeros"):
     r"""Applies a complex 1d transposed convolution to the
     incoming complex tensor. See torch.nn.ConvTranspose1d
     for documentation."""
-    return conv_transposednd(F.conv_transpose1d, weight, bias,
-                             stride, padding, output_padding,
-                             groups, dilation, padding_mode)
+    return conv_transposend(F.conv_transpose1d, input, weight,
+                            bias, stride, padding, output_padding,
+                            groups, dilation, padding_mode)
 
 
-def conv_transposed2d(input, weight, bias=None, stride=1,
+def conv_transpose2d(input, weight, bias=None, stride=1,
                       padding=0, output_padding=0, groups=0,
                       dilation=1, padding_mode="zeros"):
     r"""Applies a complex 2d transposed convolution to the
     incoming complex tensor. See torch.nn.ConvTranspose2d
     for documentation."""
-    return conv_transposednd(F.conv_transpose2d, weight, bias,
-                             stride, padding, output_padding,
-                             groups, dilation, padding_mode)
+    return conv_transposend(F.conv_transpose2d, input, weight,
+                            bias, stride, padding, output_padding,
+                            groups, dilation, padding_mode)
 
 
-def conv_transposed3d(input, weight, bias=None, stride=1,
+def conv_transpose3d(input, weight, bias=None, stride=1,
                       padding=0, output_padding=0, groups=0,
                       dilation=1, padding_mode="zeros"):
     r"""Applies a complex 3d transposed convolution to the
     incoming complex tensor. See torch.nn.ConvTranspose3d
     for documentation."""
-    return conv_transposednd(F.conv_transpose3d, weight, bias,
-                             stride, padding, output_padding,
-                             groups, dilation, padding_mode)
+    return conv_transposend(F.conv_transpose3d, input, weight,
+                            bias, stride, padding, output_padding,
+                            groups, dilation, padding_mode)
 
 
 def einsum(equation, *tensors):
