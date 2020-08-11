@@ -213,6 +213,16 @@ class Cplx(object):
         r"""The Hermitian transpose of a 2d compelx tensor."""
         return self.conj.t()  # Cplx(self.__real.t(), -self.__imag.t())
 
+    def view(self, *shape):
+        r"""Return a view of the complex tensor."""
+        shape = shape[0] if shape and isinstance(shape[0], tuple) else shape
+        return type(self)(self.__real.view(*shape), self.__imag.view(*shape))
+
+    def view_as(self, other):
+        r"""Return a view of the complex tensor of shape other."""
+        shape = other.shape
+        return self.view(*shape)
+
     def reshape(self, *shape):
         r"""Reshape the complex tensor."""
         shape = shape[0] if shape and isinstance(shape[0], tuple) else shape
