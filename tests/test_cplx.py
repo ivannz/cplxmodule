@@ -548,6 +548,32 @@ def test_cat_stack(random_state):
         cplx.cat(map(cplx.Cplx.from_numpy, np_tensors), dim=1)
 
 
+def test_view(random_state):
+    a = random_state.randn(10, 32, 64) + 1j * random_state.randn(10, 32, 64)
+
+    p = cplx.Cplx.from_numpy(a)
+    p_real = torch.from_numpy(a.real)
+    p_imag = torch.from_numpy(a.imag)
+
+    # Should be equivalent to reshape if in contiguous memory
+    assert_allclose_cplx(p.view(5, 64, 64), p.reshape(5, 64, 64))
+    assert_allclose_cplx(p.view(5, 64, 64), cplx.Cplx.from_numpy(a.reshape(5, 64, 64)))
+    # Real and Imaginary parts should remain the same
+    assert_allclose(p.view(5, 64, 64).real, a.reshape(5, 64, 64).real)
+    assert_allclose(p.view(5, 64, 64).imag, a.reshape(5, 64, 64).imag)
+    assert_allclose(p.view(5, 64, 64).real, p_real.view(5, 64, 64))
+    assert_allclose(p.view(5, 64, 64).imag, p_imag.view(5, 64, 64))
+
+    # Should fail if not contiguous in memory
+    with pytest.raises(RuntimeError, match="Use .reshape"):
+        p.permute(2, 0, 1).view(5, 64, 64)
+
+    # Should fail if new size does not match
+    size = p.shape[0] * p.shape[1] * p.shape[2]
+    with pytest.raises(RuntimeError, match="invalid for input of size {}".format(size)):
+        p.view(4, 64, 64)
+
+
 @pytest.mark.skip(reason="not implemented")
 def test_splitting(random_state):
     # chunk, split, unbind
