@@ -4,17 +4,21 @@ import torch
 import torch.nn.functional as F
 
 import numpy as np
-from numpy.testing import assert_allclose
-
 
 from cplxmodule import cplx
 
 
-def assert_allclose_cplx(npy, cplx):
-    # assert np.allclose(npy.real, cplx.real) and \
-    #         np.allclose(npy.imag, cplx.imag)
-    assert_allclose(cplx.real, npy.real)
-    assert_allclose(cplx.imag, npy.imag)
+def cplx_allclose(input, other):
+    return torch.allclose(input.real, other.real) and \
+           torch.allclose(input.imag, other.imag)
+
+
+def cplx_allclose_numpy(input, other):
+    other = np.asarray(other)
+    return (
+        torch.allclose(input.real, torch.from_numpy(other.real))
+        and torch.allclose(input.imag, torch.from_numpy(other.imag))
+    )
 
 
 @pytest.fixture
@@ -27,13 +31,13 @@ def test_creation(random_state):
     p = cplx.Cplx(torch.from_numpy(a.real), torch.from_numpy(a.imag))
 
     assert len(a) == len(p)
-    assert_allclose_cplx(a, p)
+    assert np.allclose(p.numpy(), a)
 
     a = random_state.randn(5, 5, 200) + 0j
     p = cplx.Cplx(torch.from_numpy(a.real))
 
     assert len(a) == len(p)
-    assert_allclose_cplx(a, p)
+    assert np.allclose(p.numpy(), a)
 
     cplx.Cplx(0.0)
     cplx.Cplx(-1 + 1j)
@@ -63,10 +67,10 @@ def test_creation(random_state):
     assert p.real.requires_grad
 
     p = cplx.Cplx.zeros(10, 12, 31)
-    assert_allclose(p.numpy(), np.zeros(p.shape, dtype=np.complex64))
+    assert np.allclose(p.numpy(), np.zeros(p.shape))
 
     p = cplx.Cplx.ones(10, 12, 31)
-    assert_allclose(p.numpy(), np.ones(p.shape, dtype=np.complex64))
+    assert np.allclose(p.numpy(), np.ones(p.shape))
 
 
 def test_type_tofrom_numpy(random_state):
@@ -76,24 +80,24 @@ def test_type_tofrom_numpy(random_state):
     p = cplx.Cplx(torch.from_numpy(a.real), torch.from_numpy(a.imag))
     q = cplx.Cplx(torch.from_numpy(b.real), torch.from_numpy(b.imag))
 
-    assert_allclose_cplx(p, cplx.Cplx.from_numpy(a))
-    assert_allclose_cplx(q, cplx.Cplx.from_numpy(b))
+    assert cplx_allclose(cplx.Cplx.from_numpy(a), p)
+    assert cplx_allclose(cplx.Cplx.from_numpy(b), q)
 
-    assert_allclose_cplx(a, p.numpy())
-    assert_allclose_cplx(b, q.numpy())
+    assert np.allclose(p.numpy(), a)
+    assert np.allclose(q.numpy(), b)
 
 
 def test_arithmetic_unary(random_state):
     a = random_state.randn(10, 20, 5) + 1j * random_state.randn(10, 20, 5)
     p = cplx.Cplx.from_numpy(a)
 
-    assert_allclose_cplx(a, p)
-    assert_allclose(abs(a), abs(p))
-    assert_allclose(np.angle(a), p.angle)
-    assert_allclose_cplx(a.conjugate(), p.conjugate())
-    assert_allclose_cplx(a.conj(), p.conj)
-    assert_allclose_cplx(+a, +p)
-    assert_allclose_cplx(-a, -p)
+    assert cplx_allclose_numpy(p, a)
+    assert np.allclose(abs(p), abs(a))
+    assert np.allclose(p.angle, np.angle(a))
+    assert cplx_allclose_numpy(p.conjugate(), a.conjugate())
+    assert cplx_allclose_numpy(p.conj, a.conj())
+    assert cplx_allclose_numpy(+p, +a)
+    assert cplx_allclose_numpy(-p, -a)
 
 
 def test_arithmetic_binary(random_state):
@@ -106,33 +110,33 @@ def test_arithmetic_binary(random_state):
     r = torch.from_numpy(c)
 
     # test against numpy
-    assert_allclose_cplx(a + b, p + q)  # __add__ cplx-cplx
-    assert_allclose_cplx(a - b, p - q)  # __sub__ cplx-cplx
-    assert_allclose_cplx(a * b, p * q)  # __mul__ cplx-cplx
-    assert_allclose_cplx(a / b, p / q)  # __div__ cplx-cplx
+    assert cplx_allclose_numpy(p + q, a + b)  # __add__ cplx-cplx
+    assert cplx_allclose_numpy(p - q, a - b)  # __sub__ cplx-cplx
+    assert cplx_allclose_numpy(p * q, a * b)  # __mul__ cplx-cplx
+    assert cplx_allclose_numpy(p / q, a / b)  # __div__ cplx-cplx
 
     # okay with pythonic integer, real and complex constants
     for z in [int(10), float(3.1415), 1e-3 + 1e3j, -10j]:
-        assert_allclose_cplx(b + z, q + z)  # __add__ cplx-other
-        assert_allclose_cplx(b - z, q - z)  # __sub__ cplx-other
-        assert_allclose_cplx(b * z, q * z)  # __mul__ cplx-other
-        assert_allclose_cplx(b / z, q / z)  # __div__ cplx-other
+        assert cplx_allclose_numpy(q + z, b + z)  # __add__ cplx-other
+        assert cplx_allclose_numpy(q - z, b - z)  # __sub__ cplx-other
+        assert cplx_allclose_numpy(q * z, b * z)  # __mul__ cplx-other
+        assert cplx_allclose_numpy(q / z, b / z)  # __div__ cplx-other
 
-        assert_allclose_cplx(z + b, z + q)  # __radd__ other-cplx
-        assert_allclose_cplx(z - b, z - q)  # __rsub__ other-cplx
-        assert_allclose_cplx(z * b, z * q)  # __rmul__ other-cplx
-        assert_allclose_cplx(z / b, z / q)  # __rdiv__ other-cplx
+        assert cplx_allclose_numpy(z + q, z + b)  # __radd__ other-cplx
+        assert cplx_allclose_numpy(z - q, z - b)  # __rsub__ other-cplx
+        assert cplx_allclose_numpy(z * q, z * b)  # __rmul__ other-cplx
+        assert cplx_allclose_numpy(z / q, z / b)  # __rdiv__ other-cplx
 
-    assert_allclose_cplx(b + c, q + r)  # __add__ cplx-other
-    assert_allclose_cplx(b - c, q - r)  # __sub__ cplx-other
-    assert_allclose_cplx(b * c, q * r)  # __mul__ cplx-other
-    assert_allclose_cplx(b / c, q / r)  # __div__ cplx-other
+    assert cplx_allclose_numpy(q + r, b + c)  # __add__ cplx-other
+    assert cplx_allclose_numpy(q - r, b - c)  # __sub__ cplx-other
+    assert cplx_allclose_numpy(q * r, b * c)  # __mul__ cplx-other
+    assert cplx_allclose_numpy(q / r, b / c)  # __div__ cplx-other
 
     # _r*__ with types like torch.Tensor raised TypeError in pytroch<1.4
-    assert_allclose_cplx(c + b, r + q)  # __radd__ other-cplx
-    assert_allclose_cplx(c - b, r - q)  # __rsub__ other-cplx
-    assert_allclose_cplx(c * b, r * q)  # __rmul__ other-cplx
-    assert_allclose_cplx(c / b, r / q)  # __rdiv__ other-cplx
+    assert cplx_allclose_numpy(r + q, c + b)  # __radd__ other-cplx
+    assert cplx_allclose_numpy(r - q, c - b)  # __rsub__ other-cplx
+    assert cplx_allclose_numpy(r * q, c * b)  # __rmul__ other-cplx
+    assert cplx_allclose_numpy(r / q, c / b)  # __rdiv__ other-cplx
 
 
 def test_arithmetic_inplace(random_state):
@@ -143,38 +147,38 @@ def test_arithmetic_inplace(random_state):
     m = np.zeros_like(a)
 
     # test inplace __i*__
-    n += p; m += a
-    assert_allclose_cplx(m, n)
+    n += p ; m += a
+    assert cplx_allclose_numpy(n, m)
 
-    n *= p; m *= a
-    assert_allclose_cplx(m, n)
+    n *= p ; m *= a
+    assert cplx_allclose_numpy(n, m)
 
-    n -= p; m -= a
-    assert_allclose_cplx(m, n)
+    n -= p ; m -= a
+    assert cplx_allclose_numpy(n, m)
 
-    n /= p; m /= a
-    assert_allclose_cplx(m, n)
+    n /= p ; m /= a
+    assert cplx_allclose_numpy(n, m)
 
     with pytest.raises(RuntimeError, match=r"The expanded size of the tensor"):
         n[1:] @= p[0].t()
 
-    assert_allclose_cplx(m[0, :5] @ a[0, 0], n[0, :5] @ p[0, 0])
+    assert cplx_allclose_numpy(n[0, :5] @ p[0, 0], m[0, :5] @ a[0, 0])
 
 
 def test_algebraic_functions(random_state):
     a = random_state.randn(10, 20, 5) + 1j * random_state.randn(10, 20, 5)
     p = cplx.Cplx.from_numpy(a)
 
-    assert_allclose_cplx(np.exp(a), cplx.exp(p))
-    assert_allclose_cplx(np.log(a), cplx.log(p))
+    assert cplx_allclose_numpy(cplx.exp(p), np.exp(a))
+    assert cplx_allclose_numpy(cplx.log(p), np.log(a))
 
-    assert_allclose_cplx(np.sin(a), cplx.sin(p))
-    assert_allclose_cplx(np.cos(a), cplx.cos(p))
-    assert_allclose_cplx(np.tan(a), cplx.tan(p))
+    assert cplx_allclose_numpy(cplx.sin(p), np.sin(a))
+    assert cplx_allclose_numpy(cplx.cos(p), np.cos(a))
+    assert cplx_allclose_numpy(cplx.tan(p), np.tan(a))
 
-    assert_allclose_cplx(np.sinh(a), cplx.sinh(p))
-    assert_allclose_cplx(np.cosh(a), cplx.cosh(p))
-    assert_allclose_cplx(np.tanh(a), cplx.tanh(p))
+    assert cplx_allclose_numpy(cplx.sinh(p), np.sinh(a))
+    assert cplx_allclose_numpy(cplx.cosh(p), np.cosh(a))
+    assert cplx_allclose_numpy(cplx.tanh(p), np.tanh(a))
 
 
 def test_slicing(random_state):
@@ -182,16 +186,16 @@ def test_slicing(random_state):
     p = cplx.Cplx.from_numpy(a)
 
     for i in range(a.shape[0]):
-        assert_allclose_cplx(a[i], p[i])
+        assert cplx_allclose_numpy(p[i], a[i])
 
     for i in range(a.shape[1]):
-        assert_allclose_cplx(a[::2, i], p[::2, i])
+        assert cplx_allclose_numpy(p[::2, i], a[::2, i])
 
     for i in range(a.shape[1]):
-        assert_allclose_cplx(a[1::3, i], p[1::3, i])
+        assert cplx_allclose_numpy(p[1::3, i], a[1::3, i])
 
     for i in range(a.shape[2]):
-        assert_allclose_cplx(a[..., i], p[..., i])
+        assert cplx_allclose_numpy(p[..., i], a[..., i])
 
     with pytest.raises(IndexError):
         p[10], p[2, ..., -10]
@@ -202,18 +206,18 @@ def test_iteration(random_state):
     p = cplx.Cplx.from_numpy(a)
 
     for u, v in zip(a, p):
-        assert_allclose_cplx(u, v)
+        assert cplx_allclose_numpy(v, u)
 
     for u, v in zip(reversed(a), reversed(p)):
-        assert_allclose_cplx(u, v)
+        assert cplx_allclose_numpy(v, u)
 
-    assert_allclose_cplx(a[::-1], reversed(p))
+    assert cplx_allclose_numpy(reversed(p), a[::-1].copy())
 
     for u, v in zip(a[-1], p[-1]):
-        assert_allclose_cplx(u, v)
+        assert cplx_allclose_numpy(v, u)
 
     for u, v in zip(a[..., -1], p[..., -1]):
-        assert_allclose_cplx(u, v)
+        assert cplx_allclose_numpy(v, u)
 
 
 def test_immutability(random_state):
@@ -234,9 +238,9 @@ def test_linear_matmul(random_state):
     p, q = cplx.Cplx.from_numpy(a), cplx.Cplx.from_numpy(b)
 
     for i in range(len(a)):
-        assert_allclose_cplx(a[i] @ b[i], p[i] @ q[i])
+        assert cplx_allclose_numpy(p[i] @ q[i], a[i] @ b[i])
 
-    assert_allclose_cplx(a @ b, p @ q)
+    assert cplx_allclose_numpy(p @ q, a @ b)
 
 
 def test_linear_transform(random_state):
@@ -249,15 +253,15 @@ def test_linear_transform(random_state):
     q = cplx.Cplx.from_numpy(b)
 
     base = np.dot(a, L.T)
-    assert_allclose_cplx(base, cplx.linear(p, U, None))
-    assert_allclose_cplx(base, cplx.linear_naive(p, U, None))
-    assert_allclose_cplx(base, cplx.linear_cat(p, U, None))
-    assert_allclose_cplx(base, cplx.linear_3m(p, U, None))
+    assert cplx_allclose_numpy(cplx.linear(p, U, None), base)
+    assert cplx_allclose_numpy(cplx.linear_naive(p, U, None), base)
+    assert cplx_allclose_numpy(cplx.linear_cat(p, U, None), base)
+    assert cplx_allclose_numpy(cplx.linear_3m(p, U, None), base)
 
-    assert_allclose_cplx(base + b, cplx.linear(p, U, q))
-    assert_allclose_cplx(base + b, cplx.linear_naive(p, U, q))
-    assert_allclose_cplx(base + b, cplx.linear_cat(p, U, q))
-    assert_allclose_cplx(base + b, cplx.linear_3m(p, U, q))
+    assert cplx_allclose_numpy(cplx.linear(p, U, q), base + b)
+    assert cplx_allclose_numpy(cplx.linear_naive(p, U, q), base + b)
+    assert cplx_allclose_numpy(cplx.linear_cat(p, U, q), base + b)
+    assert cplx_allclose_numpy(cplx.linear_3m(p, U, q), base + b)
 
 
 def test_conv1d_transform(random_state):
@@ -277,8 +281,8 @@ def test_conv1d_transform(random_state):
     assert np.allclose(tt, nn)
 
     cx, cw = map(cplx.Cplx.from_numpy, [x, w])
-    cc = cplx.convnd_naive(F.conv1d, cx, cw).numpy().real
-    assert np.allclose(cc, nn)
+    cc = cplx.convnd_naive(F.conv1d, cx, cw).real
+    assert torch.allclose(cc, torch.from_numpy(nn))
 
     # check pure C: `correlate` uses conjugation
     #  https://docs.scipy.org/doc/numpy/reference/generated/numpy.correlate.html
@@ -288,27 +292,27 @@ def test_conv1d_transform(random_state):
     nn = correlate(x, w.conj(), mode="valid")
 
     cx, cw = map(cplx.Cplx.from_numpy, [x, w])
-    cc = cplx.convnd_naive(F.conv1d, cx, cw).numpy()
-    assert np.allclose(cc, nn)
+    cc = cplx.convnd_naive(F.conv1d, cx, cw)
+    assert cplx_allclose_numpy(cc, nn)
 
-    cc = cplx.convnd_quick(F.conv1d, cx, cw).numpy()
-    assert np.allclose(cc, nn)
+    cc = cplx.convnd_quick(F.conv1d, cx, cw)
+    assert cplx_allclose_numpy(cc, nn)
 
     a = random_state.randn(5, 12, 200) + 1j * random_state.randn(5, 12, 200)
     L = random_state.randn(14, 12, 7) + 1j * random_state.randn(14, 12, 7)
 
     p, U = map(cplx.Cplx.from_numpy, [a, L])
-    assert_allclose_cplx(cplx.convnd_naive(F.conv1d, p, U),
-                         cplx.convnd_quick(F.conv1d, p, U))
+    assert cplx_allclose(cplx.convnd_quick(F.conv1d, p, U),
+                         cplx.convnd_naive(F.conv1d, p, U))
 
-    assert_allclose_cplx(cplx.convnd_naive(F.conv1d, p, U, stride=5),
-                         cplx.convnd_quick(F.conv1d, p, U, stride=5))
+    assert cplx_allclose(cplx.convnd_quick(F.conv1d, p, U, stride=5),
+                         cplx.convnd_naive(F.conv1d, p, U, stride=5))
 
-    assert_allclose_cplx(cplx.convnd_naive(F.conv1d, p, U, padding=2),
-                         cplx.convnd_quick(F.conv1d, p, U, padding=2))
+    assert cplx_allclose(cplx.convnd_quick(F.conv1d, p, U, padding=2),
+                         cplx.convnd_naive(F.conv1d, p, U, padding=2))
 
-    assert_allclose_cplx(cplx.convnd_naive(F.conv1d, p, U, dilation=3),
-                         cplx.convnd_quick(F.conv1d, p, U, dilation=3))
+    assert cplx_allclose(cplx.convnd_quick(F.conv1d, p, U, dilation=3),
+                         cplx.convnd_naive(F.conv1d, p, U, dilation=3))
 
 
 def test_conv2d_transform(random_state):
@@ -328,8 +332,8 @@ def test_conv2d_transform(random_state):
     assert np.allclose(tt, nn)
 
     cx, cw = map(cplx.Cplx.from_numpy, [x, w])
-    cc = cplx.convnd_naive(F.conv2d, cx, cw).numpy().real
-    assert np.allclose(cc, nn)
+    cc = cplx.convnd_naive(F.conv2d, cx, cw).real
+    assert torch.allclose(cc, torch.from_numpy(nn))
 
     # check pure C: `correlate` uses conjugation
     #  https://docs.scipy.org/doc/numpy/reference/generated/numpy.correlate.html
@@ -339,27 +343,27 @@ def test_conv2d_transform(random_state):
     nn = correlate(x, w.conj(), mode="valid")
 
     cx, cw = map(cplx.Cplx.from_numpy, [x, w])
-    cc = cplx.convnd_naive(F.conv2d, cx, cw).numpy()
-    assert np.allclose(cc, nn)
+    cc = cplx.convnd_naive(F.conv2d, cx, cw)
+    assert cplx_allclose_numpy(cc, nn)
 
-    cc = cplx.convnd_quick(F.conv2d, cx, cw).numpy()
-    assert np.allclose(cc, nn)
+    cc = cplx.convnd_quick(F.conv2d, cx, cw)
+    assert cplx_allclose_numpy(cc, nn)
 
     a = random_state.randn(5, 12, 41, 39) + 1j * random_state.randn(5, 12, 41, 39)
     L = random_state.randn(14, 12, 7, 6) + 1j * random_state.randn(14, 12, 7, 6)
 
     p, U = map(cplx.Cplx.from_numpy, [a, L])
-    assert_allclose_cplx(cplx.convnd_naive(F.conv2d, p, U),
-                         cplx.convnd_quick(F.conv2d, p, U))
+    assert cplx_allclose(cplx.convnd_quick(F.conv2d, p, U),
+                         cplx.convnd_naive(F.conv2d, p, U))
 
-    assert_allclose_cplx(cplx.convnd_naive(F.conv2d, p, U, stride=5),
-                         cplx.convnd_quick(F.conv2d, p, U, stride=5))
+    assert cplx_allclose(cplx.convnd_quick(F.conv2d, p, U, stride=5),
+                         cplx.convnd_naive(F.conv2d, p, U, stride=5))
 
-    assert_allclose_cplx(cplx.convnd_naive(F.conv2d, p, U, padding=2),
-                         cplx.convnd_quick(F.conv2d, p, U, padding=2))
+    assert cplx_allclose(cplx.convnd_quick(F.conv2d, p, U, padding=2),
+                         cplx.convnd_naive(F.conv2d, p, U, padding=2))
 
-    assert_allclose_cplx(cplx.convnd_naive(F.conv2d, p, U, dilation=3),
-                         cplx.convnd_quick(F.conv2d, p, U, dilation=3))
+    assert cplx_allclose(cplx.convnd_quick(F.conv2d, p, U, dilation=3),
+                         cplx.convnd_naive(F.conv2d, p, U, dilation=3))
 
 
 def test_conv3d_transform(random_state):
@@ -379,8 +383,8 @@ def test_conv3d_transform(random_state):
     assert np.allclose(tt, nn)
 
     cx, cw = map(cplx.Cplx.from_numpy, [x, w])
-    cc = cplx.convnd_naive(F.conv3d, cx, cw).numpy().real
-    assert np.allclose(cc, nn)
+    cc = cplx.convnd_naive(F.conv3d, cx, cw).real
+    assert torch.allclose(cc, torch.from_numpy(nn))
 
     # check pure C: `correlate` uses conjugation
     #  https://docs.scipy.org/doc/numpy/reference/generated/numpy.correlate.html
@@ -390,27 +394,27 @@ def test_conv3d_transform(random_state):
     nn = correlate(x, w.conj(), mode="valid")
 
     cx, cw = map(cplx.Cplx.from_numpy, [x, w])
-    cc = cplx.convnd_naive(F.conv3d, cx, cw).numpy()
-    assert np.allclose(cc, nn)
+    cc = cplx.convnd_naive(F.conv3d, cx, cw)
+    assert cplx_allclose_numpy(cc, nn)
 
-    cc = cplx.convnd_quick(F.conv3d, cx, cw).numpy()
-    assert np.allclose(cc, nn)
+    cc = cplx.convnd_quick(F.conv3d, cx, cw)
+    assert cplx_allclose_numpy(cc, nn)
 
     a = random_state.randn(5, 12, 14, 19, 27) + 1j * random_state.randn(5, 12, 14, 19, 27)
     L = random_state.randn(14, 12, 3, 4, 5) + 1j * random_state.randn(14, 12, 3, 4, 5)
 
     p, U = map(cplx.Cplx.from_numpy, [a, L])
-    assert_allclose_cplx(cplx.convnd_naive(F.conv3d, p, U),
-                         cplx.convnd_quick(F.conv3d, p, U))
+    assert cplx_allclose(cplx.convnd_quick(F.conv3d, p, U),
+                         cplx.convnd_naive(F.conv3d, p, U))
 
-    assert_allclose_cplx(cplx.convnd_naive(F.conv3d, p, U, stride=5),
-                         cplx.convnd_quick(F.conv3d, p, U, stride=5))
+    assert cplx_allclose(cplx.convnd_quick(F.conv3d, p, U, stride=5),
+                         cplx.convnd_naive(F.conv3d, p, U, stride=5))
 
-    assert_allclose_cplx(cplx.convnd_naive(F.conv3d, p, U, padding=2),
-                         cplx.convnd_quick(F.conv3d, p, U, padding=2))
+    assert cplx_allclose(cplx.convnd_quick(F.conv3d, p, U, padding=2),
+                         cplx.convnd_naive(F.conv3d, p, U, padding=2))
 
-    assert_allclose_cplx(cplx.convnd_naive(F.conv3d, p, U, dilation=3),
-                         cplx.convnd_quick(F.conv3d, p, U, dilation=3))
+    assert cplx_allclose(cplx.convnd_quick(F.conv3d, p, U, dilation=3),
+                         cplx.convnd_naive(F.conv3d, p, U, dilation=3))
 
 
 def test_bilinear_transform(random_state):
@@ -424,22 +428,46 @@ def test_bilinear_transform(random_state):
     q = cplx.Cplx.from_numpy(b)
 
     base = np.einsum("bsi, bsj, fij ->bsf", a.conj(), z, L)
-    assert_allclose_cplx(base, cplx.bilinear(p, r, U, None, conjugate=True))
-    assert_allclose_cplx(base, cplx.bilinear_naive(p, r, U, None, conjugate=True))
-    assert_allclose_cplx(base, cplx.bilinear_cat(p, r, U, None, conjugate=True))
+    assert cplx_allclose_numpy(
+        cplx.bilinear(p, r, U, None, conjugate=True),
+        base)
+    assert cplx_allclose_numpy(
+        cplx.bilinear_naive(p, r, U, None, conjugate=True),
+        base)
+    assert cplx_allclose_numpy(
+        cplx.bilinear_cat(p, r, U, None, conjugate=True),
+        base)
 
-    assert_allclose_cplx(base + b, cplx.bilinear(p, r, U, q, conjugate=True))
-    assert_allclose_cplx(base + b, cplx.bilinear_naive(p, r, U, q, conjugate=True))
-    assert_allclose_cplx(base + b, cplx.bilinear_cat(p, r, U, q, conjugate=True))
+    assert cplx_allclose_numpy(
+        cplx.bilinear(p, r, U, q, conjugate=True),
+        base + b)
+    assert cplx_allclose_numpy(
+        cplx.bilinear_naive(p, r, U, q, conjugate=True),
+        base + b)
+    assert cplx_allclose_numpy(
+        cplx.bilinear_cat(p, r, U, q, conjugate=True),
+        base + b)
 
     base = np.einsum("bsi, bsj, fij ->bsf", a, z, L)
-    assert_allclose_cplx(base, cplx.bilinear(p, r, U, None, conjugate=False))
-    assert_allclose_cplx(base, cplx.bilinear_naive(p, r, U, None, conjugate=False))
-    assert_allclose_cplx(base, cplx.bilinear_cat(p, r, U, None, conjugate=False))
+    assert cplx_allclose_numpy(
+        cplx.bilinear(p, r, U, None, conjugate=False),
+        base)
+    assert cplx_allclose_numpy(
+        cplx.bilinear_naive(p, r, U, None, conjugate=False),
+        base)
+    assert cplx_allclose_numpy(
+        cplx.bilinear_cat(p, r, U, None, conjugate=False),
+        base)
 
-    assert_allclose_cplx(base + b, cplx.bilinear(p, r, U, q, conjugate=False))
-    assert_allclose_cplx(base + b, cplx.bilinear_naive(p, r, U, q, conjugate=False))
-    assert_allclose_cplx(base + b, cplx.bilinear_cat(p, r, U, q, conjugate=False))
+    assert cplx_allclose_numpy(
+        cplx.bilinear(p, r, U, q, conjugate=False),
+        base + b)
+    assert cplx_allclose_numpy(
+        cplx.bilinear_naive(p, r, U, q, conjugate=False),
+        base + b)
+    assert cplx_allclose_numpy(
+        cplx.bilinear_cat(p, r, U, q, conjugate=False),
+        base + b)
 
 
 def test_type_conversion(random_state):
@@ -450,12 +478,12 @@ def test_type_conversion(random_state):
     q = cplx.from_real(torch.from_numpy(b))
 
     # from cplx to double-real (interleaved)
-    assert_allclose(b, cplx.to_real(p))
-    assert_allclose(b, cplx.to_real(q))
+    assert torch.allclose(cplx.to_real(p), torch.from_numpy(b))
+    assert torch.allclose(cplx.to_real(q), torch.from_numpy(b))
 
     # from double-real to cplx
-    assert_allclose_cplx(p, q)
-    assert_allclose_cplx(a, q)
+    assert cplx_allclose(q, p)
+    assert cplx_allclose_numpy(q, a)
 
     assert cplx.Cplx(-1 + 1j).item() == -1 + 1j
 
@@ -470,14 +498,14 @@ def test_type_conversion(random_state):
                              torch.from_numpy(a.imag)], dim=dim)
 
         q = cplx.from_concatenated_real(stacked, dim=dim)
-        assert_allclose_cplx(a, q)
+        assert cplx_allclose_numpy(q, a)
 
     # cplx to concatenated
     for dim in [0, 1, 2]:
         q = cplx.to_concatenated_real(cplx.Cplx.from_numpy(a), dim=dim)
 
         stacked = np.concatenate([a.real, a.imag], axis=dim)
-        assert_allclose(q.numpy(), stacked)
+        assert torch.allclose(q, torch.from_numpy(stacked))
 
     # cplx to interleaved
     for dim in [0, 1, 2]:
@@ -487,7 +515,7 @@ def test_type_conversion(random_state):
                     flatten=True, dim=dim
                 ), dim=dim)
 
-        assert_allclose(q.numpy(), a)
+        assert cplx_allclose_numpy(q, a)
 
 
 def test_enisum(random_state):
@@ -497,11 +525,11 @@ def test_enisum(random_state):
 
     p, q, r = map(cplx.Cplx.from_numpy, (a, b, c))
 
-    assert_allclose(cplx.einsum("ijk", r).numpy(), np.einsum("ijk", c))
+    assert cplx_allclose_numpy(cplx.einsum("ijk", r), np.einsum("ijk", c))
 
     equations = ["iij", "iji", "jii", "iii"]
     for eq in equations:
-        assert_allclose(cplx.einsum(eq, r).numpy(), np.einsum(eq, c))
+        assert cplx_allclose_numpy(cplx.einsum(eq, r), np.einsum(eq, c))
         with pytest.raises(RuntimeError, match="dimension does not match"):
             cplx.einsum(eq, p)
 
@@ -511,8 +539,8 @@ def test_enisum(random_state):
         "ijk, lkp",
         ]
     for eq in equations:
-        assert_allclose(cplx.einsum(eq, p, q).numpy(),
-                        np.einsum(eq, a, b))
+        assert cplx_allclose_numpy(cplx.einsum(eq, p, q),
+                                   np.einsum(eq, a, b))
 
     with pytest.raises(RuntimeError, match="does not support more"):
         cplx.einsum("...", p, q, r)
@@ -528,12 +556,14 @@ def test_cat_stack(random_state):
     tr_tensors = [*map(cplx.Cplx.from_numpy, np_tensors)]
 
     for n in [0, 1, 2]:
-        assert_allclose(cplx.cat(tr_tensors, dim=n).numpy(),
-                        np.concatenate(np_tensors, axis=n))
+        assert cplx_allclose_numpy(
+            cplx.cat(tr_tensors, dim=n),
+            np.concatenate(np_tensors, axis=n))
 
     for n in [0, 1, 2, 3]:
-        assert_allclose(cplx.stack(tr_tensors, dim=n).numpy(),
-                        np.stack(np_tensors, axis=n))
+        assert cplx_allclose_numpy(
+            cplx.stack(tr_tensors, dim=n),
+            np.stack(np_tensors, axis=n))
 
     np_tensors = [
         random_state.randn(3, 7) + 1j * random_state.randn(3, 7),
@@ -556,13 +586,14 @@ def test_view(random_state):
     p_imag = torch.from_numpy(a.imag)
 
     # Should be equivalent to reshape if in contiguous memory
-    assert_allclose_cplx(p.view(5, 64, 64), p.reshape(5, 64, 64))
-    assert_allclose_cplx(p.view(5, 64, 64), cplx.Cplx.from_numpy(a.reshape(5, 64, 64)))
+    assert cplx_allclose(p.view(5, 64, 64), p.reshape(5, 64, 64))
+    assert cplx_allclose(p.view(5, 64, 64),
+                         cplx.Cplx.from_numpy(a.reshape(5, 64, 64)))
+
     # Real and Imaginary parts should remain the same
-    assert_allclose(p.view(5, 64, 64).real, a.reshape(5, 64, 64).real)
-    assert_allclose(p.view(5, 64, 64).imag, a.reshape(5, 64, 64).imag)
-    assert_allclose(p.view(5, 64, 64).real, p_real.view(5, 64, 64))
-    assert_allclose(p.view(5, 64, 64).imag, p_imag.view(5, 64, 64))
+    assert cplx_allclose_numpy(p.view(5, 64, 64), a.reshape(5, 64, 64))
+    assert torch.allclose(p.view(5, 64, 64).real, p_real.view(5, 64, 64))
+    assert torch.allclose(p.view(5, 64, 64).imag, p_imag.view(5, 64, 64))
 
     # Should fail if not contiguous in memory
     with pytest.raises(RuntimeError, match="Use .reshape"):

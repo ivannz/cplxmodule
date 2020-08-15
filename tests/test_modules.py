@@ -6,14 +6,12 @@ from cplxmodule import nn
 from cplxmodule.nn import CplxToCplx
 from cplxmodule import cplx, Cplx
 
-from numpy.testing import assert_allclose
-
 from functools import lru_cache, wraps
 
 
-def assert_allclose_cplx(npy, cplx):
-    assert_allclose(cplx.real, npy.real)
-    assert_allclose(cplx.imag, npy.imag)
+def cplx_allclose(input, other):
+    return torch.allclose(input.real, other.real) and \
+           torch.allclose(input.imag, other.imag)
 
 
 def _cplx_emulate_module(Module):
@@ -89,7 +87,7 @@ def test_linear():
 
     z = cplx.randn(32, 31, 23, dtype=torch.double)
     with torch.no_grad():
-        assert_allclose_cplx(implemented(z), emulated(z))
+        assert cplx_allclose(implemented(z), emulated(z))
 
     emulated = EmulatedCplxModule[torch.nn.Linear](127, 63, bias=True).double()
     implemented = nn.CplxLinear(127, 63, bias=True).double()
@@ -97,7 +95,7 @@ def test_linear():
 
     z = cplx.randn(32, 31, 127, dtype=torch.double)
     with torch.no_grad():
-        assert_allclose_cplx(implemented(z), emulated(z))
+        assert cplx_allclose(implemented(z), emulated(z))
 
 
 def do_test_conv(Layer, CplxLayer, in_channels, out_channels, kernel_size,
@@ -114,7 +112,7 @@ def do_test_conv(Layer, CplxLayer, in_channels, out_channels, kernel_size,
     shape = 4, in_channels, *[16]*len(emulated.real.kernel_size)
     with torch.no_grad():
         z = cplx.randn(*shape, dtype=torch.double)
-        assert_allclose_cplx(implemented(z), emulated(z))
+        assert cplx_allclose(implemented(z), emulated(z))
 
 
 @pytest.mark.parametrize('case', [

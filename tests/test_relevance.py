@@ -2,8 +2,6 @@ import torch
 import pytest
 import numpy as np
 
-from numpy.testing import assert_allclose
-
 import torch.nn
 import torch.sparse
 
@@ -46,7 +44,7 @@ def test_torch_expi(random_state):
     npy = random_state.randn(200)
     trx = torch.tensor(npy)
 
-    assert_allclose(torch_expi(trx), expi(npy))
+    assert torch.allclose(torch_expi(trx), torch.from_numpy(expi(npy)))
 
     assert torch.autograd.gradcheck(torch_expi, trx.requires_grad_(True))
 
