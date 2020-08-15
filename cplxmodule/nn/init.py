@@ -97,10 +97,13 @@ def cplx_trabelsi_independent_(cplx, kind="glorot"):
     else:
         shape = np.prod(cplx.shape[:2]), np.prod(cplx.shape[2:])
 
-    # generate a semi- unitary (orthogonal) matrix from a random matrix
+    # generate a semi-unitary (orthogonal) matrix from a random matrix
     # M = U V is semi-unitary: V^H U^H U V = I_k
-    Z = np.random.randn(*shape) + 1j * np.random.randn(*shape)
-    u, _, vh = np.linalg.svd(Z, compute_uv=True, full_matrices=False)
+    Z = np.random.rand(*shape) + 1j * np.random.rand(*shape)
+
+    # Z is n x m, so u is n x n and vh is m x m
+    u, _, vh = np.linalg.svd(Z, compute_uv=True, full_matrices=True,
+                             hermitian=False)
     k = min(*shape)
     M = np.dot(u[:, :k], vh[:, :k].conjugate().T)
 
