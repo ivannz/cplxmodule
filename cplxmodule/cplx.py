@@ -228,6 +228,10 @@ class Cplx(object):
         shape = shape[0] if shape and isinstance(shape[0], tuple) else shape
         return type(self)(self.__real.reshape(*shape), self.__imag.reshape(*shape))
 
+    def size(self, *dim):
+        r"""Returns the size of the complex tensor."""
+        return self.__real.size(*dim)
+
     def squeeze(self, dim=None):
         r"""Returns the complex tensor with all the dimensions of input of size 1 removed."""
         if dim is None:

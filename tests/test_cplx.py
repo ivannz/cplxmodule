@@ -574,6 +574,38 @@ def test_view(random_state):
         p.view(4, 64, 64)
 
 
+@pytest.mark.parametrize('shape', [
+    [10, 12, 31], [7, 3], [17], [2, 5, 6, 3, 7, 2, 4]
+])
+def test_tensor_shape_dim_size(random_state, shape):
+    # size, shape, and dim properties
+    p = cplx.Cplx.empty(shape)
+
+    assert p.dim() == len(shape) and p.shape == torch.Size(shape)
+    assert all(p.size(i) == n for i, n in enumerate(shape))
+
+    with pytest.raises(TypeError, match="invalid combination of arguments"):
+        p.size(1, 2)
+
+    with pytest.raises(RuntimeError, match="look up dimensions by name"):
+        p.size(None)
+
+
+def test_scalar_shape_dim_size(random_state):
+    # size, shape, and dim properties
+    p = cplx.Cplx(1+1j)
+    assert p.dim() == 0 and p.shape == p.size() == torch.Size([])
+
+    with pytest.raises(IndexError, match="tensor has no dimensions"):
+        p.size(1)
+
+    with pytest.raises(TypeError, match="invalid combination of arguments"):
+        p.size(1, 2)
+
+    with pytest.raises(RuntimeError, match="look up dimensions by name"):
+        p.size(None)
+
+
 @pytest.mark.skip(reason="not implemented")
 def test_splitting(random_state):
     # chunk, split, unbind
