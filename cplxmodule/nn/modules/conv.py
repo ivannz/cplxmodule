@@ -26,15 +26,13 @@ class CplxConvNd(CplxToCplx):
 
         self.kernel_size, self.stride = kernel_size, stride
         self.padding, self.dilation = padding, dilation
-        self.transposed = transposed
-        self.output_padding = output_padding
 
-        self.groups, self.padding_mode = groups, padding_mode
+        self.transposed, self.output_padding = transposed, output_padding
         self.groups, self.padding_mode = groups, padding_mode
 
         if transposed:
             self.weight = CplxParameter(cplx.Cplx.empty(
-                in_channels, in_channels // groups, *kernel_size))
+                in_channels, out_channels // groups, *kernel_size))
         else:
             self.weight = CplxParameter(cplx.Cplx.empty(
                 out_channels, in_channels // groups, *kernel_size))
@@ -238,26 +236,21 @@ class CplxConvTranspose1d(CplxConvTransposeNd):
     def __init__(self, in_channels, out_channels, kernel_size, stride=1,
                  padding=0, dilation=1, output_padding=0, groups=1,
                  bias=None, padding_mode="zeros"):
-        kernel_size = _single(kernel_size)
-        stride = _single(stride)
-        padding = _single(padding)
-        dilation = _single(dilation)
-        output_padding = _single(output_padding)
-        super().__init__(in_channels, out_channels, kernel_size, stride,
-                         padding, dilation, True, output_padding, groups,
-                         bias, padding_mode)
+        super().__init__(
+            in_channels, out_channels, _single(kernel_size), _single(stride),
+            _single(padding), _single(dilation), True, _single(output_padding),
+            groups, bias, padding_mode)
 
     def forward(self, input, output_size=None):
         if self.padding_mode not in ('zeros', 'circular'):
-            raise ValueError(
-                'Only `zeros` or `circular` padding mode are supported for CplxConvTranspose1d'
-            )
+            raise ValueError('Only `zeros` or `circular` padding mode are '
+                             'supported for CplxConvTranspose1d')
         output_padding = self._output_padding(input, output_size, self.stride,
                                               self.padding, self.kernel_size)
 
-        return cplx.conv_transpose1d(input, self.weight, self.bias, self.stride,
-                                     self.padding, output_padding, self.groups,
-                                     self.dilation, self.padding_mode)
+        return cplx.conv_transpose1d(
+            input, self.weight, self.bias, self.stride, self.padding,
+            output_padding, self.groups, self.dilation, self.padding_mode)
 
 
 class CplxConvTranspose2d(CplxConvTransposeNd):
@@ -268,26 +261,21 @@ class CplxConvTranspose2d(CplxConvTransposeNd):
     def __init__(self, in_channels, out_channels, kernel_size, stride=1,
                  padding=0, dilation=1, output_padding=0, groups=1,
                  bias=None, padding_mode="zeros"):
-        kernel_size = _pair(kernel_size)
-        stride = _pair(stride)
-        padding = _pair(padding)
-        dilation = _pair(dilation)
-        output_padding = _pair(output_padding)
-        super().__init__(in_channels, out_channels, kernel_size, stride,
-                         padding, dilation, True, output_padding, groups,
-                         bias, padding_mode)
+        super().__init__(
+            in_channels, out_channels, _pair(kernel_size), _pair(stride),
+            _pair(padding), _pair(dilation), True, _pair(output_padding),
+            groups, bias, padding_mode)
 
     def forward(self, input, output_size=None):
         if self.padding_mode not in ('zeros', 'circular'):
-            raise ValueError(
-                'Only `zeros` or `circular` padding mode are supported for CplxConvTranspose2d'
-            )
+            raise ValueError('Only `zeros` or `circular` padding mode are '
+                             'supported for CplxConvTranspose2d')
         output_padding = self._output_padding(input, output_size, self.stride,
                                               self.padding, self.kernel_size)
 
-        return cplx.conv_transpose2d(input, self.weight, self.bias, self.stride,
-                                     self.padding, output_padding, self.groups,
-                                     self.dilation, self.padding_mode)
+        return cplx.conv_transpose2d(
+            input, self.weight, self.bias, self.stride, self.padding,
+            output_padding, self.groups, self.dilation, self.padding_mode)
 
 
 class CplxConvTranspose3d(CplxConvTransposeNd):
@@ -298,23 +286,18 @@ class CplxConvTranspose3d(CplxConvTransposeNd):
     def __init__(self, in_channels, out_channels, kernel_size, stride=1,
                  padding=0, dilation=1, output_padding=0, groups=1,
                  bias=None, padding_mode="zeros"):
-        kernel_size = _triple(kernel_size)
-        stride = _triple(stride)
-        padding = _triple(padding)
-        dilation = _triple(dilation)
-        output_padding = _triple(output_padding)
-        super().__init__(in_channels, out_channels, kernel_size, stride,
-                         padding, dilation, True, output_padding, groups,
-                         bias, padding_mode)
+        super().__init__(
+            in_channels, out_channels, _triple(kernel_size), _triple(stride),
+            _triple(padding), _triple(dilation), True, _triple(output_padding),
+            groups, bias, padding_mode)
 
     def forward(self, input, output_size=None):
         if self.padding_mode not in ('zeros', 'circular'):
-            raise ValueError(
-                'Only `zeros` or `circular` padding mode are supported for CplxConvTranspose2d'
-            )
+            raise ValueError('Only `zeros` or `circular` padding mode are '
+                             'supported for CplxConvTranspose2d')
         output_padding = self._output_padding(input, output_size, self.stride,
                                               self.padding, self.kernel_size)
 
-        return cplx.conv_transpose3d(input, self.weight, self.bias, self.stride,
-                                     self.padding, output_padding, self.groups,
-                                     self.dilation, self.padding_mode)
+        return cplx.conv_transpose3d(
+            input, self.weight, self.bias, self.stride, self.padding,
+            output_padding, self.groups, self.dilation, self.padding_mode)
