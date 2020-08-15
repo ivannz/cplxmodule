@@ -95,7 +95,7 @@ def cplx_trabelsi_independent_(cplx, kind="glorot"):
         shape = cplx.shape
 
     else:
-        shape = np.prod(cplx.shape[:2]), np.prod(cplx.shape[2:])
+        shape = int(np.prod(cplx.shape[:2])), int(np.prod(cplx.shape[2:]))
 
     # generate a semi-unitary (orthogonal) matrix from a random matrix
     # M = U V is semi-unitary: V^H U^H U V = I_k
