@@ -634,6 +634,8 @@ def convnd(conv, input, weight, bias=None, stride=1,
     if padding_mode == 'circular':
         input = symmetric_circular_padding(input, padding)
         padding = 0
+    elif padding_mode != 'zeros':
+        raise ValueError("padding_mode must be 'zeros' or 'circular'.")
 
     if groups == 1:
         # ungroupped convolution can be done a little bit faster
@@ -678,6 +680,76 @@ def conv3d(input, weight, bias=None, stride=1, padding=0,
 
     return convnd(F.conv3d, input, weight, bias, stride,
                   padding, dilation, groups, padding_mode)
+
+
+def conv_transposend_naive(conv_t, input, weight, stride=1,
+                           padding=0, output_padding=0,
+                           groups=1, dilation=1):
+    re = conv_t(input.real, weight.real, None, stride,
+                padding, output_padding, groups, dilation) \
+        - conv_t(input.imag, weight.imag, None, stride,
+                padding, output_padding, groups, dilation)
+    im = conv_t(input.real, weight.imag, None, stride,
+                padding, output_padding, groups, dilation) \
+        + conv_t(input.imag, weight.real, None, stride,
+                padding, output_padding, groups, dilation)
+    return Cplx(re, im)
+
+
+def conv_transposend(conv, input, weight, bias=None, stride=1,
+                      padding=0, output_padding=1, groups=1,
+                      dilation=1, padding_mode="zeros"):
+    r"""Applies a complex n-d transposed convolution to the
+    incoming complex tensor. See torch.nn.ConvTranspose2d
+    for documentation."""
+    if padding_mode == 'circular':
+        input = symmetric_circular_padding(input, padding)
+        padding = 0
+    elif padding_mode != 'zeros':
+        raise ValueError("padding_mode must be 'zeros' or 'circular'.")
+
+    output = conv_transposend_naive(conv, input, weight, stride,
+                                    padding, output_padding,
+                                    groups, dilation)
+
+    if bias is not None:
+        broadcast = (input.dim() - 2) * [1]
+        output += bias.reshape(-1, *broadcast)
+
+    return output
+
+
+def conv_transpose1d(input, weight, bias=None, stride=1,
+                      padding=0, output_padding=0, groups=0,
+                      dilation=1, padding_mode="zeros"):
+    r"""Applies a complex 1d transposed convolution to the
+    incoming complex tensor. See torch.nn.ConvTranspose1d
+    for documentation."""
+    return conv_transposend(F.conv_transpose1d, input, weight,
+                            bias, stride, padding, output_padding,
+                            groups, dilation, padding_mode)
+
+
+def conv_transpose2d(input, weight, bias=None, stride=1,
+                      padding=0, output_padding=0, groups=0,
+                      dilation=1, padding_mode="zeros"):
+    r"""Applies a complex 2d transposed convolution to the
+    incoming complex tensor. See torch.nn.ConvTranspose2d
+    for documentation."""
+    return conv_transposend(F.conv_transpose2d, input, weight,
+                            bias, stride, padding, output_padding,
+                            groups, dilation, padding_mode)
+
+
+def conv_transpose3d(input, weight, bias=None, stride=1,
+                      padding=0, output_padding=0, groups=0,
+                      dilation=1, padding_mode="zeros"):
+    r"""Applies a complex 3d transposed convolution to the
+    incoming complex tensor. See torch.nn.ConvTranspose3d
+    for documentation."""
+    return conv_transposend(F.conv_transpose3d, input, weight,
+                            bias, stride, padding, output_padding,
+                            groups, dilation, padding_mode)
 
 
 def einsum(equation, *tensors):
