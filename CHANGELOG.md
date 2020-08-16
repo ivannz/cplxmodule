@@ -1,4 +1,14 @@
+# Version 2020.08.17
+
+* FIX: Fixed shape mismatch in `nn.init.cplx_trabelsi_independent_`, which prevented it from working properly [# 11](https://github.com/ivannz/cplxmodule/issues/11)
+* ENH: [Hendrik Schröter](https://github.com/Rikorose) implemented Complex Transposed Convolutions [# 8](https://github.com/ivannz/cplxmodule/pull/8), squeeze/unsqueeze methods for `Cplx` [# 7](https://github.com/ivannz/cplxmodule/pull/7), and added support for `view` and `view_as` methods for `Cplx` [# 6](https://github.com/ivannz/cplxmodule/pull/6)
+* ENH: Introduce converters for special torch format of complex tensors (last dim is exactly 2) see [torch.fft](https://pytorch.org/docs/stable/generated/torch.fft.html#torch.fft)
+* ENH: `Cplx` now also has `.size()` method, which mimics `torch.Tensor.size()`
+* DOC: Improved documentation of `nn.casting` modules
+
+
 # Version 2020.08
+
 * structure of the `.nn.relevance` was simplified
     - importing from `ard` has been deprecated, and ARD layers have been moved
     to `.real` or `.complex` depending on their type
