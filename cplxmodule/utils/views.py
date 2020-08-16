@@ -11,6 +11,7 @@ def fix_dim(dim, n_dim):
     return axis
 
 
+# @torch.jit.script
 def complex_view(x, dim=-1, squeeze=True):
     r"""Returns a real and imaginary views into the complex tensor, assumed
     to be in interleaved layout (double-real, i.e. re-im). The returned tensor
@@ -36,7 +37,7 @@ def complex_view(x, dim=-1, squeeze=True):
     offset = x.storage_offset()
 
     # compute new shape and strides
-    strided_size, rem = divmod(shape[dim], 2)
+    size, rem = shape[dim] // 2, shape[dim] % 2
     if rem != 0:
         warnings.warn(f"Odd dimension size for the complex data unpacking: "
                       f"taking the least size that fits.", RuntimeWarning)
@@ -49,7 +50,6 @@ def complex_view(x, dim=-1, squeeze=True):
 
     else:
         # otherwise, half the size and double the stride
-        size, rem = divmod(shape[dim], 2)
         shape_view = shape[:dim] + [size] + shape[dim+1:]
         strides_view = strides[:dim] + [2 * strides[dim]] + strides[dim+1:]
 
