@@ -185,3 +185,20 @@ def test_conv_transpose(case):
 
     # test output_padding=3
     do_test_conv(*common, kernel_size, bias=True, stride=2, output_padding=1)
+
+
+@pytest.mark.parametrize('pair', [
+    (nn.modules.casting.InterleavedRealToCplx,
+     nn.modules.casting.CplxToInterleavedReal),
+    (nn.modules.casting.ConcatenatedRealToCplx,
+     nn.modules.casting.CplxToConcatenatedReal),
+    (nn.modules.casting.TensorToCplx,
+     nn.modules.casting.CplxToTensor),
+    (nn.modules.casting.AsTypeCplx,
+     nn.modules.linear.CplxReal),
+])
+def test_casting(pair):
+    to_cplx, to_real = pair
+    tensor = torch.randn(32, 31, 1024, 2)
+
+    assert torch.allclose(to_real()(to_cplx()(tensor)), tensor)
