@@ -54,13 +54,14 @@ def whiten2x2(tensor, training=True, running_mean=None, running_cov=None,
         [[p, q], [r, s]] = \frac1{t s} [[d + s, -b], [-c, a + s]]
     """
     # assume tensor is 2 x B x F x ...
+    assert tensor.dim() >= 3
 
     # tail shape for broadcasting ? x 1 x F x [*1]
     tail = 1, tensor.shape[2], *([1] * (tensor.dim() - 3))
     axes = 1, *range(3, tensor.dim())
 
     # 1. compute batch mean [2 x F] and center the batch
-    if training:
+    if training or running_mean is None:
         mean = tensor.mean(dim=axes)
         if running_mean is not None:
             running_mean += momentum * (mean.data - running_mean)
@@ -71,9 +72,10 @@ def whiten2x2(tensor, training=True, running_mean=None, running_cov=None,
     tensor = tensor - mean.reshape(2, *tail)
 
     # 2. per feature real-imaginary 2x2 covariance matrix
-    if training:
-        # faster than doing mul and then mean. Stabilize by a small ridge.
-        var = tensor.var(dim=axes, unbiased=False) + nugget
+    # running_cov = torch.eye(2,  2).unsqueeze(-1).repeat(1, 1, tensor.shape[2])
+    if training or running_cov is None:
+        # stabilize by a small ridge
+        var = (tensor * tensor).mean(dim=axes) + nugget
         cov_uu, cov_vv = var[0], var[1]
 
         # has to mul-mean here anyway (naïve) : reduction axes shifted left.
@@ -86,8 +88,7 @@ def whiten2x2(tensor, training=True, running_mean=None, running_cov=None,
             running_cov += momentum * (cov - running_cov)
 
     else:
-        cov_uu, cov_uv = running_cov[0, 0], running_cov[0, 1]
-        cov_vu, cov_vv = running_cov[1, 0], running_cov[1, 1]
+        cov_uu, cov_uv, cov_vu, cov_vv = running_cov.reshape(4, -1)
 
     # 3. get R = [[p, q], [r, s]], with E R c c^T R^T = R M R = I
     # (unsure if intentional, but the inv-root in Trabelsi et al. (2018) uses
@@ -110,15 +111,15 @@ def whiten2x2(tensor, training=True, running_mean=None, running_cov=None,
 
 def whitendxd(tensor, training=True, running_mean=None, running_cov=None,
               momentum=0.1, nugget=1e-5):
-    """Jointly whiten features in tensors [B x F x ... x D]: take D vectors and
-    whiten individually for each F over [B x ...].
+    """Jointly whiten features in tensors [P x B x F x ...]: take dim-P vectors
+    and whiten individually for each F over [B x ...].
 
     Details
     -------
-    Computes the mean along all axes but F and D, then gets F biased estimates
-    of the covariance between D. The covariances are regularized by a `nugget`
-    and then their batched Cholesky decomposition is used in triangular solve
-    to do the whitening.
+    Computes the mean along all axes but `F` and `P`, then gets `F` biased
+    estimates of the covariance between `P`. The covariances are regularized
+    by a `nugget` and then their batched Cholesky decomposition is used in
+    triangular solve to do the whitening.
 
     Warning
     -------
@@ -128,13 +129,14 @@ def whitendxd(tensor, training=True, running_mean=None, running_cov=None,
     Please refer to this thread:
     https://github.com/pytorch/pytorch/issues/24403#issuecomment-521655390
     """
+    assert tensor.dim() >= 3
 
     # compute reduction axes and broadcast shape (tail) P x 1 x F x ...
     axes, d = (1, *range(3, tensor.dim())), tensor.shape[0]
     shape = 1, tensor.shape[2], *([1] * (tensor.dim() - 3))
 
     # get feature mean and covariance
-    if training:
+    if training or running_mean is None:
         mean = tensor.mean(dim=axes)
         if running_mean is not None:
             running_mean += momentum * (mean.data - running_mean)
@@ -142,7 +144,7 @@ def whitendxd(tensor, training=True, running_mean=None, running_cov=None,
         mean = running_mean
     tensor = tensor - mean.reshape(d, *shape)
 
-    if training:
+    if training or running_cov is None:
         # P x B x F x ... -> F x P x [B x ...]
         perm = tensor.permute(2, 0, *axes).flatten(2, -1)
         cov = torch.matmul(perm, perm.transpose(-1, -2)) / perm.shape[-1]
@@ -282,26 +284,24 @@ class _CplxBatchNorm(CplxToCplx):
             self.register_parameter('running_var', None)
             self.register_parameter('num_batches_tracked', None)
 
+        self.reset_running_stats()
         self.reset_parameters()
 
     def reset_running_stats(self):
-        if self.track_running_stats:
-            self.num_batches_tracked.zero_()
+        if not self.track_running_stats:
+            return
 
-            self.running_mean.zero_()
-            self.running_var[0, 0].fill_(1)
-            self.running_var[1, 0].zero_()
-            self.running_var[0, 1].zero_()
-            self.running_var[1, 1].fill_(1)
+        self.num_batches_tracked.zero_()
+
+        self.running_mean.zero_()
+        self.running_var.copy_(torch.eye(2,  2).unsqueeze(-1))
 
     def reset_parameters(self):
-        self.reset_running_stats()
-        if self.affine:
-            init.ones_(self.weight[0, 0])
-            init.zeros_(self.weight[1, 0])
-            init.zeros_(self.weight[0, 1])
-            init.ones_(self.weight[1, 1])
-            init.zeros_(self.bias)
+        if not self.affine:
+            return
+
+        self.weight.data.copy_(torch.eye(2,  2).unsqueeze(-1))
+        init.zeros_(self.bias)
 
     def _check_input_dim(self, input):
         raise NotImplementedError
