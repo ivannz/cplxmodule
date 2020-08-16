@@ -7,7 +7,9 @@
 [ ] Improve implementation
 * (Bernoulli Dropout) need 1d (exists), 2d and 3d
 * ~(Convolutions) implement 3d convolutions and 3d VarDropout convolutions both real and complex~
-* (Transposed Convolutions) figure out the math and implement var dropout for transposed convos
+* ~(Transposed Convolutions) figure out the math and implement var dropout for transposed convos~
+
+[ ] FIgure out the issues with ONNX support
 
 [ ] begin migration to `complex` tensors in `pytorch>=1.6`
 * For C->R real-valued loss functions [grad.conj()](https://pytorch.org/docs/master/complex_numbers.html#autograd) gives a descent direction.
