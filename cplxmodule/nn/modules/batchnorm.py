@@ -86,8 +86,9 @@ def whiten2x2(tensor, training=True, running_mean=None, running_cov=None,
             running_cov += momentum * (cov - running_cov)
 
     else:
-        cov_uu, cov_uv = running_cov[0, 0], running_cov[0, 1]
-        cov_vu, cov_vv = running_cov[1, 0], running_cov[1, 1]
+        cov_uu, cov_uv, cov_vu, cov_vv = running_cov.reshape(4, -1)
+        #cov_uu, cov_uv = running_cov[0, 0], running_cov[0, 1]
+        #cov_vu, cov_vv = running_cov[1, 0], running_cov[1, 1]
 
     # 3. get R = [[p, q], [r, s]], with E R c c^T R^T = R M R = I
     # (unsure if intentional, but the inv-root in Trabelsi et al. (2018) uses
