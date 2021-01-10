@@ -178,7 +178,7 @@ def bandwidth_power(x, fs, bands, dim=-2, n_overlap=None,
     # 2. Compute power within each band
     channel, df = [], 1. / (nperseg * fs)
     for lo, hi in bands:
-        index = torch.nonzero(ff.gt(lo) & ff.lt(hi))[:, 0]
+        index, = torch.nonzero(ff.gt(lo) & ff.lt(hi), as_tuple=True)
         power = torch.index_select(px, dim, index)
         channel.append(power.sum(dim=dim))  # * df)
     # end for
