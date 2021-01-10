@@ -571,7 +571,7 @@ def test_cat_stack(random_state):
     ]
 
     for n in [0, 1, 2]:
-        with pytest.raises(RuntimeError, match="Sizes of tensors must match"):
+        with pytest.raises(RuntimeError, match="each tensor to be equal size"):
             cplx.stack(map(cplx.Cplx.from_numpy, np_tensors), dim=n)
 
     with pytest.raises(RuntimeError, match="Sizes of tensors must match"):
