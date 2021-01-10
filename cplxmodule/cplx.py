@@ -630,7 +630,8 @@ def convnd_naive(conv, input, weight, stride=1,
 
 def convnd_quick(conv, input, weight, stride=1,
                  padding=0, dilation=1):
-    n_out = weight.shape[0]
+    n_out = int(weight.shape[0])
+
     ww = torch.cat([weight.real, weight.imag], dim=0)
     wr = conv(input.real, ww, None, stride, padding, dilation, 1)
     wi = conv(input.imag, ww, None, stride, padding, dilation, 1)
@@ -798,7 +799,7 @@ def bilinear_naive(input1, input2, weight, bias=None, conjugate=True):
     data: :math:`y = x^(T/H) W z + b`.
     """
 
-    n_out = weight.shape[0]
+    n_out = int(weight.shape[0])
 
     ww = torch.cat([weight.real, weight.imag], dim=0)
     a, b = input1.real, input1.imag

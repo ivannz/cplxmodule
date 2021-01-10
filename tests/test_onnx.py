@@ -179,9 +179,8 @@ def test_cplx_conv1d_onnx_export(training):
     module, input = nn.CplxConv1d(16, 32, 5), torch.randn(3, 16, 25, 2)
     do_onnx_export_test(wrap_cplxtocplx(module), input, training=training)
 
-    with pytest.raises(Exception, match="Non-zero status code"):
-        do_onnx_inference_test(wrap_cplxtocplx(module), input,
-                               training=training)
+    do_onnx_inference_test(wrap_cplxtocplx(module), input,
+                           training=training)
 
     module = relevance.CplxConv1dVD(16, 32, 5)
     do_onnx_export_test(wrap_cplxtocplx(module), input, training=training)
@@ -201,9 +200,8 @@ def test_cplx_conv2d_onnx_export(training):
     module, input = nn.CplxConv2d(16, 32, 5), torch.randn(3, 16, 25, 25, 2)
     do_onnx_export_test(wrap_cplxtocplx(module), input, training=training)
 
-    with pytest.raises(Exception, match="Non-zero status code"):
-        do_onnx_inference_test(wrap_cplxtocplx(module), input,
-                               training=training)
+    do_onnx_inference_test(wrap_cplxtocplx(module), input,
+                           training=training)
 
     module = relevance.CplxConv2dVD(16, 32, 5)
     do_onnx_export_test(wrap_cplxtocplx(module), input, training=training)
@@ -223,9 +221,8 @@ def test_cplx_conv3d_onnx_export(training):
     module, input = nn.CplxConv3d(16, 32, 5), torch.randn(3, 16, 25, 25, 25, 2)
     do_onnx_export_test(wrap_cplxtocplx(module), input, training=training)
 
-    with pytest.raises(Exception, match="Non-zero status code"):
-        do_onnx_inference_test(wrap_cplxtocplx(module), input,
-                               training=training)
+    do_onnx_inference_test(wrap_cplxtocplx(module), input,
+                           training=training)
 
     module = relevance.CplxConv3dVD(16, 32, 5)
     do_onnx_export_test(wrap_cplxtocplx(module), input, training=training)
