@@ -12,14 +12,12 @@ def test_complex_fft(random_state):
     shape, axis = (2, 3, 256, 2, 2), 2
 
     np_x = random_state.randn(*shape) + 1j * random_state.randn(*shape)
-    tr_x = torch.tensor(np.stack([np_x.real, np_x.imag], axis=-1))
+    tr_x = torch.from_numpy(np_x)
 
     np_fft = np.fft.fft(np_x, axis=axis)
-    tr_fft = torch.fft(tr_x.transpose(axis, -2),
-                       signal_ndim=1).transpose(axis, -2)
+    tr_fft = torch.fft.fft(tr_x, dim=axis)
 
-    assert torch.allclose(tr_fft[..., 0], torch.from_numpy(np_fft.real))
-    assert torch.allclose(tr_fft[..., 1], torch.from_numpy(np_fft.imag))
+    assert torch.allclose(tr_fft, torch.from_numpy(np_fft))
 
 
 def test_hamming_window(random_state=None):
@@ -53,10 +51,12 @@ def test_pwelch(random_state):
     epsilon = random_state.randn(*shape) + 1j * random_state.randn(*shape)
     np_x = np.cos(2 * np.pi * 100 * tt)[np.newaxis] + epsilon * 0.01
 
-    tr_x = torch.tensor(np.stack([np_x.real, np_x.imag], axis=-1))
+    # tr_x = torch.tensor(np.stack([np_x.real, np_x.imag], axis=-1))
+    tr_x = torch.from_numpy(np_x)
     tr_x.requires_grad = False
 
-    tr_window = torch.hamming_window(500, periodic=False, dtype=tr_x.dtype)
+    tr_window = torch.hamming_window(500, periodic=False,
+                                     dtype=tr_x.real.dtype)
 
     tr_ff, tr_px = pwelch(tr_x, 1, tr_window, fs=fs,
                           scaling="density", n_overlap=300)
