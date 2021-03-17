@@ -576,7 +576,7 @@ def test_enisum(random_state):
     equations = ["iij", "iji", "jii", "iii"]
     for eq in equations:
         assert cplx_allclose_numpy(cplx.einsum(eq, r), np.einsum(eq, c))
-        with pytest.raises(RuntimeError, match="dimension does not match"):
+        with pytest.raises(RuntimeError, match="but the sizes don't match"):
             cplx.einsum(eq, p)
 
     equations = [
