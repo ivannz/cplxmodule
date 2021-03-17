@@ -48,44 +48,43 @@ def pwelch(x, dim, window, fs=1., scaling="density", n_overlap=None):
     if scaling not in ("density", "spectrum"):
         raise ValueError(f"""Unrecognized `scaling` value {scaling}""")
 
-    if x.shape[-1] != 2:
-        raise TypeError("""The last dimension of the input must be 2:"""
-                        """x[..., 0] is real and x[..., 1] is imaginary.""")
+    assert x.is_complex()
+
+    # if x.shape[-1] != 2:
+    #     raise TypeError("""The last dimension of the input must be 2:"""
+    #                     """x[..., 0] is real and x[..., 1] is imaginary.""")
 
     dim = fix_dim(dim, x.dim())
-    if not 0 <= dim < x.dim() - 1:
-        raise ValueError("""The last dimension of the input cannot contain """
-                         """the signal.""")
+    # if not 0 <= dim < x.dim() - 1:
+    #     raise ValueError("""The last dimension of the input cannot contain """
+    #                      """the signal.""")
 
     n_window = len(window)
     if n_overlap is None:
         n_overlap = n_window // 2
     assert n_window > n_overlap
 
-    # 1. make windowed view and dim-shuffle to the last but one dim
-    x_window = window_view(x, dim, n_window, n_window - n_overlap)
-    x_window = torch.transpose(x_window, dim + 1, -2)
+    # 1. make windowed view at the last dim
+    x_window = window_view(x, dim, n_window, n_window - n_overlap, at=-1)
 
-    # 2. Apply window and compute the 1d-fft with `arbitrary number
-    #   of leading batch dimensions`
-    xw = torch.mul(x_window, window.unsqueeze(-1))
-    fft = torch.fft(xw, signal_ndim=1, normalized=False)
+    # 2. Apply window and compute batched 1d-fft over the last dim
+    xw = torch.mul(x_window, window)
+    fft = torch.fft.fft(xw, dim=-1, norm='backward')
 
-    # 3. undo the dim-shuffle on the fft result
-    fft = torch.transpose(fft, -2, dim + 1)
-
-    # 4. compute the power spectrum with the proper scaling
+    # 3. compute the power spectrum with the proper scaling
     if scaling == "density":
         scale = fs * torch.sum(window**2)
+
     elif scaling == "spectrum":
         scale = torch.sum(window)**2
 
     # used to have `/ x_window.shape[dim]`
-    Pxx = torch.sum(fft**2, dim=-1).mean(dim=dim) / scale
+    amplitude = abs(fft)
+    Pxx = amplitude.mul_(amplitude).mean(dim=dim) / scale
 
     # 5. get the frequencies
     freq = np.fft.fftfreq(n_window, 1. / fs)
-    freq = torch.tensor(freq, dtype=x.dtype, device=x.device)
+    freq = torch.tensor(freq, dtype=x.real.dtype, device=x.device)
     return freq, Pxx
 
 
@@ -160,12 +159,17 @@ def bandwidth_power(x, fs, bands, dim=-2, n_overlap=None,
         distribution.
     """
     dim = fix_dim(dim, x.dim())
+    if not x.is_complex():
+        # convert the torch<1.8 "complex" format to a proper complex dtype
+        assert x.shape[-1] == 2  # the last dim has size 2 for re and im
+        x = x[..., 0] + 1j * x[..., 1]  # makes into ndim-1
+
     if nperseg is None:
         nperseg = x.shape[dim]
 
     # 1. Welch
     window = torch.hamming_window(nperseg, periodic=False,
-                                  dtype=x.dtype, device=x.device)
+                                  dtype=x.real.dtype, device=x.device)
     ff, px = pwelch(x, dim, window, fs=fs, scaling=scaling,
                     n_overlap=n_overlap)
 

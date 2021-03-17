@@ -19,10 +19,10 @@ shape = 2, len(tt)
 epsilon = random_state.randn(*shape) + 1j * random_state.randn(*shape)
 np_x = np.cos(2 * np.pi * 100 * tt)[np.newaxis] + epsilon * 0.01
 
-tr_x = torch.tensor(np.stack([np_x.real, np_x.imag], axis=-1))
+tr_x = torch.from_numpy(np_x)
 tr_x.requires_grad = False
 
-tr_window = torch.hamming_window(500, periodic=False, dtype=tr_x.dtype)
+tr_window = torch.hamming_window(500, periodic=False, dtype=tr_x.real.dtype)
 
 tr_ff, tr_px = pwelch(tr_x, 1, tr_window, fs=fs,
                       scaling="density", n_overlap=300)
