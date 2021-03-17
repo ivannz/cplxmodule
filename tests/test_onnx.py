@@ -18,7 +18,7 @@ from cplxmodule.nn.modules import casting
 
 
 def onnx_export_to(filename, module, input, *,
-                   training=False, opset_version=12):
+                   training=False, opset_version=11):
     # jit compile and export into ONNX
     torch.onnx.export(
         module, (input,), filename, verbose=False,
@@ -50,7 +50,7 @@ def do_onnx_inference_test(module, input, *, training=False):
 
         assert torch.allclose(
             torch.from_numpy(output),
-            module(input), rtol=5e-5, atol=1e-6
+            module(input), rtol=1e-4, atol=1e-5
         )
 
 
