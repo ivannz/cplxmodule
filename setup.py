@@ -2,7 +2,7 @@ from setuptools import setup
 
 setup(
     name="cplxmodule",
-    version="2021.01.10",
+    version="2021.03.29a",
     description="Variational Dropout and Complex-valued Neural Networks in pytorch",
     long_description="An extension for pytorch providing essential building blocks "
                      "for Complex-valued Neural Networks and `torch.nn`-compatible "
@@ -34,7 +34,7 @@ setup(
         "cplxmodule.utils",
     ],
     install_requires=[
-        "torch>=1.7",
+        "torch>=1.8",
         "numpy",
         "scipy"
     ],
