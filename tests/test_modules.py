@@ -1,4 +1,5 @@
 import pytest
+import copy
 
 import torch
 
@@ -97,6 +98,15 @@ def test_linear():
     with torch.no_grad():
         assert cplx_allclose(implemented(z), emulated(z))
 
+    duplicated = copy.deepcopy(implemented)
+
+    dup = duplicated.state_dict()
+    ref = implemented.state_dict()
+    assert all([torch.allclose(dup[p], ref[p]) for p in ref.keys()])
+
+    with torch.no_grad():
+        assert cplx_allclose(duplicated(z), implemented(z))
+
 
 def do_test_conv(Layer, CplxLayer, in_channels, out_channels, kernel_size,
                  **kwargs):
@@ -113,6 +123,15 @@ def do_test_conv(Layer, CplxLayer, in_channels, out_channels, kernel_size,
     with torch.no_grad():
         z = cplx.randn(*shape, dtype=torch.double)
         assert cplx_allclose(implemented(z), emulated(z))
+
+    duplicated = copy.deepcopy(implemented)
+
+    dup = duplicated.state_dict()
+    ref = implemented.state_dict()
+    assert all([torch.allclose(dup[p], ref[p]) for p in ref.keys()])
+
+    with torch.no_grad():
+        assert cplx_allclose(duplicated(z), implemented(z))
 
 
 @pytest.mark.parametrize('case', [

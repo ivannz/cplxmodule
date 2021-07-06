@@ -1,4 +1,5 @@
 import pytest
+import copy
 
 import torch
 import torch.nn.functional as F
@@ -635,6 +636,20 @@ def test_scalar_shape_dim_size(random_state):
 
     with pytest.raises(RuntimeError, match="look up dimensions by name"):
         p.size(None)
+
+
+def test_deepcopy(random_state):
+    """Test shallow and deep copy support."""
+    a = random_state.randn(5, 5, 200) + 1j * random_state.randn(5, 5, 200)
+    p = cplx.Cplx.from_numpy(a)
+
+    q = copy.copy(p)
+    assert np.allclose(q.numpy(), p.numpy())
+    assert q.real is p.real and q.imag is p.imag
+
+    q = copy.deepcopy(p)
+    assert np.allclose(q.numpy(), p.numpy())
+    assert q.real is not p.real and q.imag is not p.imag
 
 
 @pytest.mark.skip(reason="not implemented")

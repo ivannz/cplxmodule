@@ -1,4 +1,5 @@
 import warnings
+from copy import deepcopy
 
 import torch
 import torch.nn.functional as F
@@ -51,6 +52,16 @@ class Cplx(object):
         self = super().__new__(cls)
         self.__real, self.__imag = real, imag
         return self
+
+    def __copy__(self):
+        r"""Shallow: a new instance with references to the real-imag data."""
+        return type(self)(self.__real, self.__imag)
+
+    def __deepcopy__(self, memo):
+        r"""Deep: a new instance with copies of the real-imag data."""
+        real = deepcopy(self.__real, memo)
+        imag = deepcopy(self.__imag, memo)
+        return type(self)(real, imag)
 
     @property
     def real(self):
