@@ -224,6 +224,10 @@ class Cplx(object):
         r"""The Hermitian transpose of a 2d compelx tensor."""
         return self.conj.t()  # Cplx(self.__real.t(), -self.__imag.t())
 
+    def flatten(self, start_dim=0, end_dim=-1):
+        return type(self)(self.__real.flatten(start_dim, end_dim),
+                          self.__imag.flatten(start_dim, end_dim))
+
     def view(self, *shape):
         r"""Return a view of the complex tensor."""
         shape = shape[0] if shape and isinstance(shape[0], tuple) else shape
@@ -908,3 +912,83 @@ def bilinear_cat(input1, input2, weight, bias=None, conjugate=True):
         output += bias
 
     return output
+
+
+def max_poolnd(pool, input, kernel_size, stride=None,
+               padding=0, dilation=1, ceil_mode=False):
+    r"""Applies complex version of n-d max-pooling to the incoming complex
+    tensor `B x c_in x L_1 x ... L_n`.
+
+    Details
+    -------
+    The variant is based on
+
+        [Zhang et al. (eq. (3))](https://ieeexplore.ieee.org/document/8039431)
+
+    wherein the indices of the complex values, which remain after pooling,
+    are determined by the maximum among the absolute values of the complex
+    numbers within the pooling window. For abstract indices the operation
+    has the following form
+
+    $$
+        y_\alpha = x_{\xi(\alpha)}
+            \,,
+            \xi(\alpha)
+                = \arg \max_{\beta \in P(\alpha)}
+                    \lvert x_{\beta} \rvert
+        \,, $$
+
+    where $P(\alpha)$ is the subset of indices within the input magnitudes,
+    that specify the pooling window associated with the index $\alpha$ in
+    the output.
+
+    WARNING
+    -------
+    For real tensor embedded as complex tensors, i.e.
+
+         $x \in \mathbb{R}^{\cdot} \subset \mathbb{C}^{\cdot}$,
+
+    the real-valued max-pooling and this complex variant would yield different
+    results by design!
+    """
+
+    # 1. get the abs max-pooling indices
+    #  XXX should we care about the extra sqrt in abs?
+    _, indices = pool(abs(input), kernel_size, stride, padding,
+                      dilation, ceil_mode, return_indices=True)
+
+    # 2. the indices refer to the positions in the trailing flattened
+    #    magnitudes, so we flatten the trailing dims after the channels.
+    flat = input.flatten(2, -1)
+
+    # 3. gather the picked values from re-im parts
+    ix = indices.flatten(2, -1)
+    re = torch.gather(flat.real, -1, ix)
+    im = torch.gather(flat.imag, -1, ix)
+
+    # 4. reassemble
+    return Cplx(re, im).reshape(input.shape[:2] + indices.shape[2:])
+
+
+def max_pool1d(input, kernel_size, stride=None, padding=0,
+               dilation=1, ceil_mode=False):
+    """Complex 1d max pooling on the complex tensor `B x c_in x L`."""
+
+    return max_poolnd(F.max_pool1d, input, kernel_size,
+                      stride, padding, dilation, ceil_mode)
+
+
+def max_pool2d(input, kernel_size, stride=None, padding=0,
+               dilation=1, ceil_mode=False):
+    """Complex 2d max pooling on the complex tensor `B x c_in x H x W`."""
+
+    return max_poolnd(F.max_pool2d, input, kernel_size,
+                      stride, padding, dilation, ceil_mode)
+
+
+def max_pool3d(input, kernel_size, stride=None, padding=0,
+               dilation=1, ceil_mode=False):
+    """Complex 3d max pooling on the complex tensor `B x c_in x H x W x D`."""
+
+    return max_poolnd(F.max_pool3d, input, kernel_size,
+                      stride, padding, dilation, ceil_mode)
