@@ -18,3 +18,5 @@ from .activation import CplxModulus, CplxAngle
 from .batchnorm import CplxBatchNorm1d, CplxBatchNorm2d, CplxBatchNorm3d
 
 from .extra import CplxDropout
+
+from .pooling import CplxMaxPool1d, CplxMaxPool2d, CplxMaxPool3d
