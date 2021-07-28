@@ -587,12 +587,16 @@ def linear_3m(input, weight, bias=None):
     Strassen's 3M
     http://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.118.1356&rep=rep1&type=pdf
 
-    This method
-    https://cnx.org/contents/4kChocHM@6/Efficient-FFT-Algorithm-and-Programming-Tricks
+    This method trades off one `multiplication` for three extra additions
+    https://cnx.org/contents/4kChocHM@6/Efficient-FFT-Algorithm-and-Programming-Tricks#p2
+    https://en.wikipedia.org/wiki/Multiplication_algorithm#Complex_multiplication_algorithm
     """
-    # W = U + i V,  z = u + i v, c = \Re c + i \Im c
-    #  W z + c = (U + i V) (u + i v) + \Re c + i \Im c
-    #          = (U u + \Re c - V v) + i (V u + \Im c + U v)
+    # W = U + j V,  z = u + j v, c = \Re c + j \Im c
+    #  W z + c = (U + j V) (u + j v) + \Re c + j \Im c
+    #          = (U u + \Re c - V v) + j (V u + \Im c + U v)
+    #          = [± U (v + j u)]  # Gauss trick
+    #          =     (U (u + v) - (U + V) v + \Re c)
+    #            + j (U (u + v) + (V - U) u + \Im c)
     K1 = F.linear(input.real + input.imag,  weight.real)
     K2 = F.linear(input.real, weight.imag - weight.real)
     K3 = F.linear(input.imag, weight.real + weight.imag)
@@ -641,6 +645,10 @@ def convnd_naive(conv, input, weight, stride=1,
 
 def convnd_quick(conv, input, weight, stride=1,
                  padding=0, dilation=1):
+    r"""Applies a complex convolution transformation to the complex data
+    :math:`y = x \ast W + b` using two calls to `conv` at the cost of extra
+    concatenation and slicing.
+    """
     n_out = int(weight.shape[0])
 
     ww = torch.cat([weight.real, weight.imag], dim=0)
@@ -650,6 +658,29 @@ def convnd_quick(conv, input, weight, stride=1,
     rwr, iwr = wr[:, :n_out], wr[:, n_out:]
     rwi, iwi = wi[:, :n_out], wi[:, n_out:]
     return Cplx(rwr - iwi, iwr + rwi)
+
+
+def convnd_3m(conv, input, weight, stride=1,
+              padding=0, dilation=1, groups=1):
+    r"""Applies a complex convolution transformation to the complex data
+    :math:`y = x \ast W + b` using 3 calls to `conv`.
+    """
+    # W = U + j V,  z = u + j v
+    #  W z = (U + j V) (u + j v)
+    #          = (U u - V v) + j (V u + U v)
+    #          = [± U (v + j u)]  # Gauss trick
+    #          =     (U (u + v) - (U + V) v)
+    #            + j (U (u + v) + (V - U) u)
+    K1 = conv(input.real + input.imag,  weight.real, None,
+              stride, padding, dilation, groups)
+
+    K2 = conv(input.real, weight.imag - weight.real, None,
+              stride, padding, dilation, groups)
+
+    K3 = conv(input.imag, weight.real + weight.imag, None,
+              stride, padding, dilation, groups)
+
+    return Cplx(K1 - K3, K1 + K2)
 
 
 def convnd(conv, input, weight, bias=None, stride=1,
@@ -720,6 +751,22 @@ def conv_transposend_naive(conv_t, input, weight, stride=1,
         + conv_t(input.imag, weight.real, None, stride,
                  padding, output_padding, groups, dilation)
     return Cplx(re, im)
+
+
+def conv_transposend_3m(conv_t, input, weight, stride=1,
+                        padding=0, output_padding=0,
+                        groups=1, dilation=1):
+    """3m interface for transposed convolutions."""
+    K1 = conv_t(input.real + input.imag,  weight.real, None, stride,
+                padding, output_padding, groups, dilation)
+
+    K2 = conv_t(input.real, weight.imag - weight.real, None, stride,
+                padding, output_padding, groups, dilation)
+
+    K3 = conv_t(input.imag, weight.real + weight.imag, None, stride,
+                padding, output_padding, groups, dilation)
+
+    return Cplx(K1 - K3, K1 + K2)
 
 
 def conv_transposend(conv, input, weight, bias=None, stride=1,

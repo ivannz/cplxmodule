@@ -299,6 +299,9 @@ def test_conv1d_transform(random_state):
     cc = cplx.convnd_quick(F.conv1d, cx, cw)
     assert cplx_allclose_numpy(cc, nn)
 
+    cc = cplx.convnd_3m(F.conv1d, cx, cw)
+    assert cplx_allclose_numpy(cc, nn)
+
     a = random_state.randn(5, 12, 200) + 1j * random_state.randn(5, 12, 200)
     L = random_state.randn(14, 12, 7) + 1j * random_state.randn(14, 12, 7)
 
@@ -313,6 +316,18 @@ def test_conv1d_transform(random_state):
                          cplx.convnd_naive(F.conv1d, p, U, padding=2))
 
     assert cplx_allclose(cplx.convnd_quick(F.conv1d, p, U, dilation=3),
+                         cplx.convnd_naive(F.conv1d, p, U, dilation=3))
+
+    assert cplx_allclose(cplx.convnd_3m(F.conv1d, p, U),
+                         cplx.convnd_naive(F.conv1d, p, U))
+
+    assert cplx_allclose(cplx.convnd_3m(F.conv1d, p, U, stride=5),
+                         cplx.convnd_naive(F.conv1d, p, U, stride=5))
+
+    assert cplx_allclose(cplx.convnd_3m(F.conv1d, p, U, padding=2),
+                         cplx.convnd_naive(F.conv1d, p, U, padding=2))
+
+    assert cplx_allclose(cplx.convnd_3m(F.conv1d, p, U, dilation=3),
                          cplx.convnd_naive(F.conv1d, p, U, dilation=3))
 
 
@@ -350,6 +365,9 @@ def test_conv2d_transform(random_state):
     cc = cplx.convnd_quick(F.conv2d, cx, cw)
     assert cplx_allclose_numpy(cc, nn)
 
+    cc = cplx.convnd_3m(F.conv2d, cx, cw)
+    assert cplx_allclose_numpy(cc, nn)
+
     a = random_state.randn(5, 12, 41, 39) + 1j * random_state.randn(5, 12, 41, 39)
     L = random_state.randn(14, 12, 7, 6) + 1j * random_state.randn(14, 12, 7, 6)
 
@@ -364,6 +382,18 @@ def test_conv2d_transform(random_state):
                          cplx.convnd_naive(F.conv2d, p, U, padding=2))
 
     assert cplx_allclose(cplx.convnd_quick(F.conv2d, p, U, dilation=3),
+                         cplx.convnd_naive(F.conv2d, p, U, dilation=3))
+
+    assert cplx_allclose(cplx.convnd_3m(F.conv2d, p, U),
+                         cplx.convnd_naive(F.conv2d, p, U))
+
+    assert cplx_allclose(cplx.convnd_3m(F.conv2d, p, U, stride=5),
+                         cplx.convnd_naive(F.conv2d, p, U, stride=5))
+
+    assert cplx_allclose(cplx.convnd_3m(F.conv2d, p, U, padding=2),
+                         cplx.convnd_naive(F.conv2d, p, U, padding=2))
+
+    assert cplx_allclose(cplx.convnd_3m(F.conv2d, p, U, dilation=3),
                          cplx.convnd_naive(F.conv2d, p, U, dilation=3))
 
 
@@ -401,6 +431,9 @@ def test_conv3d_transform(random_state):
     cc = cplx.convnd_quick(F.conv3d, cx, cw)
     assert cplx_allclose_numpy(cc, nn)
 
+    cc = cplx.convnd_3m(F.conv3d, cx, cw)
+    assert cplx_allclose_numpy(cc, nn)
+
     a = random_state.randn(5, 12, 14, 19, 27) + 1j * random_state.randn(5, 12, 14, 19, 27)
     L = random_state.randn(14, 12, 3, 4, 5) + 1j * random_state.randn(14, 12, 3, 4, 5)
 
@@ -415,6 +448,18 @@ def test_conv3d_transform(random_state):
                          cplx.convnd_naive(F.conv3d, p, U, padding=2))
 
     assert cplx_allclose(cplx.convnd_quick(F.conv3d, p, U, dilation=3),
+                         cplx.convnd_naive(F.conv3d, p, U, dilation=3))
+
+    assert cplx_allclose(cplx.convnd_3m(F.conv3d, p, U),
+                         cplx.convnd_naive(F.conv3d, p, U))
+
+    assert cplx_allclose(cplx.convnd_3m(F.conv3d, p, U, stride=5),
+                         cplx.convnd_naive(F.conv3d, p, U, stride=5))
+
+    assert cplx_allclose(cplx.convnd_3m(F.conv3d, p, U, padding=2),
+                         cplx.convnd_naive(F.conv3d, p, U, padding=2))
+
+    assert cplx_allclose(cplx.convnd_3m(F.conv3d, p, U, dilation=3),
                          cplx.convnd_naive(F.conv3d, p, U, dilation=3))
 
 
