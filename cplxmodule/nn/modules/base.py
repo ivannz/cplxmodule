@@ -17,8 +17,8 @@ class CplxParameter(torch.nn.ParameterDict):
             "imag": torch.nn.Parameter(cplx.imag),
         })
 
-        # save reference to the underlying cplx data
-        self._cplx = cplx
+        # save a reference to the underlying cplx data (bypass ParameterDict)
+        torch.nn.Module.__setattr__(self, '_cplx', cplx)
 
     def _load_from_state_dict(self, state_dict, prefix, local_metadata,
                               strict, missing_keys, unexpected_keys,
