@@ -529,7 +529,54 @@ def randn_like(input, dtype=None, device=None, requires_grad=False):
 
 
 def modrelu(input, threshold=0.5):
-    r"""Compute the modulus relu of the complex tensor in re-im pair."""
+    r"""Soft-threshold the modulus of the complex tensor.
+
+    Parameters
+    ----------
+    input : Cplx tensor
+        The complex valued data to which modReLU is to be applied elementwise.
+
+    threshold : float, default=0.5
+        The clipping threshold of this version of modReLU. See details.
+
+    Returns
+    -------
+    output : Cplx tensor
+        The values which have their complex modulus soft-thresholded and their
+        complex phase retained.
+
+    Details
+    -------
+    This function actually implements a slightly reparameterized version
+    of modReLU (note the negative sign):
+
+    $$
+    \operatorname{modReLU}
+        \colon \mathbb{C} \times \mathbb{R} \to  \mathbb{C}
+        \colon
+            (z, \tau)
+                \mapsto z \max \biggl\{
+                    0, 1 - \frac{\tau}{\lvert z \rvert}
+                \biggr\}
+                = \max \biggl\{
+                    0, \lvert z \rvert - \tau
+                \biggr\} e^{j \phi}
+        \,. $$
+
+    This parameterization deviates from the non-linearity, originally proposed
+    in
+
+        [Arjovsky et al. (2016)](http://proceedings.mlr.press/v48/arjovsky16.html)
+
+    by having the sign of the bias parameter $b$ in eq.~(8) FLIPPED.
+
+    The rationale behind this discrepancy in the implementation was that this
+    non-linearity resembles the soft-thresholding operator, with the parameter
+    playing the role of the zeroing threshold:
+
+        the higher the threshold the larger should the magnitude of the complex
+        number be in order to avoid being zeroed.
+    """
     # scale = (1 - \trfac{b}{|z|})_+
     modulus = torch.clamp(abs(input), min=1e-5)
     return input * torch.relu(1. - threshold / modulus)
