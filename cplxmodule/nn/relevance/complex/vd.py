@@ -28,6 +28,7 @@ class ExpiFunction(torch.autograd.Function):
     during the forward pass due to CPU-GPU device switch. Backward pass does
     not suffer from this issue and is computed on-device.
     """
+
     @staticmethod
     def forward(ctx, x):
         ctx.save_for_backward(x)
@@ -96,90 +97,139 @@ class CplxVDMixin:
     @property
     def penalty(self):
         """Exact complex KL divergence."""
-        n_log_alpha = - self.log_alpha
-        return euler_gamma + n_log_alpha - torch_expi(- torch.exp(n_log_alpha))
+        n_log_alpha = -self.log_alpha
+        return euler_gamma + n_log_alpha - torch_expi(-torch.exp(n_log_alpha))
 
 
 class CplxLinearVD(CplxVDMixin, RelevanceMixin, CplxLinearGaussian, BaseARD):
     """Complex-valued linear layer with variational dropout."""
+
     pass
 
 
 class CplxBilinearVD(CplxVDMixin, RelevanceMixin, CplxBilinearGaussian, BaseARD):
     """Complex-valued bilinear layer with variational dropout."""
+
     pass
 
 
 class CplxConv1dVD(CplxVDMixin, RelevanceMixin, CplxConv1dGaussian, BaseARD):
     """1D complex-valued convolution layer with variational dropout."""
+
     pass
 
 
 class CplxConv2dVD(CplxVDMixin, RelevanceMixin, CplxConv2dGaussian, BaseARD):
     """2D complex-valued convolution layer with variational dropout."""
+
     pass
 
 
 class CplxConv3dVD(CplxVDMixin, RelevanceMixin, CplxConv3dGaussian, BaseARD):
     """3D complex-valued convolution layer with variational dropout."""
+
     pass
 
 
 class CplxLinearARD(object):
     def __new__(cls, in_features, out_features, bias=True):
-        warnings.warn("Importing complex-valued Automatic Relevance Determination"
-                      " layers (ARD) from `cplxmodule.nn.relevance.complex` has"
-                      " been deprecated due to misleading name. Starting with"
-                      " version `2021` the `.complex` submodule will export complex-"
-                      "valued Variational Dropout (VD) layers only. Please"
-                      " import ARD layers from `relevance.ard`.",
-                      FutureWarning)
+        warnings.warn(
+            "Importing complex-valued Automatic Relevance Determination"
+            " layers (ARD) from `cplxmodule.nn.relevance.complex` has"
+            " been deprecated due to misleading name. Starting with"
+            " version `2021` the `.complex` submodule will export complex-"
+            "valued Variational Dropout (VD) layers only. Please"
+            " import ARD layers from `relevance.ard`.",
+            FutureWarning,
+        )
 
         return CplxLinearVD(in_features, out_features, bias)
 
 
 class CplxBilinearARD(object):
-    def __new__(cls, in1_features, in2_features, out_features, bias=True,
-                conjugate=True):
-        warnings.warn("Importing complex-valued Automatic Relevance Determination"
-                      " layers (ARD) from `cplxmodule.nn.relevance.complex` has"
-                      " been deprecated due to misleading name. Starting with"
-                      " version `2021` the `.complex` submodule will export complex-"
-                      "valued Variational Dropout (VD) layers only. Please"
-                      " import ARD layers from `relevance.ard`.",
-                      FutureWarning)
+    def __new__(
+        cls, in1_features, in2_features, out_features, bias=True, conjugate=True
+    ):
+        warnings.warn(
+            "Importing complex-valued Automatic Relevance Determination"
+            " layers (ARD) from `cplxmodule.nn.relevance.complex` has"
+            " been deprecated due to misleading name. Starting with"
+            " version `2021` the `.complex` submodule will export complex-"
+            "valued Variational Dropout (VD) layers only. Please"
+            " import ARD layers from `relevance.ard`.",
+            FutureWarning,
+        )
 
-        return CplxBilinearVD(in1_features, in2_features, out_features, bias,
-                              conjugate)
+        return CplxBilinearVD(in1_features, in2_features, out_features, bias, conjugate)
 
 
 class CplxConv1dARD(object):
-    def __new__(cls, in_channels, out_channels, kernel_size, stride=1,
-                padding=0, dilation=1, groups=1,
-                bias=True, padding_mode='zeros'):
-        warnings.warn("Importing complex-valued Automatic Relevance Determination"
-                      " layers (ARD) from `cplxmodule.nn.relevance.complex` has"
-                      " been deprecated due to misleading name. Starting with"
-                      " version `2021` the `.complex` submodule will export complex-"
-                      "valued Variational Dropout (VD) layers only. Please"
-                      " import ARD layers from `relevance.ard`.",
-                      FutureWarning)
+    def __new__(
+        cls,
+        in_channels,
+        out_channels,
+        kernel_size,
+        stride=1,
+        padding=0,
+        dilation=1,
+        groups=1,
+        bias=True,
+        padding_mode="zeros",
+    ):
+        warnings.warn(
+            "Importing complex-valued Automatic Relevance Determination"
+            " layers (ARD) from `cplxmodule.nn.relevance.complex` has"
+            " been deprecated due to misleading name. Starting with"
+            " version `2021` the `.complex` submodule will export complex-"
+            "valued Variational Dropout (VD) layers only. Please"
+            " import ARD layers from `relevance.ard`.",
+            FutureWarning,
+        )
 
-        return CplxConv1dVD(in_channels, out_channels, kernel_size, stride,
-                            padding, dilation, groups, bias, padding_mode)
+        return CplxConv1dVD(
+            in_channels,
+            out_channels,
+            kernel_size,
+            stride,
+            padding,
+            dilation,
+            groups,
+            bias,
+            padding_mode,
+        )
 
 
 class CplxConv2dARD(object):
-    def __new__(cls, in_channels, out_channels, kernel_size, stride=1,
-                padding=0, dilation=1, groups=1,
-                bias=True, padding_mode='zeros'):
-        warnings.warn("Importing complex-valued Automatic Relevance Determination"
-                      " layers (ARD) from `cplxmodule.nn.relevance.complex` has"
-                      " been deprecated due to misleading name. Starting with"
-                      " version `2021` the `.complex` submodule will export complex-"
-                      "valued Variational Dropout (VD) layers only. Please"
-                      " import ARD layers from `relevance.ard`.",
-                      FutureWarning)
+    def __new__(
+        cls,
+        in_channels,
+        out_channels,
+        kernel_size,
+        stride=1,
+        padding=0,
+        dilation=1,
+        groups=1,
+        bias=True,
+        padding_mode="zeros",
+    ):
+        warnings.warn(
+            "Importing complex-valued Automatic Relevance Determination"
+            " layers (ARD) from `cplxmodule.nn.relevance.complex` has"
+            " been deprecated due to misleading name. Starting with"
+            " version `2021` the `.complex` submodule will export complex-"
+            "valued Variational Dropout (VD) layers only. Please"
+            " import ARD layers from `relevance.ard`.",
+            FutureWarning,
+        )
 
-        return CplxConv2dVD(in_channels, out_channels, kernel_size, stride,
-                            padding, dilation, groups, bias, padding_mode)
+        return CplxConv2dVD(
+            in_channels,
+            out_channels,
+            kernel_size,
+            stride,
+            padding,
+            dilation,
+            groups,
+            bias,
+            padding_mode,
+        )

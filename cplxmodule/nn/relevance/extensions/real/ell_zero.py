@@ -41,6 +41,7 @@ class LinearL0(torch.nn.Linear, BaseARD, SparsityStats):
            ICLR 2017
            https://arxiv.org/pdf/1611.00712.pdf
     """
+
     __sparsity_ignore__ = ("log_alpha",)
 
     beta, gamma, zeta = 0.66, -0.1, 1.1
@@ -84,7 +85,7 @@ class LinearL0(torch.nn.Linear, BaseARD, SparsityStats):
         realtion $1 - \sigma(x) = \sigma(-x)$.
         """
         # compute P(z\neq 0) (minus, due to -ve log-alpha, c.f. eq. (12)).
-        shift = - self.beta * math.log(- self.gamma / self.zeta)
+        shift = -self.beta * math.log(-self.gamma / self.zeta)
         return torch.sigmoid(shift - self.log_alpha)
 
     def forward(self, input):
@@ -93,8 +94,13 @@ class LinearL0(torch.nn.Linear, BaseARD, SparsityStats):
         if self.training:
             if n == 1 or m == 1:
                 # this is a relatively "small" batch of unform rv.
-                u = torch.rand(*input.shape[:-1], n, m,
-                               dtype=input.dtype, device=input.device)
+                u = torch.rand(
+                    *input.shape[:-1],
+                    n,
+                    m,
+                    dtype=input.dtype,
+                    device=input.device,
+                )
             else:
                 # one unform sample for the whole batch! Very high gradient var.
                 u = torch.rand_like(self.log_alpha)
@@ -150,7 +156,7 @@ class LinearL0(torch.nn.Linear, BaseARD, SparsityStats):
 
         else:
             # on inference in eq. (13) beta is fixed at 1.0, but not in their code
-            s = torch.sigmoid(- self.log_alpha)
+            s = torch.sigmoid(-self.log_alpha)
             # It seems that this beta is very important! But why?
 
         return torch.clamp((self.zeta - self.gamma) * s + self.gamma, 0, 1)
@@ -178,12 +184,14 @@ class LinearL0(torch.nn.Linear, BaseARD, SparsityStats):
 
 class LinearL0ARD(torch.nn.Linear, BaseARD, SparsityStats):
     def __new__(self, in_features, out_features, bias=True, group=None):
-        warnings.warn("L0 layer learns probabilities of each parameter being"
-                      " nonzero and has little relation to Variational methods."
-                      " It was a serious oversight to name it as such. Thus"
-                      " starting with version `1.0` importing this layer under"
-                      " the incorrect name will be deprecated, and the name"
-                      " will be reverted to `LinearL0`.",
-                      FutureWarning)
+        warnings.warn(
+            "L0 layer learns probabilities of each parameter being"
+            " nonzero and has little relation to Variational methods."
+            " It was a serious oversight to name it as such. Thus"
+            " starting with version `1.0` importing this layer under"
+            " the incorrect name will be deprecated, and the name"
+            " will be reverted to `LinearL0`.",
+            FutureWarning,
+        )
 
         return LinearL0(in_features, out_features, bias, group)

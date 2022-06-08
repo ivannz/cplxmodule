@@ -36,6 +36,7 @@ class BaseARD(torch.nn.Module):
         For $\tau=0.25$ and $\beta=0.66$ we have `threshold=2.96`.
 
     """
+
     @property
     def penalty(self):
         """Get the penalty induced by the variational approximation.
@@ -60,8 +61,7 @@ class BaseARD(torch.nn.Module):
 
         # if the property in a derived class raises then it gets
         # silently undefined due to inheritance from torch.nn.Module.
-        raise NotImplementedError("Derived classes must compute "
-                                  "their own penalty.")
+        raise NotImplementedError("Derived classes must compute " "their own penalty.")
 
     def relevance(self, **kwargs):
         r"""Get the dropout mask based on the provided parameters.
@@ -80,8 +80,9 @@ class BaseARD(torch.nn.Module):
             regularization. Soft masks would require cleaning up to eliminate
             the result of such co-adaptation (see `nn.masked.binarize_masks`).
         """
-        raise NotImplementedError("Derived classes must implement a float "
-                                  "mask of relevant coefficients.")
+        raise NotImplementedError(
+            "Derived classes must implement a float mask of relevant coefficients."
+        )
 
 
 def named_penalties(module, reduction="sum", prefix=""):
@@ -123,8 +124,9 @@ def named_penalties(module, reduction="sum", prefix=""):
     """
 
     if reduction is not None and reduction not in ("mean", "sum"):
-        raise ValueError(f"`reduction` must be either `None`,"
-                         f" `sum` or `mean`. Got {reduction}.")
+        raise ValueError(
+            f"`reduction` must be either `None`, `sum` or `mean`. Got {reduction}."
+        )
 
     # yields own penalty and penalties of all descendants
     for name, mod in module.named_modules(prefix=prefix):
@@ -158,7 +160,7 @@ def penalties(module, reduction="sum"):
     torch.Tensor
         A differentiable value of the penalty.
     """
-    for name, penalty in named_penalties(module, reduction=reduction):
+    for _, penalty in named_penalties(module, reduction=reduction):
         yield penalty
 
 
@@ -211,7 +213,4 @@ def compute_ard_masks(module, *, prefix="", **kwargs):
         return {}
 
     relevance = named_relevance(module, prefix=prefix, **kwargs)
-    return {
-        name + ("." if name else "") + "mask": mask
-        for name, mask in relevance
-    }
+    return {name + ("." if name else "") + "mask": mask for name, mask in relevance}

@@ -1,11 +1,11 @@
-import torch
+import torch  # noqa: F401
 import torch.nn.functional as F
 
 from .vd import LinearVD, BilinearVD
 from .vd import Conv1dVD, Conv2dVD, Conv3dVD
 
 
-class RealARDMixin():
+class RealARDMixin:
     @property
     def penalty(self):
         r"""Penalty from arxiv:1811.00596.
@@ -36,29 +36,34 @@ class RealARDMixin():
         """
 
         # `softplus` is $x \mapsto \log(1 + e^x)$
-        return 0.5 * F.softplus(- self.log_alpha)
+        return 0.5 * F.softplus(-self.log_alpha)
 
 
 class LinearARD(RealARDMixin, LinearVD):
     """Linear layer with automatic relevance determination."""
+
     pass
 
 
 class Conv1dARD(RealARDMixin, Conv1dVD):
     """1D convolution layer with automatic relevance determination."""
+
     pass
 
 
 class Conv2dARD(RealARDMixin, Conv2dVD):
     """2D convolution layer with automatic relevance determination."""
+
     pass
 
 
 class Conv3dARD(RealARDMixin, Conv3dVD):
     """3D convolution layer with automatic relevance determination."""
+
     pass
 
 
 class BilinearARD(RealARDMixin, BilinearVD):
     """Bilinear layer with automatic relevance determination."""
+
     pass

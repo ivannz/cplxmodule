@@ -15,6 +15,7 @@ class GaussianMixin:
         value of the weight. The higher the log-alpha the less relevant the
         parameter is.
     """
+
     def reset_variational_parameters(self):
         # initially everything is relevant
         self.log_sigma2.data.uniform_(-10, -10)
@@ -71,24 +72,43 @@ class BilinearGaussian(GaussianMixin, torch.nn.Bilinear):
         if not self.training:
             return mu
 
-        s2 = F.bilinear(input1 * input1, input2 * input2,
-                        torch.exp(self.log_sigma2), None)
+        s2 = F.bilinear(
+            input1 * input1, input2 * input2, torch.exp(self.log_sigma2), None
+        )
 
         # .normal reports a grad-fn, but weirdly does not pass grads!
         return mu + torch.randn_like(s2) * torch.sqrt(torch.clamp(s2, 1e-8))
 
 
 class ConvNdGaussianMixin(GaussianMixin):
-    def __init__(self, in_channels, out_channels, kernel_size, stride=1,
-                 padding=0, dilation=1, groups=1,
-                 bias=True, padding_mode='zeros'):
-        super().__init__(in_channels, out_channels, kernel_size, stride=stride,
-                         padding=padding, dilation=dilation, groups=groups,
-                         bias=bias, padding_mode=padding_mode)
+    def __init__(
+        self,
+        in_channels,
+        out_channels,
+        kernel_size,
+        stride=1,
+        padding=0,
+        dilation=1,
+        groups=1,
+        bias=True,
+        padding_mode="zeros",
+    ):
+        super().__init__(
+            in_channels,
+            out_channels,
+            kernel_size,
+            stride=stride,
+            padding=padding,
+            dilation=dilation,
+            groups=groups,
+            bias=bias,
+            padding_mode=padding_mode,
+        )
 
         if self.padding_mode != "zeros":
-            raise ValueError(f"Only `zeros` padding mode is supported. "
-                             f"Got `{self.padding_mode}`.")
+            raise ValueError(
+                f"Only `zeros` padding mode is supported. Got `{self.padding_mode}`."
+            )
 
         self.log_sigma2 = torch.nn.Parameter(torch.Tensor(*self.weight.shape))
         self.reset_variational_parameters()
@@ -131,8 +151,15 @@ class ConvNdGaussianMixin(GaussianMixin):
         if not self.training:
             return mu
 
-        s2 = conv(input * input, torch.exp(self.log_sigma2), None,
-                  self.stride, self.padding, self.dilation, self.groups)
+        s2 = conv(
+            input * input,
+            torch.exp(self.log_sigma2),
+            None,
+            self.stride,
+            self.padding,
+            self.dilation,
+            self.groups,
+        )
         return mu + torch.randn_like(s2) * torch.sqrt(torch.clamp(s2, 1e-8))
 
 

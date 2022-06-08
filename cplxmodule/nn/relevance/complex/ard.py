@@ -1,11 +1,11 @@
-import torch
+import torch  # noqa: F401
 import torch.nn.functional as F
 
 from .vd import CplxLinearVD, CplxBilinearVD
 from .vd import CplxConv1dVD, CplxConv2dVD, CplxConv3dVD
 
 
-class CplxARDMixin():
+class CplxARDMixin:
     @property
     def penalty(self):
         r"""Empricial Bayes penalty for complex layer with complex gaussian vi.
@@ -36,13 +36,14 @@ class CplxARDMixin():
         """
 
         # `softplus` is $x \mapsto \log(1 + e^x)$
-        return F.softplus(- self.log_alpha)
+        return F.softplus(-self.log_alpha)
 
 
 class CplxLinearARD(CplxARDMixin, CplxLinearVD):
     """Complex-valued linear layer with automatic relevance
     determination.
     """
+
     pass
 
 
@@ -50,6 +51,7 @@ class CplxBilinearARD(CplxARDMixin, CplxBilinearVD):
     """Complex-valued bilinear layer with automatic relevance
     determination.
     """
+
     pass
 
 
@@ -57,6 +59,7 @@ class CplxConv1dARD(CplxARDMixin, CplxConv1dVD):
     """1D complex-valued convolution layer with automatic relevance
     determination.
     """
+
     pass
 
 
@@ -64,6 +67,7 @@ class CplxConv2dARD(CplxARDMixin, CplxConv2dVD):
     """2D complex-valued convolution layer with automatic relevance
     determination.
     """
+
     pass
 
 
@@ -71,4 +75,5 @@ class CplxConv3dARD(CplxARDMixin, CplxConv3dVD):
     """3D complex-valued convolution layer with automatic relevance
     determination.
     """
+
     pass
