@@ -4,7 +4,11 @@ A lightweight extension for `torch.nn` that adds layers and activations, which r
 
 ## Documentation
 
-Please refer to README files located in [cplxmodule.nn](./cplxmodule/nn), [cplxmodule.nn.relevance](./cplxmodule/nn/relevance), and [cplxmodule.nn.masked](./cplxmodule/nn/masked) for a high-level description of the implementation, functionality and useful code patterns.
+For a high-level description of the implementation, functionality and useful code patterns, please refer to the following READMEs
+
+- [cplxmodule.nn](./cplxmodule/nn) the implemented complex-valued layers and their basic use
+- [cplxmodule.nn.relevance](./cplxmodule/nn/relevance) the *plug-and-play* layers for Variational Dropout and how to use them ([[3]](#user-content-ref3), [[4]](#user-content-ref4), [[5]](#user-content-ref5)).
+- [cplxmodule.nn.masked](./cplxmodule/nn/masked) supported masked layers for fine-tuning pruned networks and how to migrate parameters between classic `torch.nn` layers
 
 ## Implementation
 
@@ -27,7 +31,7 @@ conda create -n cplxmodule python pip numpy scipy "pytorch::pytorch" \
   && conda activate cplxmodule
 ```
 
-Extra dependencies, that are used in tests and needed for develoipment, can be added on top of the essentials. Check [ONNX Runtime](https://onnxruntime.ai/) to see of your system is compatible.
+Extra dependencies, that are used in tests and needed for development, can be added on top of the essentials. Check [ONNX Runtime](https://onnxruntime.ai/) to see of your system is compatible.
 
 ```bash
 conda activate cplxmodule
@@ -67,7 +71,7 @@ pre-commit install
 # editable install
 pip install -e .
 
-# run tests to verify installation (bathcnorm test )
+# run tests to verify installation (batchnorm test )
 # XXX `test_batchnorm.py` depends on the precision of the outcome of SGD, hence
 #  may occasionally fail
 # XXX A user warning concerning non-writable numpy array is expected
