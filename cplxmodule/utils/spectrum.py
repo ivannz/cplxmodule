@@ -4,7 +4,7 @@ import numpy as np
 from .views import fix_dim, window_view
 
 
-def pwelch(x, dim, window, fs=1., scaling="density", n_overlap=None):
+def pwelch(x, dim, window, fs=1.0, scaling="density", n_overlap=None):
     r"""Estimate power spectral density using Welch's method.
 
     Arguments
@@ -46,18 +46,18 @@ def pwelch(x, dim, window, fs=1., scaling="density", n_overlap=None):
     scipy.signal.welch: the reference for this function.
     """
     if scaling not in ("density", "spectrum"):
-        raise ValueError(f"""Unrecognized `scaling` value {scaling}""")
+        raise ValueError(f"Unrecognized `scaling` value {scaling}")
 
     assert x.is_complex()
 
     # if x.shape[-1] != 2:
-    #     raise TypeError("""The last dimension of the input must be 2:"""
-    #                     """x[..., 0] is real and x[..., 1] is imaginary.""")
+    #     raise TypeError("The last dimension of the input must be 2:"
+    #                     "x[..., 0] is real and x[..., 1] is imaginary.")
 
     dim = fix_dim(dim, x.dim())
     # if not 0 <= dim < x.dim() - 1:
-    #     raise ValueError("""The last dimension of the input cannot contain """
-    #                      """the signal.""")
+    #     raise ValueError("The last dimension of the input cannot contain "
+    #                      "the signal.")
 
     n_window = len(window)
     if n_overlap is None:
@@ -69,21 +69,21 @@ def pwelch(x, dim, window, fs=1., scaling="density", n_overlap=None):
 
     # 2. Apply window and compute batched 1d-fft over the last dim
     xw = torch.mul(x_window, window)
-    fft = torch.fft.fft(xw, dim=-1, norm='backward')
+    fft = torch.fft.fft(xw, dim=-1, norm="backward")
 
     # 3. compute the power spectrum with the proper scaling
     if scaling == "density":
         scale = fs * torch.sum(window**2)
 
     elif scaling == "spectrum":
-        scale = torch.sum(window)**2
+        scale = torch.sum(window) ** 2
 
     # used to have `/ x_window.shape[dim]`
     amplitude = abs(fft)
     Pxx = amplitude.mul_(amplitude).mean(dim=dim) / scale
 
     # 5. get the frequencies
-    freq = np.fft.fftfreq(n_window, 1. / fs)
+    freq = np.fft.fftfreq(n_window, 1.0 / fs)
     freq = torch.tensor(freq, dtype=x.real.dtype, device=x.device)
     return freq, Pxx
 
@@ -116,8 +116,9 @@ def fftshift(x, dim=-1):
     return torch.roll(x, x.shape[dim] // 2, dim)
 
 
-def bandwidth_power(x, fs, bands, dim=-2, n_overlap=None,
-                    nperseg=None, scaling="density"):
+def bandwidth_power(
+    x, fs, bands, dim=-2, n_overlap=None, nperseg=None, scaling="density"
+):
     r"""Compute the total power of a batch of signals in each band.
 
     Uses Welch's method (see `scipy.signal.welch`) with Hamming window
@@ -168,21 +169,30 @@ def bandwidth_power(x, fs, bands, dim=-2, n_overlap=None,
         nperseg = x.shape[dim]
 
     # 1. Welch
-    window = torch.hamming_window(nperseg, periodic=False,
-                                  dtype=x.real.dtype, device=x.device)
-    ff, px = pwelch(x, dim, window, fs=fs, scaling=scaling,
-                    n_overlap=n_overlap)
+    window = torch.hamming_window(
+        nperseg, periodic=False, dtype=x.real.dtype, device=x.device
+    )
+    ff, px = pwelch(x, dim, window, fs=fs, scaling=scaling, n_overlap=n_overlap)
 
     ff, px = fftshift(ff), fftshift(px, dim=dim)
     if not bands:
         # this needs to return a tensor that has the expected shape
-        return ff, px, torch.empty(*px.shape[:dim], *px.shape[dim+1:], 0,
-                                   dtype=px.dtype, device=px.device)
+        return (
+            ff,
+            px,
+            torch.empty(
+                *px.shape[:dim],
+                *px.shape[dim + 1 :],
+                0,
+                dtype=px.dtype,
+                device=px.device,
+            ),
+        )
 
     # 2. Compute power within each band
-    channel, df = [], 1. / (nperseg * fs)
+    channel, df = [], 1.0 / (nperseg * fs)  # noqa: F841
     for lo, hi in bands:
-        index, = torch.nonzero(ff.gt(lo) & ff.lt(hi), as_tuple=True)
+        (index,) = torch.nonzero(ff.gt(lo) & ff.lt(hi), as_tuple=True)
         power = torch.index_select(px, dim, index)
         channel.append(power.sum(dim=dim))  # * df)
     # end for
@@ -191,8 +201,7 @@ def bandwidth_power(x, fs, bands, dim=-2, n_overlap=None,
     return ff, px, 10 * torch.log10(torch.stack(channel, dim=-1))
 
 
-def acpr_calc(signal, sample_rate, mcf, mcb, acf=None, acb=None,
-              nperseg=None, dim=-2):
+def acpr_calc(signal, sample_rate, mcf, mcb, acf=None, acb=None, nperseg=None, dim=-2):
     r"""Get the total power in the main and adjacent frequqency bands.
 
     Arguments
@@ -225,15 +234,15 @@ def acpr_calc(signal, sample_rate, mcf, mcb, acf=None, acb=None,
         acf, acb = [], []
 
     elif not isinstance(acf, (list, tuple)):
-        raise TypeError("Adjacent Channel Frequency offests must be a "
-                        "list or a tuple.")
+        raise TypeError(
+            "Adjacent Channel Frequency offests must be a " "list or a tuple."
+        )
 
     if isinstance(acb, (int, float)):
         acb = type(acf)([acb] * len(acf))
 
     elif not isinstance(acb, (list, tuple)):
-        raise TypeError("Adjacent Channel Bandwidth must be a list or "
-                        "a tuple.")
+        raise TypeError("Adjacent Channel Bandwidth must be a list or " "a tuple.")
 
     # form the bands
     bands = [(-0.5 * mcb + mcf, +0.5 * mcb + mcf)]
@@ -241,8 +250,14 @@ def acpr_calc(signal, sample_rate, mcf, mcb, acf=None, acb=None,
         bands.append((-0.5 * b + f, +0.5 * b + f))
 
     # compute the power in each band
-    ff, px, channel = bandwidth_power(signal, sample_rate, bands,
-                                      dim=dim, nperseg=nperseg,
-                                      n_overlap=0, scaling="spectrum")
+    ff, px, channel = bandwidth_power(
+        signal,
+        sample_rate,
+        bands,
+        dim=dim,
+        nperseg=nperseg,
+        n_overlap=0,
+        scaling="spectrum",
+    )
 
     return channel[..., :1], channel[..., 1:]

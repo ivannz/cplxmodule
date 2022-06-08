@@ -6,7 +6,7 @@ def fix_dim(dim, n_dim):
     r"""For the given dimensionality make sure the `axis` is nonnegative."""
     axis = (n_dim + dim) if dim < 0 else dim
     if not 0 <= axis < n_dim:
-        raise ValueError(f"""Dimension {dim} is out of range for {n_dim}.""")
+        raise ValueError(f"Dimension {dim} is out of range for {n_dim}.")
 
     return axis
 
@@ -39,19 +39,22 @@ def complex_view(x, dim=-1, squeeze=True):
     # compute new shape and strides
     size, rem = shape[dim] // 2, shape[dim] % 2
     if rem != 0:
-        warnings.warn(f"Odd dimension size for the complex data unpacking: "
-                      f"taking the least size that fits.", RuntimeWarning)
+        warnings.warn(
+            "Odd dimension size for the complex data unpacking: "
+            "taking the least size that fits.",
+            RuntimeWarning,
+        )
 
     # new shape and stride structure
     if shape[dim] == 2 and squeeze:
         # if the complex dimension is exactly two, then just drop it
-        shape_view = shape[:dim] + shape[dim+1:]
-        strides_view = strides[:dim] + strides[dim+1:]
+        shape_view = shape[:dim] + shape[dim + 1 :]
+        strides_view = strides[:dim] + strides[dim + 1 :]
 
     else:
         # otherwise, half the size and double the stride
-        shape_view = shape[:dim] + [size] + shape[dim+1:]
-        strides_view = strides[:dim] + [2 * strides[dim]] + strides[dim+1:]
+        shape_view = shape[:dim] + [size] + shape[dim + 1 :]
+        strides_view = strides[:dim] + [2 * strides[dim]] + strides[dim + 1 :]
 
     # differentiable strided view into real and imaginary parts
     real = torch.as_strided(x, shape_view, strides_view, offset)
@@ -86,15 +89,17 @@ def window_view(x, dim, size, stride, at=None):
         general, contiguous in memory.
     """
     if size <= 0:
-        raise ValueError(f"""`size` must be a positive integer.""")
+        raise ValueError("`size` must be a positive integer.")
 
     if stride < 0:
-        raise ValueError(f"""`stride` must be a nonnegative integer.""")
+        raise ValueError("`stride` must be a nonnegative integer.")
 
     dim = fix_dim(dim, x.dim())
     if x.shape[dim] < size:
-        raise ValueError(f"""`x` at dim {dim} is too short ({x.shape[dim]}) """
-                         f"""for this window size ({size}).""")
+        raise ValueError(
+            f"`x` at dim {dim} is too short ({x.shape[dim]}) "
+            f"for this window size ({size})."
+        )
 
     if at is None:
         at = dim + 1
@@ -105,10 +110,10 @@ def window_view(x, dim, size, stride, at=None):
     strided_size = ((shape[dim] - size + 1) + stride - 1) // stride
 
     # new shape and stride structure
-    shape_view = shape[:dim] + [strided_size] + shape[dim+1:]
+    shape_view = shape[:dim] + [strided_size] + shape[dim + 1 :]
     shape_view.insert(at, size)
 
-    strides_view = strides[:dim] + [strides[dim] * stride] + strides[dim+1:]
+    strides_view = strides[:dim] + [strides[dim] * stride] + strides[dim + 1 :]
     strides_view.insert(at, strides[dim])
 
     # differentiable strided view
