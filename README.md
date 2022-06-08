@@ -78,6 +78,19 @@ pip install -e .
 pytest
 ```
 
+Additionally, you may want to study the following examples and test [Variational Dropout](./cplxmodule/nn/relevance):
+
+```bash
+conda activate cplxmodule
+
+# test real- and complex-valued Bayesian sparsification layers
+python tests/test_relevance.py
+
+# showcase the train-sparisify-fine-tune staged pipeline on a basic
+#  real-valued CNN on MNIST
+python tests/test_mnist.py
+```
+
 ## Citation
 
 The proper citation for the real-valued Bayesian Sparsification layers from `cplxmodule.nn.relevance.real` is either [[3]](#user-content-ref3) (VD) or [[4]](#user-content-ref4) (ARD). If you find the complex-valued Bayesian Sparsification layers from `cplxmodule.nn.relevance.complex` useful in your research, please consider citing the following paper [[5]](#user-content-ref5):
