@@ -176,7 +176,10 @@ def test_cplx_batchnorm_layer_affine(random_state):
     out = predict(x, model).reshape(*x.shape[:-1], -1, 2)
     with torch.no_grad():
         out = out - model[1].bias.reshape(1, 10, 1, 2)
-        res, _ = torch.solve(out.transpose(-1, -2), model[1].weight.permute(2, 0, 1))
+        res = torch.linalg.solve(
+            model[1].weight.permute(2, 0, 1),
+            out.transpose(-1, -2),
+        )
 
     re, im = res[..., 0, :], res[..., 1, :]
     assert np.isclose(float(re.mean()), 0., atol=1e-1)
