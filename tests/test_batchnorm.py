@@ -9,7 +9,7 @@ from itertools import starmap
 from cplxmodule import cplx
 from cplxmodule.nn import CplxBatchNorm1d, RealToCplx, CplxToReal
 from cplxmodule.nn.modules.batchnorm import cplx_batch_norm
-from cplxmodule.nn.modules.batchnorm import whiten2x2, whitendxd
+from cplxmodule.nn.modules.batchnorm import whiten2x2, whitendxd  # noqa: F401
 
 
 @pytest.fixture
@@ -48,7 +48,7 @@ def test_whitening(random_state, nugget=1e-8):
     res = np.einsum("ubfs, uvf->vbfs", c, R)
 
     m = res.mean(axis=axes, keepdims=True)
-    assert np.allclose(m, 0.)
+    assert np.allclose(m, 0.0)
 
     v = np.einsum("ubfs, vbfs->fuv", res - m, res - m) / n_samples
     assert np.allclose(v, np.eye(2)[np.newaxis], atol=1e-3)
@@ -64,12 +64,12 @@ def test_whitening(random_state, nugget=1e-8):
 def fit(X, y, model, n_steps=2000):
     model.train()
     feed = torch.utils.data.DataLoader(
-        torch.utils.data.TensorDataset(X, y),
-        batch_size=32, shuffle=True)
+        torch.utils.data.TensorDataset(X, y), batch_size=32, shuffle=True
+    )
 
     optim = torch.optim.Adam(model.parameters())
     with tqdm.tqdm(range(n_steps)) as bar:
-        for i in bar:
+        for _ in bar:
             for bx, by in feed:
                 optim.zero_grad()
 
@@ -83,14 +83,14 @@ def fit(X, y, model, n_steps=2000):
 def predict(X, model):
     model.eval()
     feed = torch.utils.data.DataLoader(
-        torch.utils.data.TensorDataset(X),
-        batch_size=256, shuffle=False)
+        torch.utils.data.TensorDataset(X), batch_size=256, shuffle=False
+    )
     with torch.no_grad():
         return torch.cat([*starmap(model, feed)], dim=0)
 
 
 def test_real_batchnorm(random_state):
-    x = random_state.randn(1000, 10) * 10. + 5.
+    x = random_state.randn(1000, 10) * 10.0 + 5.0
     x = torch.from_numpy(x).to(torch.float)
 
     model = torch.nn.BatchNorm1d(10, affine=True)
@@ -114,11 +114,11 @@ def test_cplx_batchnorm(random_state):
     out = cplx_batch_norm(z, None, None).numpy()
 
     re, im = out.real, out.imag
-    assert np.isclose(float(re.mean()), 0., atol=1e-1)
-    assert np.isclose(float(im.mean()), 0., atol=1e-1)
-    assert np.isclose(float((re*re).mean()), 1., atol=1e-1)
-    assert np.isclose(float((im*im).mean()), 1., atol=1e-1)
-    assert np.isclose(float((re*im).mean()), 0., atol=1e-1)
+    assert np.isclose(float(re.mean()), 0.0, atol=1e-1)
+    assert np.isclose(float(im.mean()), 0.0, atol=1e-1)
+    assert np.isclose(float((re * re).mean()), 1.0, atol=1e-1)
+    assert np.isclose(float((im * im).mean()), 1.0, atol=1e-1)
+    assert np.isclose(float((re * im).mean()), 0.0, atol=1e-1)
 
 
 def test_cplx_batchnorm_layer_noaffine(random_state):
@@ -137,23 +137,23 @@ def test_cplx_batchnorm_layer_noaffine(random_state):
 
     model.train()
     feed = torch.utils.data.DataLoader(
-        torch.utils.data.TensorDataset(x),
-        batch_size=32, shuffle=True)
+        torch.utils.data.TensorDataset(x), batch_size=32, shuffle=True
+    )
 
     # with torch.autograd.detect_anomaly():
-    for i in range(5):
-        for bx, in feed:
+    for _ in range(5):
+        for (bx,) in feed:
             F.mse_loss(model(bx), bx)
 
     model.eval()
 
     out = predict(x, model)
     re, im = out[..., 0::2], out[..., 1::2]
-    assert np.isclose(float(re.mean()), 0., atol=1e-1)
-    assert np.isclose(float(im.mean()), 0., atol=1e-1)
-    assert np.isclose(float((re*re).mean()), 1., atol=1e-1)
-    assert np.isclose(float((im*im).mean()), 1., atol=1e-1)
-    assert np.isclose(float((re*im).mean()), 0., atol=1e-1)
+    assert np.isclose(float(re.mean()), 0.0, atol=1e-1)
+    assert np.isclose(float(im.mean()), 0.0, atol=1e-1)
+    assert np.isclose(float((re * re).mean()), 1.0, atol=1e-1)
+    assert np.isclose(float((im * im).mean()), 1.0, atol=1e-1)
+    assert np.isclose(float((re * im).mean()), 0.0, atol=1e-1)
 
 
 def test_cplx_batchnorm_layer_affine(random_state):
@@ -182,8 +182,8 @@ def test_cplx_batchnorm_layer_affine(random_state):
         )
 
     re, im = res[..., 0, :], res[..., 1, :]
-    assert np.isclose(float(re.mean()), 0., atol=1e-1)
-    assert np.isclose(float(im.mean()), 0., atol=1e-1)
-    assert np.isclose(float((re*re).mean()), 1., atol=1e-1)
-    assert np.isclose(float((im*im).mean()), 1., atol=1e-1)
-    assert np.isclose(float((re*im).mean()), 0., atol=1e-1)
+    assert np.isclose(float(re.mean()), 0.0, atol=1e-1)
+    assert np.isclose(float(im.mean()), 0.0, atol=1e-1)
+    assert np.isclose(float((re * re).mean()), 1.0, atol=1e-1)
+    assert np.isclose(float((im * im).mean()), 1.0, atol=1e-1)
+    assert np.isclose(float((re * im).mean()), 0.0, atol=1e-1)

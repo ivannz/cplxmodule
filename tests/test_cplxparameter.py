@@ -10,10 +10,7 @@ def test_loading():
 
     # load complex parameter in full
     state_dict = {"real": torch.randn(*shape), "imag": torch.randn(*shape)}
-    par = CplxParameter(cplx.Cplx(
-        real=torch.ones(*shape),
-        imag=torch.zeros(*shape)
-    ))
+    par = CplxParameter(cplx.Cplx(real=torch.ones(*shape), imag=torch.zeros(*shape)))
     par.load_state_dict(state_dict, strict=True)
 
     assert torch.allclose(par.real, state_dict["real"])
@@ -29,10 +26,7 @@ def test_loading():
 
     # promote real tensor
     state_dict = {"": torch.randn(*shape)}
-    par = CplxParameter(cplx.Cplx(
-        real=torch.ones(*shape),
-        imag=torch.zeros(*shape)
-    ))
+    par = CplxParameter(cplx.Cplx(real=torch.ones(*shape), imag=torch.zeros(*shape)))
     par.load_state_dict(state_dict, strict=True)
 
     assert torch.allclose(par.real, state_dict[""])
@@ -42,10 +36,9 @@ def test_loading():
 def make_module(*shape):
     module = torch.nn.Module()
     module.mod = torch.nn.Module()
-    module.mod.par = CplxParameter(cplx.Cplx(
-        real=torch.ones(*shape),
-        imag=torch.zeros(*shape)
-    ))
+    module.mod.par = CplxParameter(
+        cplx.Cplx(real=torch.ones(*shape), imag=torch.zeros(*shape))
+    )
     return module
 
 
@@ -92,22 +85,32 @@ def test_malformed():
         par.load_state_dict({"imag": torch.randn(*shape)})
 
     with pytest.raises(RuntimeError, match=r"disallows redundant"):
-        par.load_state_dict({
-            "real": torch.randn(*shape),
-            "imag": torch.randn(*shape),
-            "bar": torch.randn(*shape),
-            "foo": torch.randn(*shape),
-        }, strict=True)
+        par.load_state_dict(
+            {
+                "real": torch.randn(*shape),
+                "imag": torch.randn(*shape),
+                "bar": torch.randn(*shape),
+                "foo": torch.randn(*shape),
+            },
+            strict=True,
+        )
 
     with pytest.raises(RuntimeError, match=r"size mismatch for"):
-        par.load_state_dict({
-            "real": torch.randn(1, 1), "imag": torch.randn(1, 1),
-        }, strict=True)
+        par.load_state_dict(
+            {
+                "real": torch.randn(1, 1),
+                "imag": torch.randn(1, 1),
+            },
+            strict=True,
+        )
 
     with pytest.raises(RuntimeError, match=r"size mismatch for"):
-        par.load_state_dict({
-            "": torch.randn(1, 1),
-        }, strict=True)
+        par.load_state_dict(
+            {
+                "": torch.randn(1, 1),
+            },
+            strict=True,
+        )
 
 
 def test_nested_malformed():
@@ -123,31 +126,43 @@ def test_nested_malformed():
 
     # redundant keys pertaining to the complex parameter are forbidden
     with pytest.raises(RuntimeError, match=r"disallows redundant"):
-        module.load_state_dict({
-            "mod.par.real": torch.randn(*shape),
-            "mod.par.imag": torch.randn(*shape),
-            "mod.par.bar": torch.randn(*shape),
-            "mod.par.foo": torch.randn(*shape),
-        }, strict=True)
+        module.load_state_dict(
+            {
+                "mod.par.real": torch.randn(*shape),
+                "mod.par.imag": torch.randn(*shape),
+                "mod.par.bar": torch.randn(*shape),
+                "mod.par.foo": torch.randn(*shape),
+            },
+            strict=True,
+        )
 
     # redundant keys unrelated to the complex parameter are ignored
-    module.load_state_dict({
-        "mod.par.real": torch.zeros(*shape),
-        "mod.par.imag": torch.ones(*shape),
-        "bar": torch.randn(*shape),
-        "foo": torch.randn(*shape),
-    }, strict=False)
+    module.load_state_dict(
+        {
+            "mod.par.real": torch.zeros(*shape),
+            "mod.par.imag": torch.ones(*shape),
+            "bar": torch.randn(*shape),
+            "foo": torch.randn(*shape),
+        },
+        strict=False,
+    )
 
     with pytest.raises(RuntimeError, match=r"size mismatch for"):
-        module.load_state_dict({
-            "mod.par.real": torch.randn(1, 1),
-            "mod.par.imag": torch.randn(1, 1),
-        }, strict=True)
+        module.load_state_dict(
+            {
+                "mod.par.real": torch.randn(1, 1),
+                "mod.par.imag": torch.randn(1, 1),
+            },
+            strict=True,
+        )
 
     with pytest.raises(RuntimeError, match=r"size mismatch for"):
-        module.load_state_dict({
-            "mod.par": torch.randn(1, 1),
-        }, strict=True)
+        module.load_state_dict(
+            {
+                "mod.par": torch.randn(1, 1),
+            },
+            strict=True,
+        )
 
     assert torch.allclose(module.mod.par.real, torch.zeros(*shape))
     assert torch.allclose(module.mod.par.imag, torch.ones(*shape))

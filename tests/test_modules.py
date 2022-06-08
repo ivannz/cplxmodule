@@ -11,8 +11,9 @@ from functools import lru_cache, wraps
 
 
 def cplx_allclose(input, other):
-    return torch.allclose(input.real, other.real) and \
-           torch.allclose(input.imag, other.imag)
+    return torch.allclose(input.real, other.real) and torch.allclose(
+        input.imag, other.imag
+    )
 
 
 def _cplx_emulate_module(Module):
@@ -28,7 +29,7 @@ def _cplx_emulate_module(Module):
             im = self.imag(input.real) + self.real(input.imag)
 
             # undo the double application of bias
-            if getattr(self.real, 'bias', None) is not None:
+            if getattr(self.real, "bias", None) is not None:
                 broadcast = []
                 if isinstance(self.real, torch.nn.modules.conv._ConvNd):
                     broadcast = len(self.real.kernel_size) * [1]
@@ -41,14 +42,16 @@ def _cplx_emulate_module(Module):
             state_dict = super().state_dict()
             # weight
             out = {
-                'weight.real': state_dict.pop('real.weight'),
-                'weight.imag': state_dict.pop('imag.weight'),
+                "weight.real": state_dict.pop("real.weight"),
+                "weight.imag": state_dict.pop("imag.weight"),
             }
-            if getattr(self.real, 'bias', None) is not None:
-                out.update({
-                    'bias.real': state_dict.pop('real.bias'),
-                    'bias.imag': state_dict.pop('imag.bias'),
-                })
+            if getattr(self.real, "bias", None) is not None:
+                out.update(
+                    {
+                        "bias.real": state_dict.pop("real.bias"),
+                        "bias.imag": state_dict.pop("imag.bias"),
+                    }
+                )
 
             return {**out, **state_dict}
 
@@ -61,6 +64,7 @@ def _cplx_emulate_module(Module):
 
 class _EmulatedCplxModuleMeta(type):
     """Meta class for promoting torch.nn Modules to complex ones."""
+
     @lru_cache(maxsize=None)
     def __getitem__(self, Base):
         if isinstance(Base, type) and issubclass(Base, torch.nn.Module):
@@ -108,18 +112,17 @@ def test_linear():
         assert cplx_allclose(duplicated(z), implemented(z))
 
 
-def do_test_conv(Layer, CplxLayer, in_channels, out_channels, kernel_size,
-                 **kwargs):
+def do_test_conv(Layer, CplxLayer, in_channels, out_channels, kernel_size, **kwargs):
     emulated = EmulatedCplxModule[Layer](
-        in_channels, out_channels, kernel_size, **kwargs).double()
-    implemented = CplxLayer(
-        in_channels, out_channels, kernel_size, **kwargs).double()
+        in_channels, out_channels, kernel_size, **kwargs
+    ).double()
+    implemented = CplxLayer(in_channels, out_channels, kernel_size, **kwargs).double()
 
     # ensure identical parameters
     implemented.load_state_dict(emulated.state_dict())
 
     # use float64 for testing
-    shape = 4, in_channels, *[16]*len(emulated.real.kernel_size)
+    shape = 4, in_channels, *[16] * len(emulated.real.kernel_size)
     with torch.no_grad():
         z = cplx.randn(*shape, dtype=torch.double)
         assert cplx_allclose(implemented(z), emulated(z))
@@ -134,11 +137,14 @@ def do_test_conv(Layer, CplxLayer, in_channels, out_channels, kernel_size,
         assert cplx_allclose(duplicated(z), implemented(z))
 
 
-@pytest.mark.parametrize('case', [
-    (torch.nn.Conv1d, nn.CplxConv1d, (3,)),
-    (torch.nn.Conv2d, nn.CplxConv2d, (3, 4)),
-    (torch.nn.Conv3d, nn.CplxConv3d, (3, 4, 5)),
-])
+@pytest.mark.parametrize(
+    "case",
+    [
+        (torch.nn.Conv1d, nn.CplxConv1d, (3,)),
+        (torch.nn.Conv2d, nn.CplxConv2d, (3, 4)),
+        (torch.nn.Conv3d, nn.CplxConv3d, (3, 4, 5)),
+    ],
+)
 def test_conv(case):
     Layer, CplxLayer, kernel_size = case
 
@@ -164,18 +170,22 @@ def test_conv(case):
 
     # test padding=2 w. circular
     with pytest.xfail(reason="always xfail"):
-        do_test_conv(*common, kernel_size, bias=True, padding=2,
-                     padding_mode="circular")
+        do_test_conv(
+            *common, kernel_size, bias=True, padding=2, padding_mode="circular"
+        )
 
     # test groups=2
     do_test_conv(*common, kernel_size, bias=True, groups=2)
 
 
-@pytest.mark.parametrize('case', [
-    (torch.nn.ConvTranspose1d, nn.CplxConvTranspose1d, (3,)),
-    (torch.nn.ConvTranspose2d, nn.CplxConvTranspose2d, (3, 4)),
-    (torch.nn.ConvTranspose3d, nn.CplxConvTranspose3d, (3, 4, 5)),
-])
+@pytest.mark.parametrize(
+    "case",
+    [
+        (torch.nn.ConvTranspose1d, nn.CplxConvTranspose1d, (3,)),
+        (torch.nn.ConvTranspose2d, nn.CplxConvTranspose2d, (3, 4)),
+        (torch.nn.ConvTranspose3d, nn.CplxConvTranspose3d, (3, 4, 5)),
+    ],
+)
 def test_conv_transpose(case):
     Layer, CplxLayer, kernel_size = case
 
@@ -206,16 +216,21 @@ def test_conv_transpose(case):
     do_test_conv(*common, kernel_size, bias=True, stride=2, output_padding=1)
 
 
-@pytest.mark.parametrize('pair', [
-    (nn.modules.casting.InterleavedRealToCplx,
-     nn.modules.casting.CplxToInterleavedReal),
-    (nn.modules.casting.ConcatenatedRealToCplx,
-     nn.modules.casting.CplxToConcatenatedReal),
-    (nn.modules.casting.TensorToCplx,
-     nn.modules.casting.CplxToTensor),
-    (nn.modules.casting.AsTypeCplx,
-     nn.modules.linear.CplxReal),
-])
+@pytest.mark.parametrize(
+    "pair",
+    [
+        (
+            nn.modules.casting.InterleavedRealToCplx,
+            nn.modules.casting.CplxToInterleavedReal,
+        ),
+        (
+            nn.modules.casting.ConcatenatedRealToCplx,
+            nn.modules.casting.CplxToConcatenatedReal,
+        ),
+        (nn.modules.casting.TensorToCplx, nn.modules.casting.CplxToTensor),
+        (nn.modules.casting.AsTypeCplx, nn.modules.linear.CplxReal),
+    ],
+)
 def test_casting(pair):
     to_cplx, to_real = pair
     tensor = torch.randn(32, 31, 1024, 2)

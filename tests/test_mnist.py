@@ -14,16 +14,28 @@ from cplxmodule.nn.masked import LinearMasked, Conv2dMasked
 
 from cplxmodule.nn.relevance import compute_ard_masks
 from cplxmodule.nn.masked import binarize_masks, deploy_masks
-from cplxmodule.nn.masked import named_masks
 from cplxmodule.nn.utils.sparsity import named_sparsity
 
+import pytest
 
-def model_fit(model, feed, optim, n_steps=100, threshold=1.0,
-              klw=1e-3, reduction="mean", verbose=True):
+
+pytestmark = pytest.mark.skip(reason="this is not a test suite")
+
+
+def model_fit(
+    model,
+    feed,
+    optim,
+    n_steps=100,
+    threshold=1.0,
+    klw=1e-3,
+    reduction="mean",
+    verbose=True,
+):
     losses = []
     with tqdm.tqdm(range(n_steps)) as bar:
         model.train()
-        for i in bar:
+        for _ in bar:
             for data, target in feed:
                 optim.zero_grad()
 
@@ -37,8 +49,7 @@ def model_fit(model, feed, optim, n_steps=100, threshold=1.0,
 
                 losses.append(float(loss))
                 if verbose:
-                    f_sparsity = sparsity(model, hard=True,
-                                          threshold=threshold)
+                    f_sparsity = sparsity(model, hard=True, threshold=threshold)
                 else:
                     f_sparsity = float("nan")
 
@@ -108,6 +119,7 @@ class FeedWrapper(object):
     **kwargs : keyword arguments
         The keyword arguments to be passed to `torch.Tensor.to()`.
     """
+
     def __init__(self, feed, **kwargs):
         assert isinstance(feed, torch.utils.data.DataLoader)
         self.feed, self.kwargs = feed, kwargs
@@ -121,12 +133,12 @@ class FeedWrapper(object):
 
         else:
             for batch in iter(self.feed):
-                yield tuple(b.to(**self.kwargs)
-                            for b in batch)
+                yield tuple(b.to(**self.kwargs) for b in batch)
 
 
 class Model(torch.nn.Module):
     """A convolutional net."""
+
     def __init__(self, conv2d=Conv2d, linear=Linear):
         super().__init__()
 
@@ -142,34 +154,48 @@ class Model(torch.nn.Module):
         return F.log_softmax(self.fc2(x), dim=1)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     threshold = 3.0
-    device_ = torch.device("cuda:3")
+    device_ = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
-    transform = transforms.Compose([
-        transforms.ToTensor(),
-        transforms.Normalize((0.1307,), (0.3081,))
-    ])
+    transform = transforms.Compose(
+        [transforms.ToTensor(), transforms.Normalize((0.1307,), (0.3081,))]
+    )
 
     # reverse the roles of the MNIST train-test split
-    mnist_test = datasets.MNIST('./data', transform=transform,
-                                train=True, download=True)
-    mnist_train = datasets.MNIST('./data', transform=transform,
-                                 train=False)
+    mnist_test = datasets.MNIST(
+        "./data",
+        transform=transform,
+        train=True,
+        download=True,
+    )
+    mnist_train = datasets.MNIST(
+        "./data",
+        transform=transform,
+        train=False,
+    )
 
     # define wrapped data feeds
     feeds = {
         "train": FeedWrapper(
             torch.utils.data.DataLoader(
-                mnist_train, batch_size=32, shuffle=True),
-            device=device_),
+                mnist_train,
+                batch_size=32,
+                shuffle=True,
+            ),
+            device=device_,
+        ),
         "test": FeedWrapper(
             torch.utils.data.DataLoader(
-                mnist_test, batch_size=256, shuffle=False),
-            device=device_),
+                mnist_test,
+                batch_size=256,
+                shuffle=False,
+            ),
+            device=device_,
+        ),
     }
 
-    # Models and training setttings
+    # Models and training settings
     models = {
         "none": None,
         "dense": Model(Conv2d, Linear),
@@ -177,6 +203,8 @@ if __name__ == '__main__':
         "masked": Model(Conv2dMasked, LinearMasked),
     }
 
+    # prunig schedule settings (n_epochs: int, kl_div_coeff: float)
+    # XXX higher `kl_div_coeff` means stronger pruning, at the cost of performance
     phases = {
         "dense": (40, 0.0),
         "ard": (40, 1e-2),
@@ -194,8 +222,7 @@ if __name__ == '__main__':
         if models[src] is not None:
             # compute the dropout masks and normalize them
             state_dict = models[src].state_dict()
-            masks = compute_ard_masks(models[src], hard=False,
-                                      threshold=threshold)
+            masks = compute_ard_masks(models[src], hard=False, threshold=threshold)
 
             state_dict, masks = binarize_masks(state_dict, masks)
 
@@ -208,8 +235,14 @@ if __name__ == '__main__':
         model.to(device_)
         optim = torch.optim.Adam(model.parameters())
         model, losses[dst] = model_fit(
-            model, feeds["train"], optim, n_steps=n_steps,
-            threshold=threshold, klw=klw, reduction="mean")
+            model,
+            feeds["train"],
+            optim,
+            n_steps=n_steps,
+            threshold=threshold,
+            klw=klw,
+            reduction="mean",
+        )
 
     # run tests
     for key, model in models.items():

@@ -7,7 +7,7 @@ import torch.sparse
 
 import torch.nn.functional as F
 
-from cplxmodule import Cplx
+from cplxmodule import Cplx  # noqa: F401
 
 from torch.nn import Linear
 from cplxmodule.nn import CplxLinear
@@ -49,8 +49,9 @@ def test_torch_expi(random_state):
     assert torch.autograd.gradcheck(torch_expi, trx.requires_grad_(True))
 
 
-def model_train(X, y, model, n_steps=20000, threshold=1.0,
-                reduction="mean", klw=1e-3, verbose=True):
+def model_train(
+    X, y, model, n_steps=20000, threshold=1.0, reduction="mean", klw=1e-3, verbose=True
+):
     import tqdm
 
     model.train()
@@ -58,7 +59,7 @@ def model_train(X, y, model, n_steps=20000, threshold=1.0,
 
     losses = []
     with tqdm.tqdm(range(n_steps)) as bar:
-        for i in bar:
+        for _ in bar:
             optim.zero_grad()
 
             y_pred = model(X)
@@ -73,8 +74,7 @@ def model_train(X, y, model, n_steps=20000, threshold=1.0,
 
             losses.append(float(loss))
             if verbose:
-                f_sparsity = sparsity(model, hard=True,
-                                      threshold=threshold)
+                f_sparsity = sparsity(model, hard=True, threshold=threshold)
             else:
                 f_sparsity = float("nan")
 
@@ -101,28 +101,48 @@ def example(kind="cplx"):
     def construct_real(linear):
         from collections import OrderedDict
 
-        return torch.nn.Sequential(OrderedDict([
-            ("body", torch.nn.Sequential(OrderedDict([
-                # ("linear", linear(n_features, n_features, bias=True)),
-                # ("relu", torch.nn.LeakyReLU()),
-            ]))),
-            ("final", linear(n_features, n_output, bias=False)),
-        ]))
+        body = torch.nn.Sequential(
+            OrderedDict(
+                [
+                    # ("linear", linear(n_features, n_features, bias=True)),
+                    # ("relu", torch.nn.LeakyReLU()),
+                ]
+            )
+        )
+
+        return torch.nn.Sequential(
+            OrderedDict(
+                [
+                    ("body", body),
+                    ("final", linear(n_features, n_output, bias=False)),
+                ]
+            )
+        )
 
     def construct_cplx(linear):
         from collections import OrderedDict
         from cplxmodule.nn import RealToCplx, CplxToReal
-        from cplxmodule.nn import CplxAdaptiveModReLU
+        from cplxmodule.nn import CplxAdaptiveModReLU  # noqa: F401
 
-        return torch.nn.Sequential(OrderedDict([
-            ("cplx", RealToCplx()),
-            ("body", torch.nn.Sequential(OrderedDict([
-                # ("linear", linear(n_features // 2, n_features // 2, bias=True)),
-                # ("relu", CplxAdaptiveModReLU(n_features // 2)),
-            ]))),
-            ("final", linear(n_features // 2, n_output // 2, bias=False)),
-            ("real", CplxToReal()),
-        ]))
+        body = torch.nn.Sequential(
+            OrderedDict(
+                [
+                    # ("linear", linear(n_features // 2, n_features // 2, bias=True)),
+                    # ("relu", CplxAdaptiveModReLU(n_features // 2)),
+                ]
+            )
+        )
+
+        return torch.nn.Sequential(
+            OrderedDict(
+                [
+                    ("cplx", RealToCplx()),
+                    ("body", body),
+                    ("final", linear(n_features // 2, n_output // 2, bias=False)),
+                    ("real", CplxToReal()),
+                ]
+            )
+        )
 
     device_ = torch.device("cpu")
     if kind == "cplx":
@@ -132,7 +152,7 @@ def example(kind="cplx"):
         phases = {
             "CplxLinear": (1000, 0.0),
             "CplxLinearARD": (4000, 1e-1),
-            "CplxLinearMasked": (500, 0.0)
+            "CplxLinearMasked": (500, 0.0),
         }
 
     elif kind == "real-ard":
@@ -142,7 +162,7 @@ def example(kind="cplx"):
         phases = {
             "Linear": (1000, 0.0),
             "LinearARD": (4000, 1e-1),
-            "LinearMasked": (500, 0.0)
+            "LinearMasked": (500, 0.0),
         }
 
     elif kind == "real-l0":
@@ -152,7 +172,7 @@ def example(kind="cplx"):
         phases = {
             "Linear": (1000, 0.0),
             "LinearL0": (4000, 2e-2),
-            "LinearMasked": (500, 0.0)
+            "LinearMasked": (500, 0.0),
         }
 
     elif kind == "real-lasso":
@@ -162,7 +182,7 @@ def example(kind="cplx"):
         phases = {
             "Linear": (1000, 0.0),
             "LinearLASSO": (4000, 1e-1),
-            "LinearMasked": (500, 0.0)
+            "LinearMasked": (500, 0.0),
         }
 
     if kind == "real-lasso":
@@ -177,7 +197,7 @@ def example(kind="cplx"):
 
     # a simple dataset
     X = torch.randn(10100, n_features)
-    y = - X[:, :n_output].clone()
+    y = -X[:, :n_output].clone()
     X, y = X.to(device_), y.to(device_)
 
     train_X, train_y = X[:100], y[:100]
@@ -185,9 +205,7 @@ def example(kind="cplx"):
 
     # construct models
     models = {"none": None}
-    models.update({
-        l.__name__: construct(l) for l in layers
-    })
+    models.update({ell.__name__: construct(ell) for ell in layers})
 
     # train a sequence of models
     names, losses = list(models.keys()), {}
@@ -200,8 +218,7 @@ def example(kind="cplx"):
         if models[src] is not None:
             # compute the dropout masks and normalize them
             state_dict = models[src].state_dict()
-            masks = compute_ard_masks(models[src], hard=False,
-                                      threshold=threshold)
+            masks = compute_ard_masks(models[src], hard=False, threshold=threshold)
 
             state_dict, masks = binarize_masks(state_dict, masks)
 
@@ -213,9 +230,15 @@ def example(kind="cplx"):
 
         model.to(device_)
 
-        model, losses[dst] = model_train(train_X, train_y, model,
-                                         n_steps=n_steps, threshold=threshold,
-                                         klw=klw, reduction=reduction)
+        model, losses[dst] = model_train(
+            train_X,
+            train_y,
+            model,
+            n_steps=n_steps,
+            threshold=threshold,
+            klw=klw,
+            reduction=reduction,
+        )
     # end for
 
     # get scores on test
@@ -263,7 +286,7 @@ def example_bilinear(kind="real"):
         phases = {
             "CplxBilinear": (1000, 0.0),
             "CplxBilinearARD": (10000, 1e-1),
-            "CplxBilinearMasked": (500, 0.0)
+            "CplxBilinearMasked": (500, 0.0),
         }
 
     elif kind == "real":
@@ -271,7 +294,7 @@ def example_bilinear(kind="real"):
         phases = {
             "Bilinear": (1000, 0.0),
             "BilinearARD": (10000, 1e-1),
-            "BilinearMasked": (500, 0.0)
+            "BilinearMasked": (500, 0.0),
         }
         construct = BilinearTest
 
@@ -286,10 +309,10 @@ def example_bilinear(kind="real"):
     out = X[:, :n_output]
     if "cplx" in kind:
         z = from_real(out, copy=False)
-        y = - to_real(z.conj * z, flatten=False).mean(dim=-2)
+        y = -to_real(z.conj * z, flatten=False).mean(dim=-2)
 
     else:
-        y = - (out * out).mean(dim=-1, keepdim=True)
+        y = -(out * out).mean(dim=-1, keepdim=True)
 
     X, y = X.to(device_), y.to(device_)
 
@@ -298,9 +321,7 @@ def example_bilinear(kind="real"):
 
     # construct models
     models = {"none": None}
-    models.update({
-        l.__name__: construct(l) for l in layers
-    })
+    models.update({ell.__name__: construct(ell) for ell in layers})
 
     # train a sequence of models
     names, losses = list(models.keys()), {}
@@ -313,8 +334,7 @@ def example_bilinear(kind="real"):
         if models[src] is not None:
             # compute the dropout masks and normalize them
             state_dict = models[src].state_dict()
-            masks = compute_ard_masks(models[src], hard=False,
-                                      threshold=threshold)
+            masks = compute_ard_masks(models[src], hard=False, threshold=threshold)
 
             state_dict, masks = binarize_masks(state_dict, masks)
 
@@ -326,9 +346,15 @@ def example_bilinear(kind="real"):
 
         model.to(device_)
 
-        model, losses[dst] = model_train(train_X, train_y, model,
-                                         n_steps=n_steps, threshold=threshold,
-                                         klw=klw, reduction=reduction)
+        model, losses[dst] = model_train(
+            train_X,
+            train_y,
+            model,
+            n_steps=n_steps,
+            threshold=threshold,
+            klw=klw,
+            reduction=reduction,
+        )
     # end for
 
     # get scores on test
@@ -343,7 +369,7 @@ def example_bilinear(kind="real"):
         print([*named_sparsity(model, hard=True, threshold=threshold)])
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     example("real-ard")
     example("real-l0")
     example("real-lasso")

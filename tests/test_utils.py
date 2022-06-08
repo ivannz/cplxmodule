@@ -21,13 +21,14 @@ def test_window_view(random_state):
 
     tr_x_view = window_view(tr_x, dim, size, stride)
     for i in range(tr_x_view.shape[dim]):
-        slice_ = np.r_[i * stride:i * stride + size]
+        slice_ = np.r_[i * stride : i * stride + size]
         a = tr_x_view.index_select(dim, torch.tensor(i)).squeeze(dim)
         b = tr_x.index_select(dim, torch.tensor(slice_))
         assert_allclose(a, b)
 
-    assert_allclose(window_view(tr_x, dim, size, stride, at=-1),
-                    tr_x.unfold(dim, size, stride))
+    assert_allclose(
+        window_view(tr_x, dim, size, stride, at=-1), tr_x.unfold(dim, size, stride)
+    )
 
 
 def test_complex_view(random_state):

@@ -5,45 +5,61 @@ import matplotlib.pyplot as plt
 from cplxmodule.utils.spectrum import pwelch, fftshift
 from scipy.signal import welch
 
-
 from matplotlib.ticker import EngFormatter
 
-random_state = np.random.RandomState(479321083)
+import pytest
 
-# https://www.mathworks.com/help/signal/ref/pwelch.html#btulskp-6
-fs = 1000.
-tt = np.r_[:5 * fs - 1] / fs
 
-shape = 2, len(tt)
+pytestmark = pytest.mark.skip(reason="this is not a test suite")
 
-epsilon = random_state.randn(*shape) + 1j * random_state.randn(*shape)
-np_x = np.cos(2 * np.pi * 100 * tt)[np.newaxis] + epsilon * 0.01
 
-tr_x = torch.from_numpy(np_x)
-tr_x.requires_grad = False
+if __name__ == "__main__":
+    random_state = np.random.RandomState(479321083)
 
-tr_window = torch.hamming_window(500, periodic=False, dtype=tr_x.real.dtype)
+    # https://www.mathworks.com/help/signal/ref/pwelch.html#btulskp-6
+    fs = 1000.0
+    tt = np.r_[: 5 * fs - 1] / fs
 
-tr_ff, tr_px = pwelch(tr_x, 1, tr_window, fs=fs,
-                      scaling="density", n_overlap=300)
-np_ff, np_px = welch(np_x, fs=fs, axis=-1, window=tr_window.numpy(),
-                     nfft=None, nperseg=None, scaling="density",
-                     noverlap=300, detrend=False, return_onesided=False)
+    shape = 2, len(tt)
 
-fig = plt.figure(figsize=(14, 5))
+    epsilon = random_state.randn(*shape) + 1j * random_state.randn(*shape)
+    np_x = np.cos(2 * np.pi * 100 * tt)[np.newaxis] + epsilon * 0.01
 
-ax = fig.add_subplot(111, ylabel="Decibels (dB / Hz)", xlabel="Frequency")
-ax.xaxis.set_major_formatter(EngFormatter(unit="Hz"))
+    tr_x = torch.from_numpy(np_x)
+    tr_x.requires_grad = False
 
-ax.semilogy(np.fft.fftshift(np_ff), np.fft.fftshift(np_px[0]),
-            label="scipy", alpha=0.5)
+    tr_window = torch.hamming_window(500, periodic=False, dtype=tr_x.real.dtype)
 
-ax.semilogy(fftshift(tr_ff).numpy(), fftshift(tr_px[0]).numpy().T,
-            label="torch", alpha=0.5)
+    tr_ff, tr_px = pwelch(tr_x, 1, tr_window, fs=fs, scaling="density", n_overlap=300)
+    np_ff, np_px = welch(
+        np_x,
+        fs=fs,
+        axis=-1,
+        window=tr_window.numpy(),
+        nfft=None,
+        nperseg=None,
+        scaling="density",
+        noverlap=300,
+        detrend=False,
+        return_onesided=False,
+    )
 
-ax.axvspan(90, 110, alpha=0.25, color="green")
-ax.axvline(100, lw=2, linestyle=":", color="black", alpha=0.5)
+    fig = plt.figure(figsize=(14, 5))
 
-ax.legend()
+    ax = fig.add_subplot(111, ylabel="Decibels (dB / Hz)", xlabel="Frequency")
+    ax.xaxis.set_major_formatter(EngFormatter(unit="Hz"))
 
-plt.show()
+    ax.semilogy(
+        np.fft.fftshift(np_ff), np.fft.fftshift(np_px[0]), label="scipy", alpha=0.5
+    )
+
+    ax.semilogy(
+        fftshift(tr_ff).numpy(), fftshift(tr_px[0]).numpy().T, label="torch", alpha=0.5
+    )
+
+    ax.axvspan(90, 110, alpha=0.25, color="green")
+    ax.axvline(100, lw=2, linestyle=":", color="black", alpha=0.5)
+
+    ax.legend()
+
+    plt.show()

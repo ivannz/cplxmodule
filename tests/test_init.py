@@ -9,21 +9,23 @@ from cplxmodule.nn import init
 
 def cplx_allclose_numpy(input, other):
     other = np.asarray(other)
-    return (
-        torch.allclose(input.real, torch.from_numpy(other.real))
-        and torch.allclose(input.imag, torch.from_numpy(other.imag))
+    return torch.allclose(input.real, torch.from_numpy(other.real)) and torch.allclose(
+        input.imag, torch.from_numpy(other.imag)
     )
 
 
-@pytest.mark.parametrize('initializer', [
-    init.cplx_kaiming_normal_,
-    init.cplx_xavier_normal_,
-    init.cplx_kaiming_uniform_,
-    init.cplx_xavier_uniform_,
-    init.cplx_trabelsi_standard_,
-    init.cplx_trabelsi_independent_,
-    init.cplx_uniform_independent_,
-])
+@pytest.mark.parametrize(
+    "initializer",
+    [
+        init.cplx_kaiming_normal_,
+        init.cplx_xavier_normal_,
+        init.cplx_kaiming_uniform_,
+        init.cplx_xavier_uniform_,
+        init.cplx_trabelsi_standard_,
+        init.cplx_trabelsi_independent_,
+        init.cplx_uniform_independent_,
+    ],
+)
 def test_initializer(initializer):
     initializer(Cplx.empty(500, 1250))
     initializer(Cplx.empty(1250, 500))

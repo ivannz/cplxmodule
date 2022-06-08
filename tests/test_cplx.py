@@ -10,15 +10,15 @@ from cplxmodule import cplx
 
 
 def cplx_allclose(input, other):
-    return torch.allclose(input.real, other.real) and \
-           torch.allclose(input.imag, other.imag)
+    return torch.allclose(input.real, other.real) and torch.allclose(
+        input.imag, other.imag
+    )
 
 
 def cplx_allclose_numpy(input, other):
     other = np.asarray(other)
-    return (
-        torch.allclose(input.real, torch.from_numpy(other.real))
-        and torch.allclose(input.imag, torch.from_numpy(other.imag))
+    return torch.allclose(input.real, torch.from_numpy(other.real)) and torch.allclose(
+        input.imag, torch.from_numpy(other.imag)
     )
 
 
@@ -148,16 +148,20 @@ def test_arithmetic_inplace(random_state):
     m = np.zeros_like(a)
 
     # test inplace __i*__
-    n += p ; m += a
+    n += p
+    m += a
     assert cplx_allclose_numpy(n, m)
 
-    n *= p ; m *= a
+    n *= p
+    m *= a
     assert cplx_allclose_numpy(n, m)
 
-    n -= p ; m -= a
+    n -= p
+    m -= a
     assert cplx_allclose_numpy(n, m)
 
-    n /= p ; m /= a
+    n /= p
+    m /= a
     assert cplx_allclose_numpy(n, m)
 
     with pytest.raises(RuntimeError, match=r"The expanded size of the tensor"):
@@ -306,29 +310,43 @@ def test_conv1d_transform(random_state):
     L = random_state.randn(14, 12, 7) + 1j * random_state.randn(14, 12, 7)
 
     p, U = map(cplx.Cplx.from_numpy, [a, L])
-    assert cplx_allclose(cplx.convnd_quick(F.conv1d, p, U),
-                         cplx.convnd_naive(F.conv1d, p, U))
+    assert cplx_allclose(
+        cplx.convnd_quick(F.conv1d, p, U), cplx.convnd_naive(F.conv1d, p, U)
+    )
 
-    assert cplx_allclose(cplx.convnd_quick(F.conv1d, p, U, stride=5),
-                         cplx.convnd_naive(F.conv1d, p, U, stride=5))
+    assert cplx_allclose(
+        cplx.convnd_quick(F.conv1d, p, U, stride=5),
+        cplx.convnd_naive(F.conv1d, p, U, stride=5),
+    )
 
-    assert cplx_allclose(cplx.convnd_quick(F.conv1d, p, U, padding=2),
-                         cplx.convnd_naive(F.conv1d, p, U, padding=2))
+    assert cplx_allclose(
+        cplx.convnd_quick(F.conv1d, p, U, padding=2),
+        cplx.convnd_naive(F.conv1d, p, U, padding=2),
+    )
 
-    assert cplx_allclose(cplx.convnd_quick(F.conv1d, p, U, dilation=3),
-                         cplx.convnd_naive(F.conv1d, p, U, dilation=3))
+    assert cplx_allclose(
+        cplx.convnd_quick(F.conv1d, p, U, dilation=3),
+        cplx.convnd_naive(F.conv1d, p, U, dilation=3),
+    )
 
-    assert cplx_allclose(cplx.convnd_3m(F.conv1d, p, U),
-                         cplx.convnd_naive(F.conv1d, p, U))
+    assert cplx_allclose(
+        cplx.convnd_3m(F.conv1d, p, U), cplx.convnd_naive(F.conv1d, p, U)
+    )
 
-    assert cplx_allclose(cplx.convnd_3m(F.conv1d, p, U, stride=5),
-                         cplx.convnd_naive(F.conv1d, p, U, stride=5))
+    assert cplx_allclose(
+        cplx.convnd_3m(F.conv1d, p, U, stride=5),
+        cplx.convnd_naive(F.conv1d, p, U, stride=5),
+    )
 
-    assert cplx_allclose(cplx.convnd_3m(F.conv1d, p, U, padding=2),
-                         cplx.convnd_naive(F.conv1d, p, U, padding=2))
+    assert cplx_allclose(
+        cplx.convnd_3m(F.conv1d, p, U, padding=2),
+        cplx.convnd_naive(F.conv1d, p, U, padding=2),
+    )
 
-    assert cplx_allclose(cplx.convnd_3m(F.conv1d, p, U, dilation=3),
-                         cplx.convnd_naive(F.conv1d, p, U, dilation=3))
+    assert cplx_allclose(
+        cplx.convnd_3m(F.conv1d, p, U, dilation=3),
+        cplx.convnd_naive(F.conv1d, p, U, dilation=3),
+    )
 
 
 def test_conv2d_transform(random_state):
@@ -372,29 +390,43 @@ def test_conv2d_transform(random_state):
     L = random_state.randn(14, 12, 7, 6) + 1j * random_state.randn(14, 12, 7, 6)
 
     p, U = map(cplx.Cplx.from_numpy, [a, L])
-    assert cplx_allclose(cplx.convnd_quick(F.conv2d, p, U),
-                         cplx.convnd_naive(F.conv2d, p, U))
+    assert cplx_allclose(
+        cplx.convnd_quick(F.conv2d, p, U), cplx.convnd_naive(F.conv2d, p, U)
+    )
 
-    assert cplx_allclose(cplx.convnd_quick(F.conv2d, p, U, stride=5),
-                         cplx.convnd_naive(F.conv2d, p, U, stride=5))
+    assert cplx_allclose(
+        cplx.convnd_quick(F.conv2d, p, U, stride=5),
+        cplx.convnd_naive(F.conv2d, p, U, stride=5),
+    )
 
-    assert cplx_allclose(cplx.convnd_quick(F.conv2d, p, U, padding=2),
-                         cplx.convnd_naive(F.conv2d, p, U, padding=2))
+    assert cplx_allclose(
+        cplx.convnd_quick(F.conv2d, p, U, padding=2),
+        cplx.convnd_naive(F.conv2d, p, U, padding=2),
+    )
 
-    assert cplx_allclose(cplx.convnd_quick(F.conv2d, p, U, dilation=3),
-                         cplx.convnd_naive(F.conv2d, p, U, dilation=3))
+    assert cplx_allclose(
+        cplx.convnd_quick(F.conv2d, p, U, dilation=3),
+        cplx.convnd_naive(F.conv2d, p, U, dilation=3),
+    )
 
-    assert cplx_allclose(cplx.convnd_3m(F.conv2d, p, U),
-                         cplx.convnd_naive(F.conv2d, p, U))
+    assert cplx_allclose(
+        cplx.convnd_3m(F.conv2d, p, U), cplx.convnd_naive(F.conv2d, p, U)
+    )
 
-    assert cplx_allclose(cplx.convnd_3m(F.conv2d, p, U, stride=5),
-                         cplx.convnd_naive(F.conv2d, p, U, stride=5))
+    assert cplx_allclose(
+        cplx.convnd_3m(F.conv2d, p, U, stride=5),
+        cplx.convnd_naive(F.conv2d, p, U, stride=5),
+    )
 
-    assert cplx_allclose(cplx.convnd_3m(F.conv2d, p, U, padding=2),
-                         cplx.convnd_naive(F.conv2d, p, U, padding=2))
+    assert cplx_allclose(
+        cplx.convnd_3m(F.conv2d, p, U, padding=2),
+        cplx.convnd_naive(F.conv2d, p, U, padding=2),
+    )
 
-    assert cplx_allclose(cplx.convnd_3m(F.conv2d, p, U, dilation=3),
-                         cplx.convnd_naive(F.conv2d, p, U, dilation=3))
+    assert cplx_allclose(
+        cplx.convnd_3m(F.conv2d, p, U, dilation=3),
+        cplx.convnd_naive(F.conv2d, p, U, dilation=3),
+    )
 
 
 def test_conv3d_transform(random_state):
@@ -419,7 +451,9 @@ def test_conv3d_transform(random_state):
 
     # check pure C: `correlate` uses conjugation
     #  https://docs.scipy.org/doc/numpy/reference/generated/numpy.correlate.html
-    x = random_state.randn(5, 12, 13, 21, 17) + 1j * random_state.randn(5, 12, 13, 21, 17)
+    x = random_state.randn(5, 12, 13, 21, 17) + 1j * random_state.randn(
+        5, 12, 13, 21, 17
+    )
     w = random_state.randn(1, 12, 7, 11, 5) + 1j * random_state.randn(1, 12, 7, 11, 5)
 
     nn = correlate(x, w.conj(), mode="valid")
@@ -434,33 +468,49 @@ def test_conv3d_transform(random_state):
     cc = cplx.convnd_3m(F.conv3d, cx, cw)
     assert cplx_allclose_numpy(cc, nn)
 
-    a = random_state.randn(5, 12, 14, 19, 27) + 1j * random_state.randn(5, 12, 14, 19, 27)
+    a = random_state.randn(5, 12, 14, 19, 27) + 1j * random_state.randn(
+        5, 12, 14, 19, 27
+    )
     L = random_state.randn(14, 12, 3, 4, 5) + 1j * random_state.randn(14, 12, 3, 4, 5)
 
     p, U = map(cplx.Cplx.from_numpy, [a, L])
-    assert cplx_allclose(cplx.convnd_quick(F.conv3d, p, U),
-                         cplx.convnd_naive(F.conv3d, p, U))
+    assert cplx_allclose(
+        cplx.convnd_quick(F.conv3d, p, U), cplx.convnd_naive(F.conv3d, p, U)
+    )
 
-    assert cplx_allclose(cplx.convnd_quick(F.conv3d, p, U, stride=5),
-                         cplx.convnd_naive(F.conv3d, p, U, stride=5))
+    assert cplx_allclose(
+        cplx.convnd_quick(F.conv3d, p, U, stride=5),
+        cplx.convnd_naive(F.conv3d, p, U, stride=5),
+    )
 
-    assert cplx_allclose(cplx.convnd_quick(F.conv3d, p, U, padding=2),
-                         cplx.convnd_naive(F.conv3d, p, U, padding=2))
+    assert cplx_allclose(
+        cplx.convnd_quick(F.conv3d, p, U, padding=2),
+        cplx.convnd_naive(F.conv3d, p, U, padding=2),
+    )
 
-    assert cplx_allclose(cplx.convnd_quick(F.conv3d, p, U, dilation=3),
-                         cplx.convnd_naive(F.conv3d, p, U, dilation=3))
+    assert cplx_allclose(
+        cplx.convnd_quick(F.conv3d, p, U, dilation=3),
+        cplx.convnd_naive(F.conv3d, p, U, dilation=3),
+    )
 
-    assert cplx_allclose(cplx.convnd_3m(F.conv3d, p, U),
-                         cplx.convnd_naive(F.conv3d, p, U))
+    assert cplx_allclose(
+        cplx.convnd_3m(F.conv3d, p, U), cplx.convnd_naive(F.conv3d, p, U)
+    )
 
-    assert cplx_allclose(cplx.convnd_3m(F.conv3d, p, U, stride=5),
-                         cplx.convnd_naive(F.conv3d, p, U, stride=5))
+    assert cplx_allclose(
+        cplx.convnd_3m(F.conv3d, p, U, stride=5),
+        cplx.convnd_naive(F.conv3d, p, U, stride=5),
+    )
 
-    assert cplx_allclose(cplx.convnd_3m(F.conv3d, p, U, padding=2),
-                         cplx.convnd_naive(F.conv3d, p, U, padding=2))
+    assert cplx_allclose(
+        cplx.convnd_3m(F.conv3d, p, U, padding=2),
+        cplx.convnd_naive(F.conv3d, p, U, padding=2),
+    )
 
-    assert cplx_allclose(cplx.convnd_3m(F.conv3d, p, U, dilation=3),
-                         cplx.convnd_naive(F.conv3d, p, U, dilation=3))
+    assert cplx_allclose(
+        cplx.convnd_3m(F.conv3d, p, U, dilation=3),
+        cplx.convnd_naive(F.conv3d, p, U, dilation=3),
+    )
 
 
 def test_bilinear_transform(random_state):
@@ -474,46 +524,28 @@ def test_bilinear_transform(random_state):
     q = cplx.Cplx.from_numpy(b)
 
     base = np.einsum("bsi, bsj, fij ->bsf", a.conj(), z, L)
-    assert cplx_allclose_numpy(
-        cplx.bilinear(p, r, U, None, conjugate=True),
-        base)
-    assert cplx_allclose_numpy(
-        cplx.bilinear_naive(p, r, U, None, conjugate=True),
-        base)
-    assert cplx_allclose_numpy(
-        cplx.bilinear_cat(p, r, U, None, conjugate=True),
-        base)
+    assert cplx_allclose_numpy(cplx.bilinear(p, r, U, None, conjugate=True), base)
+    assert cplx_allclose_numpy(cplx.bilinear_naive(p, r, U, None, conjugate=True), base)
+    assert cplx_allclose_numpy(cplx.bilinear_cat(p, r, U, None, conjugate=True), base)
 
+    assert cplx_allclose_numpy(cplx.bilinear(p, r, U, q, conjugate=True), base + b)
     assert cplx_allclose_numpy(
-        cplx.bilinear(p, r, U, q, conjugate=True),
-        base + b)
-    assert cplx_allclose_numpy(
-        cplx.bilinear_naive(p, r, U, q, conjugate=True),
-        base + b)
-    assert cplx_allclose_numpy(
-        cplx.bilinear_cat(p, r, U, q, conjugate=True),
-        base + b)
+        cplx.bilinear_naive(p, r, U, q, conjugate=True), base + b
+    )
+    assert cplx_allclose_numpy(cplx.bilinear_cat(p, r, U, q, conjugate=True), base + b)
 
     base = np.einsum("bsi, bsj, fij ->bsf", a, z, L)
+    assert cplx_allclose_numpy(cplx.bilinear(p, r, U, None, conjugate=False), base)
     assert cplx_allclose_numpy(
-        cplx.bilinear(p, r, U, None, conjugate=False),
-        base)
-    assert cplx_allclose_numpy(
-        cplx.bilinear_naive(p, r, U, None, conjugate=False),
-        base)
-    assert cplx_allclose_numpy(
-        cplx.bilinear_cat(p, r, U, None, conjugate=False),
-        base)
+        cplx.bilinear_naive(p, r, U, None, conjugate=False), base
+    )
+    assert cplx_allclose_numpy(cplx.bilinear_cat(p, r, U, None, conjugate=False), base)
 
+    assert cplx_allclose_numpy(cplx.bilinear(p, r, U, q, conjugate=False), base + b)
     assert cplx_allclose_numpy(
-        cplx.bilinear(p, r, U, q, conjugate=False),
-        base + b)
-    assert cplx_allclose_numpy(
-        cplx.bilinear_naive(p, r, U, q, conjugate=False),
-        base + b)
-    assert cplx_allclose_numpy(
-        cplx.bilinear_cat(p, r, U, q, conjugate=False),
-        base + b)
+        cplx.bilinear_naive(p, r, U, q, conjugate=False), base + b
+    )
+    assert cplx_allclose_numpy(cplx.bilinear_cat(p, r, U, q, conjugate=False), base + b)
 
 
 def test_type_conversion(random_state):
@@ -540,8 +572,9 @@ def test_type_conversion(random_state):
 
     # concatenated to cplx
     for dim in [0, 1, 2]:
-        stacked = torch.cat([torch.from_numpy(a.real),
-                             torch.from_numpy(a.imag)], dim=dim)
+        stacked = torch.cat(
+            [torch.from_numpy(a.real), torch.from_numpy(a.imag)], dim=dim
+        )
 
         q = cplx.from_concatenated_real(stacked, dim=dim)
         assert cplx_allclose_numpy(q, a)
@@ -556,10 +589,9 @@ def test_type_conversion(random_state):
     # cplx to interleaved
     for dim in [0, 1, 2]:
         q = cplx.from_interleaved_real(
-                cplx.to_interleaved_real(
-                    cplx.Cplx.from_numpy(a),
-                    flatten=True, dim=dim
-                ), dim=dim)
+            cplx.to_interleaved_real(cplx.Cplx.from_numpy(a), flatten=True, dim=dim),
+            dim=dim,
+        )
 
         assert cplx_allclose_numpy(q, a)
 
@@ -580,13 +612,16 @@ def test_enisum(random_state):
             cplx.einsum(eq, p)
 
     equations = [
-        "ijk, ikj", "ijk, ikj -> ij", "ijk, ikj -> k",
-        "ijk, lkj", "ijk, lkj -> li", "ijk, lkj -> lji",
+        "ijk, ikj",
+        "ijk, ikj -> ij",
+        "ijk, ikj -> k",
+        "ijk, lkj",
+        "ijk, lkj -> li",
+        "ijk, lkj -> lji",
         "ijk, lkp",
-        ]
+    ]
     for eq in equations:
-        assert cplx_allclose_numpy(cplx.einsum(eq, p, q),
-                                   np.einsum(eq, a, b))
+        assert cplx_allclose_numpy(cplx.einsum(eq, p, q), np.einsum(eq, a, b))
 
     with pytest.raises(RuntimeError, match="does not support more"):
         cplx.einsum("...", p, q, r)
@@ -596,20 +631,18 @@ def test_cat_stack(random_state):
     with pytest.raises(RuntimeError, match="a non-empty"):
         cplx.stack([], dim=0)
 
-    np_tensors = 10 * [
-        random_state.randn(5, 3, 7) + 1j * random_state.randn(5, 3, 7)
-    ]
+    np_tensors = 10 * [random_state.randn(5, 3, 7) + 1j * random_state.randn(5, 3, 7)]
     tr_tensors = [*map(cplx.Cplx.from_numpy, np_tensors)]
 
     for n in [0, 1, 2]:
         assert cplx_allclose_numpy(
-            cplx.cat(tr_tensors, dim=n),
-            np.concatenate(np_tensors, axis=n))
+            cplx.cat(tr_tensors, dim=n), np.concatenate(np_tensors, axis=n)
+        )
 
     for n in [0, 1, 2, 3]:
         assert cplx_allclose_numpy(
-            cplx.stack(tr_tensors, dim=n),
-            np.stack(np_tensors, axis=n))
+            cplx.stack(tr_tensors, dim=n), np.stack(np_tensors, axis=n)
+        )
 
     np_tensors = [
         random_state.randn(3, 7) + 1j * random_state.randn(3, 7),
@@ -633,8 +666,7 @@ def test_view(random_state):
 
     # Should be equivalent to reshape if in contiguous memory
     assert cplx_allclose(p.view(5, 64, 64), p.reshape(5, 64, 64))
-    assert cplx_allclose(p.view(5, 64, 64),
-                         cplx.Cplx.from_numpy(a.reshape(5, 64, 64)))
+    assert cplx_allclose(p.view(5, 64, 64), cplx.Cplx.from_numpy(a.reshape(5, 64, 64)))
 
     # Real and Imaginary parts should remain the same
     assert cplx_allclose_numpy(p.view(5, 64, 64), a.reshape(5, 64, 64))
@@ -651,9 +683,7 @@ def test_view(random_state):
         p.view(4, 64, 64)
 
 
-@pytest.mark.parametrize('shape', [
-    [10, 12, 31], [7, 3], [17], [2, 5, 6, 3, 7, 2, 4]
-])
+@pytest.mark.parametrize("shape", [[10, 12, 31], [7, 3], [17], [2, 5, 6, 3, 7, 2, 4]])
 def test_tensor_shape_dim_size(random_state, shape):
     # size, shape, and dim properties
     p = cplx.Cplx.empty(shape)
@@ -670,7 +700,7 @@ def test_tensor_shape_dim_size(random_state, shape):
 
 def test_scalar_shape_dim_size(random_state):
     # size, shape, and dim properties
-    p = cplx.Cplx(1+1j)
+    p = cplx.Cplx(1 + 1j)
     assert p.dim() == 0 and p.shape == p.size() == torch.Size([])
 
     with pytest.raises(IndexError, match="tensor has no dimensions"):

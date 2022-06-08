@@ -39,12 +39,24 @@ def test_setattr_interface():
     assert torch.allclose(lin.weight_masked, mask * lin.weight)
 
     # input masking
-    lin.mask = mask = torch.randint(2, size=(1, shape[0],)).float()
+    lin.mask = mask = torch.randint(
+        2,
+        size=(
+            1,
+            shape[0],
+        ),
+    ).float()
     assert torch.allclose(*torch.broadcast_tensors(lin.mask, mask))
     assert torch.allclose(lin.weight_masked, mask * lin.weight)
 
     # unstructured masking
-    lin.mask = mask = torch.randint(2, size=(shape[1], shape[0],)).float()
+    lin.mask = mask = torch.randint(
+        2,
+        size=(
+            shape[1],
+            shape[0],
+        ),
+    ).float()
     assert torch.allclose(*torch.broadcast_tensors(lin.mask, mask))
     assert torch.allclose(lin.weight_masked, mask * lin.weight)
 
@@ -86,13 +98,25 @@ def test_method_interface():
     assert torch.allclose(lin.weight_masked, mask * lin.weight)
 
     # input masking
-    mask = torch.randint(2, size=(1, shape[0],)).float()
+    mask = torch.randint(
+        2,
+        size=(
+            1,
+            shape[0],
+        ),
+    ).float()
     lin.mask_(mask)
     assert torch.allclose(*torch.broadcast_tensors(lin.mask, mask))
     assert torch.allclose(lin.weight_masked, mask * lin.weight)
 
     # unstructured masking
-    mask = torch.randint(2, size=(shape[1], shape[0],)).float()
+    mask = torch.randint(
+        2,
+        size=(
+            shape[1],
+            shape[0],
+        ),
+    ).float()
     lin.mask_(mask)
     assert torch.allclose(*torch.broadcast_tensors(lin.mask, mask))
     assert torch.allclose(lin.weight_masked, mask * lin.weight)
@@ -130,7 +154,7 @@ def test_state_dict_loading():
     masked.mask = None
     origin.load_state_dict(masked.state_dict(), strict=True)
 
-    masked.mask = torch.tensor(1.)
+    masked.mask = torch.tensor(1.0)
     with pytest.raises(RuntimeError, match=r"Unexpected key\(s\)"):
         origin.load_state_dict(masked.state_dict(), strict=True)
 
@@ -142,12 +166,24 @@ def test_state_dict_loading():
     masked.load_state_dict({**origin.state_dict(), "mask": None})
 
     # unsetting a mask with state_dict having `None` should work, too
-    masked.mask = mask = torch.randint(2, size=(shape[1], shape[0],)).float()
+    masked.mask = mask = torch.randint(
+        2,
+        size=(
+            shape[1],
+            shape[0],
+        ),
+    ).float()
     masked.load_state_dict({**origin.state_dict(), "mask": None})
     assert masked.mask is None
 
     # see if the existing mask is unaffected when mask is missing
-    masked.mask = mask = torch.randint(2, size=(shape[1], shape[0],)).float()
+    masked.mask = mask = torch.randint(
+        2,
+        size=(
+            shape[1],
+            shape[0],
+        ),
+    ).float()
     masked.load_state_dict(origin.state_dict(), strict=False)
     assert torch.allclose(masked.mask, mask)
 
