@@ -3,7 +3,8 @@
 ## Version 2022.06
 
 - COSMIT: accepted [Black](https://black.readthedocs.io/en/stable/index.html) a the code style of choice, introduced pre-commit hooks for developers
-- FIX: having a dunder-version in the root of the package is a the standard
+- FIX: having a dunder-version in the root of the package is a the standard (issue #24)
+- FIX: set the minimal python to `3.7` as pointed out in issue #24
 - UPD: bumped the base version of torch to at least `1.8`
 - FIX: upgraded `.utils.spectrum` to new native torch complex backend (`torch>=1.8`)
 - FIX: ensured ONNX support in PR #14

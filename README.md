@@ -27,7 +27,7 @@ The essential dependencies of `cplxmodule` are `numpy`, `torch` and `scipy`, whi
 ```bash
 # essential dependencies
 # conda update -n base -c defaults conda
-conda create -n cplxmodule python pip numpy scipy "pytorch::pytorch" \
+conda create -n cplxmodule "python>=3.7" pip numpy scipy "pytorch::pytorch" \
   && conda activate cplxmodule
 ```
 
