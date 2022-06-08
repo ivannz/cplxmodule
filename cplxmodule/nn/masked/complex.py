@@ -22,9 +22,12 @@ class _BaseCplxMixin(MaskedWeightMixin, BaseMasked, SparsityStats):
             n_dropped -= float(mask.sum().item())
 
         else:
-            n_dropped = 0.
+            n_dropped = 0.0
 
-        return [(id(weight.real), n_dropped), (id(weight.imag), n_dropped), ]
+        return [
+            (id(weight.real), n_dropped),
+            (id(weight.imag), n_dropped),
+        ]
 
 
 class CplxLinearMasked(CplxLinear, _BaseCplxMixin):
@@ -39,20 +42,41 @@ class CplxBilinearMasked(CplxBilinear, _BaseCplxMixin):
 
 class CplxConv1dMasked(CplxConv1d, _BaseCplxMixin):
     def forward(self, input):
-        return cplx.conv1d(input, self.weight_masked, self.bias,
-                           self.stride, self.padding, self.dilation,
-                           self.groups, self.padding_mode)
+        return cplx.conv1d(
+            input,
+            self.weight_masked,
+            self.bias,
+            self.stride,
+            self.padding,
+            self.dilation,
+            self.groups,
+            self.padding_mode,
+        )
 
 
 class CplxConv2dMasked(CplxConv2d, _BaseCplxMixin):
     def forward(self, input):
-        return cplx.conv2d(input, self.weight_masked, self.bias,
-                           self.stride, self.padding, self.dilation,
-                           self.groups, self.padding_mode)
+        return cplx.conv2d(
+            input,
+            self.weight_masked,
+            self.bias,
+            self.stride,
+            self.padding,
+            self.dilation,
+            self.groups,
+            self.padding_mode,
+        )
 
 
 class CplxConv3dMasked(CplxConv3d, _BaseCplxMixin):
     def forward(self, input):
-        return cplx.conv3d(input, self.weight_masked, self.bias,
-                           self.stride, self.padding, self.dilation,
-                           self.groups, self.padding_mode)
+        return cplx.conv3d(
+            input,
+            self.weight_masked,
+            self.bias,
+            self.stride,
+            self.padding,
+            self.dilation,
+            self.groups,
+            self.padding_mode,
+        )

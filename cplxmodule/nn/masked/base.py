@@ -29,6 +29,7 @@ class BaseMasked(torch.nn.Module):
     The masks could be set either manually through setting `.mask`, or loaded in
     bulk with `deploy_masks`, or via `model.load_state_dict(..., strict=False)`.
     """
+
     def __init__(self):
         super().__init__()
         self.register_buffer("mask", None)
@@ -52,8 +53,9 @@ class BaseMasked(torch.nn.Module):
         Effectively switches on / off masking of the weights.
         """
         if mask is not None and not isinstance(mask, torch.Tensor):
-            raise TypeError(f"`mask` must be either a Tensor or "
-                            f"`None`. Got {type(mask).__name__}.")
+            raise TypeError(
+                f"`mask` must be either a Tensor or `None`. Got {type(mask).__name__}."
+            )
 
         if mask is not None:
             # None -> sparse : register mask, turning on sparsity
@@ -86,15 +88,28 @@ class BaseMasked(torch.nn.Module):
 
         self.mask_(value)
 
-    def _load_from_state_dict(self, state_dict, prefix, local_metadata,
-                              strict, missing_keys, unexpected_keys,
-                              error_msgs):
+    def _load_from_state_dict(
+        self,
+        state_dict,
+        prefix,
+        local_metadata,
+        strict,
+        missing_keys,
+        unexpected_keys,
+        error_msgs,
+    ):
         """Surgically load the state with the runtime masks from a dict."""
         # this next call loads everything, expect mask into this module only!
         mask = prefix + "mask"
         super()._load_from_state_dict(
-            {k: v for k, v in state_dict.items() if k != mask}, prefix,
-            local_metadata, strict, missing_keys, unexpected_keys, error_msgs)
+            {k: v for k, v in state_dict.items() if k != mask},
+            prefix,
+            local_metadata,
+            strict,
+            missing_keys,
+            unexpected_keys,
+            error_msgs,
+        )
 
         # here: mask in missing <=> buffer exists and not None <=> is_sparse
         # https://github.com/pytorch/pytorch/blob/master/torch/nn/modules/module.py#L758
@@ -117,14 +132,17 @@ class BaseMasked(torch.nn.Module):
             missing_keys.remove(mask)
 
 
-class MaskedWeightMixin():
+class MaskedWeightMixin:
     """A mixin for accessing read-only masked weight,"""
+
     @property
     def weight_masked(self):
         """Return a sparsified weight of the parent *Linear."""
         if not self.is_sparse:
-            msg = f"`{type(self).__name__}` has no sparsity mask. Please, " \
-                  f"either set a mask attribute, or call `deploy_masks()`."
+            msg = (
+                f"`{type(self).__name__}` has no sparsity mask. Please, "
+                f"either set a mask attribute, or call `deploy_masks()`."
+            )
             raise RuntimeError(msg)
 
         # __rmul__ by the mask in case of weird weight types (like Cplx)
@@ -188,8 +206,7 @@ def deploy_masks(module, *, state_dict=None, prefix="", reset=False):
         Whether to forcefully reset the sparsity of the layers, masks for
         which were NOT provided in `state_dict`.
     """
-    if not isinstance(state_dict, dict) \
-       or not isinstance(module, torch.nn.Module):
+    if not isinstance(state_dict, dict) or not isinstance(module, torch.nn.Module):
         return module
 
     for name, mod in module.named_modules(prefix=prefix):
@@ -242,7 +259,6 @@ def binarize_masks(state_dict, masks):
 
             new_state_dict[name] = par
 
-        new_masks = {name: torch.ne(mask, 0).to(mask)
-                     for name, mask in masks.items()}
+        new_masks = {name: torch.ne(mask, 0).to(mask) for name, mask in masks.items()}
 
     return new_state_dict, new_masks

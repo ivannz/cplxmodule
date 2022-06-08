@@ -17,7 +17,7 @@ class _BaseRealMixin(MaskedWeightMixin, BaseMasked, SparsityStats):
             n_dropped -= float(mask.sum().item())
 
         else:
-            n_dropped = 0.
+            n_dropped = 0.0
 
         return [(id(self.weight), n_dropped)]
 
@@ -29,20 +29,41 @@ class LinearMasked(Linear, _BaseRealMixin):
 
 class Conv1dMasked(Conv1d, _BaseRealMixin):
     def forward(self, input):
-        return F.conv1d(input, self.weight_masked, self.bias,
-                        self.stride, self.padding, self.dilation, self.groups)
+        return F.conv1d(
+            input,
+            self.weight_masked,
+            self.bias,
+            self.stride,
+            self.padding,
+            self.dilation,
+            self.groups,
+        )
 
 
 class Conv2dMasked(Conv2d, _BaseRealMixin):
     def forward(self, input):
-        return F.conv2d(input, self.weight_masked, self.bias,
-                        self.stride, self.padding, self.dilation, self.groups)
+        return F.conv2d(
+            input,
+            self.weight_masked,
+            self.bias,
+            self.stride,
+            self.padding,
+            self.dilation,
+            self.groups,
+        )
 
 
 class Conv3dMasked(Conv3d, _BaseRealMixin):
     def forward(self, input):
-        return F.conv3d(input, self.weight_masked, self.bias,
-                        self.stride, self.padding, self.dilation, self.groups)
+        return F.conv3d(
+            input,
+            self.weight_masked,
+            self.bias,
+            self.stride,
+            self.padding,
+            self.dilation,
+            self.groups,
+        )
 
 
 class BilinearMasked(Bilinear, _BaseRealMixin):
