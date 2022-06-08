@@ -1,3 +1,5 @@
+cplxmodule/__version__.py
+
 # General
 .DS_Store
 .AppleDouble
