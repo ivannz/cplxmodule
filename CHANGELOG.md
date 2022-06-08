@@ -12,6 +12,7 @@
 - FIX: made `.Cplx` instances `deepcopy`-able, fixing issue #18
 - DOC: improved docs for `.nn.ModReLU` indicating the sign-deviation from the original paper proposing it (issue #22)
 - DOC: added a basic TOC to the main README docs
+- ENH: implemented a prototype layer with Polarized Variational approximation with ARD prior (see the thesis)
 
 ### Completed DEPRECATION cycles
 
