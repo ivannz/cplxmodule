@@ -1,12 +1,10 @@
 # CplxModule
 
-A lightweight extension for `torch.nn` that adds layers and activations, which respect algebraic operations over the field of complex numbers, and implements real- and complex-valued Variational Dropout methods for weight sparsification.
-
+A lightweight extension for `torch.nn` that adds layers and activations, which respect algebraic operations over the *field of complex numbers*, and implements *real- and complex-valued Variational Dropout* methods for weight sparsification.
 
 ## Documentation
 
-Please refer to README files located in `cplxmodule.nn`, `cplxmodule.nn.relevance`, and `cplxmodule.nn.masked` for a high-level description of the implementation, functionality and useful code patterns.
-
+Please refer to README files located in [cplxmodule.nn](./cplxmodule/nn), [cplxmodule.nn.relevance](./cplxmodule/nn/relevance), and [cplxmodule.nn.masked](./cplxmodule/nn/masked) for a high-level description of the implementation, functionality and useful code patterns.
 
 ## Implementation
 
@@ -18,22 +16,63 @@ The implementations of the real-valued Variational Dropout and Automatic Relevan
 
 Complex-valued Bayesian sparsification layers are based on the research by [Nazarov and Burnaev (2020)](http://proceedings.mlr.press/v119/nazarov20a.html) [[5]](#user-content-ref5).
 
-
 ## Installation
 
-You can install this package with `pip`:
+The essential dependencies of `cplxmodule` are `numpy`, `torch` and `scipy`, which can be installed via
+
 ```bash
-pip install cplxmodule
-```
-or from the git repo to get the latest version:
-```bash
-pip install --upgrade git+https://github.com/ivannz/cplxmodule.git
-```
-If you prefer a developer install (editable), then run the following from the root of the locally cloned repo
-```bash
-pip install -e .
+# essential dependencies
+# conda update -n base -c defaults conda
+conda create -n cplxmodule python pip numpy scipy "pytorch::pytorch" \
+  && conda activate cplxmodule
 ```
 
+Extra dependencies, that are used in tests and needed for develoipment, can be added on top of the essentials. Check [ONNX Runtime](https://onnxruntime.ai/) to see of your system is compatible.
+
+```bash
+conda activate cplxmodule
+
+# extra deps for development
+conda install -n cplxmodule matplotlib scikit-learn tqdm pytest "pytorch::torchvision" \
+  && pip install black pre-commit
+
+# ONNX (for compatible systems)
+conda install -n cplxmodule onnx && pip install onnxruntime
+```
+
+The package itself can be installed this package with `pip`:
+
+```bash
+conda activate cplxmodule
+
+pip install cplxmodule
+```
+
+or from the git repo to get the latest version:
+
+```bash
+conda activate cplxmodule
+
+pip install --upgrade git+https://github.com/ivannz/cplxmodule.git
+```
+
+or locally from *the root of the locally cloned repo*, if you prefer an editable developer install:
+
+```bash
+conda activate cplxmodule
+
+# enable basic checks (codestyle, stray whitespace, eof newline)
+pre-commit install
+
+# editable install
+pip install -e .
+
+# run tests to verify installation (bathcnorm test )
+# XXX `test_batchnorm.py` depends on the precision of the outcome of SGD, hence
+#  may occasionally fail
+# XXX A user warning concerning non-writable numpy array is expected
+pytest
+```
 
 ## Citation
 
@@ -55,7 +94,6 @@ The proper citation for the real-valued Bayesian Sparsification layers from `cpl
     pages = {7230--7242}
 }
 ```
-
 
 ## References
 

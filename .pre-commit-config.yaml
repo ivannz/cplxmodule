@@ -1,0 +1,22 @@
+repos:
+-   repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v2.3.0
+    hooks:
+    -   id: check-yaml
+    -   id: end-of-file-fixer
+    -   id: trailing-whitespace
+-   repo: https://github.com/psf/black
+    rev: 22.3.0
+    hooks:
+    -   id: black
+    -   id: black-jupyter
+-   repo: https://gitlab.com/pycqa/flake8
+    rev: 3.9.2
+    hooks:
+    -   id: flake8
+        types: [file, python]
+        args: [--max-line-length=88, --extend-ignore=E203]
+# -   repo: https://github.com/kynan/nbstripout
+#     rev: 0.5.0
+#     hooks:
+#     -   id: nbstripout
