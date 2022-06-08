@@ -1,4 +1,3 @@
-import warnings
 from copy import deepcopy
 
 import torch
@@ -32,22 +31,21 @@ class Cplx(object):
                 imag = 0.0
 
             elif not isinstance(imag, float):
-                raise TypeError("""Imaginary part must be float.""")
+                raise TypeError("Imaginary part must be float.")
 
             real, imag = torch.tensor(real), torch.tensor(imag)
 
         elif not isinstance(real, torch.Tensor):
-            raise TypeError("""Real part must be torch.Tensor.""")
+            raise TypeError("Real part must be torch.Tensor.")
 
         if imag is None:
             imag = torch.zeros_like(real)
 
         elif not isinstance(imag, torch.Tensor):
-            raise TypeError("""Imaginary part must be torch.Tensor.""")
+            raise TypeError("Imaginary part must be torch.Tensor.")
 
         if real.shape != imag.shape:
-            raise ValueError("""Real and imaginary parts have """
-                             """mistmatching shape.""")
+            raise ValueError("Real and imaginary parts have mistmatching shape.")
 
         self = super().__new__(cls)
         self.__real, self.__imag = real, imag
@@ -142,8 +140,10 @@ class Cplx(object):
         # (a + ib) (u + iv) = au - bv + i(av + bu)
         # (a+u)(b+v) = ab + uv + (av + ub)
         # (a-v)(b+u) = ab - uv + (au - vb)
-        return type(u)(u.__real * v.real - u.__imag * v.imag,
-                       u.__imag * v.real + u.__real * v.imag)
+        return type(u)(
+            u.__real * v.real - u.__imag * v.imag,
+            u.__imag * v.real + u.__real * v.imag,
+        )
 
     __rmul__ = __mul__
     __imul__ = __mul__
@@ -225,8 +225,10 @@ class Cplx(object):
         return self.conj.t()  # Cplx(self.__real.t(), -self.__imag.t())
 
     def flatten(self, start_dim=0, end_dim=-1):
-        return type(self)(self.__real.flatten(start_dim, end_dim),
-                          self.__imag.flatten(start_dim, end_dim))
+        return type(self)(
+            self.__real.flatten(start_dim, end_dim),
+            self.__imag.flatten(start_dim, end_dim),
+        )
 
     def view(self, *shape):
         r"""Return a view of the complex tensor."""
@@ -248,7 +250,9 @@ class Cplx(object):
         return self.__real.size(*dim)
 
     def squeeze(self, dim=None):
-        r"""Returns the complex tensor with all the dimensions of input of size 1 removed."""
+        r"""Returns the complex tensor with all the dimensions of input of
+        size one removed.
+        """
         if dim is None:
             return type(self)(self.__real.squeeze(), self.__imag.squeeze())
         else:
@@ -257,7 +261,9 @@ class Cplx(object):
             )
 
     def unsqueeze(self, dim=None):
-        r"""Returns a new complex tensor with a dimension of size one inserted at the specified position."""
+        r"""Returns a new complex tensor with a dimension of size one inserted
+        at the specified position.
+        """
         if dim is None:
             return type(self)(self.__real.unsqueeze(), self.__imag.unsqueeze())
         else:
@@ -281,8 +287,10 @@ class Cplx(object):
         return self.__real.numpy() + 1j * self.__imag.numpy()
 
     def __repr__(self):
-        return f"{self.__class__.__name__}(\n" \
-               f"  real={self.__real},\n  imag={self.__imag}\n)"
+        return (
+            f"{self.__class__.__name__}(\n"
+            f"  real={self.__real},\n  imag={self.__imag}\n)"
+        )
 
     def detach(self):
         r"""Return a copy of the complex tensor detached from autograd graph."""
@@ -290,8 +298,10 @@ class Cplx(object):
 
     def requires_grad_(self, requires_grad=True):
         r"""Toggle the gradient of real and imaginary parts."""
-        return type(self)(self.__real.requires_grad_(requires_grad),
-                          self.__imag.requires_grad_(requires_grad))
+        return type(self)(
+            self.__real.requires_grad_(requires_grad),
+            self.__imag.requires_grad_(requires_grad),
+        )
 
     @property
     def grad(self):
@@ -311,8 +321,9 @@ class Cplx(object):
 
     def to(self, *args, **kwargs):
         r"""Move / typecast the complex tensor."""
-        return type(self)(self.__real.to(*args, **kwargs),
-                          self.__imag.to(*args, **kwargs))
+        return type(self)(
+            self.__real.to(*args, **kwargs), self.__imag.to(*args, **kwargs)
+        )
 
     @property
     def device(self):
@@ -330,13 +341,13 @@ class Cplx(object):
 
     def permute(self, *dims):
         r"""Shuffle the dimensions of the complex tensor."""
-        return type(self)(self.__real.permute(*dims),
-                          self.__imag.permute(*dims))
+        return type(self)(self.__real.permute(*dims), self.__imag.permute(*dims))
 
     def transpose(self, dim0, dim1):
         r"""Transpose the specified dimensions of the complex tensor."""
-        return type(self)(self.__real.transpose(dim0, dim1),
-                          self.__imag.transpose(dim0, dim1))
+        return type(self)(
+            self.__real.transpose(dim0, dim1), self.__imag.transpose(dim0, dim1)
+        )
 
     def is_complex(self):
         r"""Test if the tensor indeed represents a complex number."""
@@ -345,83 +356,96 @@ class Cplx(object):
     @classmethod
     def empty(cls, *sizes, dtype=None, device=None, requires_grad=False):
         r"""Create an empty complex tensor."""
-        re = torch.empty(*sizes, dtype=dtype, device=device,
-                         requires_grad=requires_grad)
+        re = torch.empty(
+            *sizes, dtype=dtype, device=device, requires_grad=requires_grad
+        )
         return cls(re, torch.empty_like(re, requires_grad=requires_grad))
 
     @classmethod
     def zeros(cls, *sizes, dtype=None, device=None, requires_grad=False):
         r"""Create an empty complex tensor."""
-        re = torch.zeros(*sizes, dtype=dtype, device=device,
-                         requires_grad=requires_grad)
+        re = torch.zeros(
+            *sizes, dtype=dtype, device=device, requires_grad=requires_grad
+        )
         return cls(re, torch.zeros_like(re, requires_grad=requires_grad))
 
     @classmethod
     def ones(cls, *sizes, dtype=None, device=None, requires_grad=False):
         r"""Create an empty complex tensor."""
-        re = torch.ones(*sizes, dtype=dtype, device=device,
-                        requires_grad=requires_grad)
+        re = torch.ones(*sizes, dtype=dtype, device=device, requires_grad=requires_grad)
         return cls(re, torch.zeros_like(re, requires_grad=requires_grad))
 
 
 def cat(tensors, dim):
     tensors = [*map(Cplx, tensors)]
-    return Cplx(torch.cat([z.real for z in tensors], dim=dim),
-                torch.cat([z.imag for z in tensors], dim=dim))
+    return Cplx(
+        torch.cat([z.real for z in tensors], dim=dim),
+        torch.cat([z.imag for z in tensors], dim=dim),
+    )
 
 
 def split(input, split_size_or_sections, dim=0):
     """see documentation for `torch.split`"""
-    return tuple(Cplx(re, im) for re, im in zip(
-        torch.split(input.real, split_size_or_sections, dim),
-        torch.split(input.imag, split_size_or_sections, dim),
-    ))
+    return tuple(
+        Cplx(re, im)
+        for re, im in zip(
+            torch.split(input.real, split_size_or_sections, dim),
+            torch.split(input.imag, split_size_or_sections, dim),
+        )
+    )
 
 
 def chunk(input, chunks, dim=0):
     """see documentation for `torch.chunk`"""
-    return tuple(Cplx(re, im) for re, im in zip(
-        torch.chunk(input.real, chunks, dim),
-        torch.chunk(input.imag, chunks, dim),
-    ))
+    return tuple(
+        Cplx(re, im)
+        for re, im in zip(
+            torch.chunk(input.real, chunks, dim),
+            torch.chunk(input.imag, chunks, dim),
+        )
+    )
 
 
 def stack(tensors, dim):
     tensors = [*map(Cplx, tensors)]
-    return Cplx(torch.stack([z.real for z in tensors], dim=dim),
-                torch.stack([z.imag for z in tensors], dim=dim))
+    return Cplx(
+        torch.stack([z.real for z in tensors], dim=dim),
+        torch.stack([z.imag for z in tensors], dim=dim),
+    )
 
 
 def unbind(input, dim=0):
     """see documentation for `torch.unbind`"""
-    return tuple(Cplx(re, im) for re, im in zip(
-        torch.unbind(input.real, dim),
-        torch.unbind(input.imag, dim),
-    ))
+    return tuple(
+        Cplx(re, im)
+        for re, im in zip(
+            torch.unbind(input.real, dim),
+            torch.unbind(input.imag, dim),
+        )
+    )
 
 
 def take(input, index):
     """see documentation for `torch.take`"""
-    return Cplx(torch.take(input.real, index),
-                torch.take(input.imag, index))
+    return Cplx(torch.take(input.real, index), torch.take(input.imag, index))
 
 
 def narrow(input, dim, start, length):
     """see documentation for `torch.narrow`"""
-    return Cplx(torch.narrow(input.real, dim, start, length),
-                torch.narrow(input.imag, dim, start, length))
+    return Cplx(
+        torch.narrow(input.real, dim, start, length),
+        torch.narrow(input.imag, dim, start, length),
+    )
 
 
 def squeeze(input, dim=None):
     """see documentation for `torch.squeeze`"""
-    return Cplx(torch.squeeze(input.real, dim),
-                torch.squeeze(input.imag, dim))
+    return Cplx(torch.squeeze(input.real, dim), torch.squeeze(input.imag, dim))
 
 
 def unsqueeze(input, dim):
     """see documentation for `torch.unsqueeze`"""
-    return Cplx(torch.unsqueeze(input.real, dim),
-                torch.unsqueeze(input.imag, dim))
+    return Cplx(torch.unsqueeze(input.real, dim), torch.unsqueeze(input.imag, dim))
 
 
 def from_interleaved_real(input, copy=True, dim=-1):
@@ -443,7 +467,7 @@ def to_interleaved_real(input, flatten=True, dim=-1):
     """Interleave the complex re-im pair into a real tensor."""
     dim = 1 + fix_dim(dim, input.dim())
     input = torch.stack([input.real, input.imag], dim=dim)
-    return input.flatten(dim-1, dim) if flatten else input
+    return input.flatten(dim - 1, dim) if flatten else input
 
 
 to_real = to_interleaved_real
@@ -458,8 +482,7 @@ def to_concatenated_real(input, flatten=None, dim=-1):
 def exp(input):
     r"""Compute the exponential of the complex tensor in re-im pair."""
     scale = torch.exp(input.real)
-    return Cplx(scale * torch.cos(input.imag),
-                scale * torch.sin(input.imag))
+    return Cplx(scale * torch.cos(input.imag), scale * torch.sin(input.imag))
 
 
 def log(input):
@@ -469,14 +492,18 @@ def log(input):
 
 def sin(input):
     r"""Compute the sine of the complex tensor in re-im pair."""
-    return Cplx(torch.sin(input.real) * torch.cosh(input.imag),
-                torch.cos(input.real) * torch.sinh(input.imag))
+    return Cplx(
+        torch.sin(input.real) * torch.cosh(input.imag),
+        torch.cos(input.real) * torch.sinh(input.imag),
+    )
 
 
 def cos(input):
     r"""Compute the cosine of the complex tensor in re-im pair."""
-    return Cplx(torch.cos(input.real) * torch.cosh(input.imag),
-                - torch.sin(input.real) * torch.sinh(input.imag))
+    return Cplx(
+        torch.cos(input.real) * torch.cosh(input.imag),
+        -torch.sin(input.real) * torch.sinh(input.imag),
+    )
 
 
 def tan(input):
@@ -489,8 +516,10 @@ def sinh(input):
 
     sinh(z) = - j sin(j z)
     """
-    return Cplx(torch.sinh(input.real) * torch.cos(input.imag),
-                torch.cosh(input.real) * torch.sin(input.imag))
+    return Cplx(
+        torch.sinh(input.real) * torch.cos(input.imag),
+        torch.cosh(input.real) * torch.sin(input.imag),
+    )
 
 
 def cosh(input):
@@ -498,8 +527,10 @@ def cosh(input):
 
     cosh(z) = cos(j z)
     """
-    return Cplx(torch.cosh(input.real) * torch.cos(input.imag),
-                torch.sinh(input.real) * torch.sin(input.imag))
+    return Cplx(
+        torch.cosh(input.real) * torch.cos(input.imag),
+        torch.sinh(input.real) * torch.sin(input.imag),
+    )
 
 
 def tanh(input):
@@ -512,8 +543,9 @@ def tanh(input):
 
 def randn(*size, dtype=None, device=None, requires_grad=False):
     """Generate standard complex Gaussian noise."""
-    normal = torch.randn(2, *size, dtype=dtype, layout=torch.strided,
-                         device=device, requires_grad=False) / sqrt(2)
+    normal = torch.randn(
+        2, *size, dtype=dtype, layout=torch.strided, device=device, requires_grad=False
+    ) / sqrt(2)
     z = Cplx(normal[0], normal[1])
     return z.requires_grad_(True) if requires_grad else z
 
@@ -522,10 +554,12 @@ def randn_like(input, dtype=None, device=None, requires_grad=False):
     """Returns a tensor with the same size as `input` that is filled with
     standard comlpex Gaussian random numbers.
     """
-    return randn(*input.size(),
-                 dtype=input.dtype if dtype is None else dtype,
-                 device=input.device if device is None else device,
-                 requires_grad=requires_grad)
+    return randn(
+        *input.size(),
+        dtype=input.dtype if dtype is None else dtype,
+        device=input.device if device is None else device,
+        requires_grad=requires_grad,
+    )
 
 
 def modrelu(input, threshold=0.5):
@@ -579,7 +613,7 @@ def modrelu(input, threshold=0.5):
     """
     # scale = (1 - \trfac{b}{|z|})_+
     modulus = torch.clamp(abs(input), min=1e-5)
-    return input * torch.relu(1. - threshold / modulus)
+    return input * torch.relu(1.0 - threshold / modulus)
 
 
 def phaseshift(input, phi=0.0):
@@ -604,10 +638,8 @@ def linear_naive(input, weight, bias=None):
     # W = U + i V,  z = u + i v, c = \Re c + i \Im c
     #  W z + c = (U + i V) (u + i v) + \Re c + i \Im c
     #          = (U u + \Re c - V v) + i (V u + \Im c + U v)
-    re = F.linear(input.real, weight.real) \
-        - F.linear(input.imag, weight.imag)
-    im = F.linear(input.real, weight.imag) \
-        + F.linear(input.imag, weight.real)
+    re = F.linear(input.real, weight.real) - F.linear(input.imag, weight.imag)
+    im = F.linear(input.real, weight.imag) + F.linear(input.imag, weight.real)
 
     output = Cplx(re, im)
     if bias is not None:
@@ -618,10 +650,13 @@ def linear_naive(input, weight, bias=None):
 
 def linear_cat(input, weight, bias=None):
     # [n_out, n_in] -> [2 * n_out, 2 * n_in] : [[U, V], [-V, U]]
-    ww = torch.cat([
-        torch.cat([ weight.real, weight.imag], dim=0),
-        torch.cat([-weight.imag, weight.real], dim=0)
-    ], dim=1)
+    ww = torch.cat(
+        [
+            torch.cat([weight.real, weight.imag], dim=0),
+            torch.cat([-weight.imag, weight.real], dim=0),
+        ],
+        dim=1,
+    )
 
     xx = to_concatenated_real(input, dim=-1)  # [..., 2 * n_in]
     output = from_concatenated_real(F.linear(xx, ww, None))
@@ -648,7 +683,7 @@ def linear_3m(input, weight, bias=None):
     #          = [± U (v + j u)]  # Gauss trick
     #          =     (U (u + v) - (U + V) v + \Re c)
     #            + j (U (u + v) + (V - U) u + \Im c)
-    K1 = F.linear(input.real + input.imag,  weight.real)
+    K1 = F.linear(input.real + input.imag, weight.real)
     K2 = F.linear(input.real, weight.imag - weight.real)
     K3 = F.linear(input.imag, weight.real + weight.imag)
 
@@ -679,23 +714,19 @@ def symmetric_circular_padding(input, padding):
     return input.apply(F.pad, tuple(expanded_padding), mode="circular")
 
 
-def convnd_naive(conv, input, weight, stride=1,
-                 padding=0, dilation=1, groups=1):
+def convnd_naive(conv, input, weight, stride=1, padding=0, dilation=1, groups=1):
 
-    re = conv(input.real, weight.real, None,
-              stride, padding, dilation, groups) \
-        - conv(input.imag, weight.imag, None,
-               stride, padding, dilation, groups)
-    im = conv(input.real, weight.imag, None,
-              stride, padding, dilation, groups) \
-        + conv(input.imag, weight.real, None,
-               stride, padding, dilation, groups)
+    re = conv(input.real, weight.real, None, stride, padding, dilation, groups) - conv(
+        input.imag, weight.imag, None, stride, padding, dilation, groups
+    )
+    im = conv(input.real, weight.imag, None, stride, padding, dilation, groups) + conv(
+        input.imag, weight.real, None, stride, padding, dilation, groups
+    )
 
     return Cplx(re, im)
 
 
-def convnd_quick(conv, input, weight, stride=1,
-                 padding=0, dilation=1):
+def convnd_quick(conv, input, weight, stride=1, padding=0, dilation=1):
     r"""Applies a complex convolution transformation to the complex data
     :math:`y = x \ast W + b` using two calls to `conv` at the cost of extra
     concatenation and slicing.
@@ -711,8 +742,7 @@ def convnd_quick(conv, input, weight, stride=1,
     return Cplx(rwr - iwi, iwr + rwi)
 
 
-def convnd_3m(conv, input, weight, stride=1,
-              padding=0, dilation=1, groups=1):
+def convnd_3m(conv, input, weight, stride=1, padding=0, dilation=1, groups=1):
     r"""Applies a complex convolution transformation to the complex data
     :math:`y = x \ast W + b` using 3 calls to `conv`.
     """
@@ -722,36 +752,46 @@ def convnd_3m(conv, input, weight, stride=1,
     #          = [± U (v + j u)]  # Gauss trick
     #          =     (U (u + v) - (U + V) v)
     #            + j (U (u + v) + (V - U) u)
-    K1 = conv(input.real + input.imag,  weight.real, None,
-              stride, padding, dilation, groups)
+    K1 = conv(
+        input.real + input.imag, weight.real, None, stride, padding, dilation, groups
+    )
 
-    K2 = conv(input.real, weight.imag - weight.real, None,
-              stride, padding, dilation, groups)
+    K2 = conv(
+        input.real, weight.imag - weight.real, None, stride, padding, dilation, groups
+    )
 
-    K3 = conv(input.imag, weight.real + weight.imag, None,
-              stride, padding, dilation, groups)
+    K3 = conv(
+        input.imag, weight.real + weight.imag, None, stride, padding, dilation, groups
+    )
 
     return Cplx(K1 - K3, K1 + K2)
 
 
-def convnd(conv, input, weight, bias=None, stride=1,
-           padding=0, dilation=1, groups=1, padding_mode="zeros"):
+def convnd(
+    conv,
+    input,
+    weight,
+    bias=None,
+    stride=1,
+    padding=0,
+    dilation=1,
+    groups=1,
+    padding_mode="zeros",
+):
     r"""Applies a complex n-d convolution to the incoming complex
     tensor `B x c_in x L_1 x ... L_n`: :math:`y = x \star W + b`.
     """
-    if padding_mode == 'circular':
+    if padding_mode == "circular":
         input = symmetric_circular_padding(input, padding)
         padding = 0
-    elif padding_mode != 'zeros':
+    elif padding_mode != "zeros":
         raise ValueError("padding_mode must be 'zeros' or 'circular'.")
 
     if groups == 1:
         # ungroupped convolution can be done a little bit faster
-        output = convnd_quick(conv, input, weight, stride,
-                              padding, dilation)
+        output = convnd_quick(conv, input, weight, stride, padding, dilation)
     else:
-        output = convnd_naive(conv, input, weight, stride,
-                              padding, dilation, groups)
+        output = convnd_naive(conv, input, weight, stride, padding, dilation, groups)
 
     if bias is not None:
         broadcast = (input.dim() - 2) * [1]
@@ -760,81 +800,143 @@ def convnd(conv, input, weight, bias=None, stride=1,
     return output
 
 
-def conv1d(input, weight, bias=None, stride=1, padding=0,
-           dilation=1, groups=1, padding_mode="zeros"):
+def conv1d(
+    input,
+    weight,
+    bias=None,
+    stride=1,
+    padding=0,
+    dilation=1,
+    groups=1,
+    padding_mode="zeros",
+):
     r"""Applies a complex 1d convolution to the incoming complex
     tensor `B x c_in x L`: :math:`y = x \star W + b`.
     """
 
-    return convnd(F.conv1d, input, weight, bias, stride,
-                  padding, dilation, groups, padding_mode)
+    return convnd(
+        F.conv1d, input, weight, bias, stride, padding, dilation, groups, padding_mode
+    )
 
 
-def conv2d(input, weight, bias=None, stride=1, padding=0,
-           dilation=1, groups=1, padding_mode="zeros"):
+def conv2d(
+    input,
+    weight,
+    bias=None,
+    stride=1,
+    padding=0,
+    dilation=1,
+    groups=1,
+    padding_mode="zeros",
+):
     r"""Applies a complex 2d convolution to the incoming complex
     tensor `B x c_in x H x W`: :math:`y = x \star W + b`.
     """
 
-    return convnd(F.conv2d, input, weight, bias, stride,
-                  padding, dilation, groups, padding_mode)
+    return convnd(
+        F.conv2d, input, weight, bias, stride, padding, dilation, groups, padding_mode
+    )
 
 
-def conv3d(input, weight, bias=None, stride=1, padding=0,
-           dilation=1, groups=1, padding_mode="zeros"):
+def conv3d(
+    input,
+    weight,
+    bias=None,
+    stride=1,
+    padding=0,
+    dilation=1,
+    groups=1,
+    padding_mode="zeros",
+):
     r"""Applies a complex 3d convolution to the incoming complex
     tensor `B x c_in x H x W x D`: :math:`y = x \star W + b`.
     """
 
-    return convnd(F.conv3d, input, weight, bias, stride,
-                  padding, dilation, groups, padding_mode)
+    return convnd(
+        F.conv3d, input, weight, bias, stride, padding, dilation, groups, padding_mode
+    )
 
 
-def conv_transposend_naive(conv_t, input, weight, stride=1,
-                           padding=0, output_padding=0,
-                           groups=1, dilation=1):
-    re = conv_t(input.real, weight.real, None, stride,
-                padding, output_padding, groups, dilation) \
-        - conv_t(input.imag, weight.imag, None, stride,
-                 padding, output_padding, groups, dilation)
-    im = conv_t(input.real, weight.imag, None, stride,
-                padding, output_padding, groups, dilation) \
-        + conv_t(input.imag, weight.real, None, stride,
-                 padding, output_padding, groups, dilation)
+def conv_transposend_naive(
+    conv_t, input, weight, stride=1, padding=0, output_padding=0, groups=1, dilation=1
+):
+    re = conv_t(
+        input.real, weight.real, None, stride, padding, output_padding, groups, dilation
+    ) - conv_t(
+        input.imag, weight.imag, None, stride, padding, output_padding, groups, dilation
+    )
+    im = conv_t(
+        input.real, weight.imag, None, stride, padding, output_padding, groups, dilation
+    ) + conv_t(
+        input.imag, weight.real, None, stride, padding, output_padding, groups, dilation
+    )
     return Cplx(re, im)
 
 
-def conv_transposend_3m(conv_t, input, weight, stride=1,
-                        padding=0, output_padding=0,
-                        groups=1, dilation=1):
+def conv_transposend_3m(
+    conv_t, input, weight, stride=1, padding=0, output_padding=0, groups=1, dilation=1
+):
     """3m interface for transposed convolutions."""
-    K1 = conv_t(input.real + input.imag,  weight.real, None, stride,
-                padding, output_padding, groups, dilation)
+    K1 = conv_t(
+        input.real + input.imag,
+        weight.real,
+        None,
+        stride,
+        padding,
+        output_padding,
+        groups,
+        dilation,
+    )
 
-    K2 = conv_t(input.real, weight.imag - weight.real, None, stride,
-                padding, output_padding, groups, dilation)
+    K2 = conv_t(
+        input.real,
+        weight.imag - weight.real,
+        None,
+        stride,
+        padding,
+        output_padding,
+        groups,
+        dilation,
+    )
 
-    K3 = conv_t(input.imag, weight.real + weight.imag, None, stride,
-                padding, output_padding, groups, dilation)
+    K3 = conv_t(
+        input.imag,
+        weight.real + weight.imag,
+        None,
+        stride,
+        padding,
+        output_padding,
+        groups,
+        dilation,
+    )
 
     return Cplx(K1 - K3, K1 + K2)
 
 
-def conv_transposend(conv, input, weight, bias=None, stride=1,
-                     padding=0, output_padding=1, groups=1,
-                     dilation=1, padding_mode="zeros"):
+def conv_transposend(
+    conv,
+    input,
+    weight,
+    bias=None,
+    stride=1,
+    padding=0,
+    output_padding=1,
+    groups=1,
+    dilation=1,
+    padding_mode="zeros",
+):
     r"""Applies a complex n-d transposed convolution to the
     incoming complex tensor. See torch.nn.ConvTranspose2d
     for documentation."""
-    if padding_mode == 'circular':
+    if padding_mode == "circular":
         input = symmetric_circular_padding(input, padding)
         padding = 0
-    elif padding_mode != 'zeros':
+    elif padding_mode != "zeros":
         raise ValueError("padding_mode must be 'zeros' or 'circular'.")
 
-    output = conv_transposend_naive(conv, input, weight, stride,
-                                    padding, output_padding,
-                                    groups, dilation)
+    output = conv_transposend_naive(
+        conv, input, weight, stride, padding, output_padding, groups, dilation
+    )
 
     if bias is not None:
         broadcast = (input.dim() - 2) * [1]
@@ -843,64 +945,118 @@ def conv_transposend(conv, input, weight, bias=None, stride=1,
     return output
 
 
-def conv_transpose1d(input, weight, bias=None, stride=1,
-                     padding=0, output_padding=0, groups=0,
-                     dilation=1, padding_mode="zeros"):
+def conv_transpose1d(
+    input,
+    weight,
+    bias=None,
+    stride=1,
+    padding=0,
+    output_padding=0,
+    groups=0,
+    dilation=1,
+    padding_mode="zeros",
+):
     r"""Applies a complex 1d transposed convolution to the
     incoming complex tensor. See torch.nn.ConvTranspose1d
     for documentation."""
-    return conv_transposend(F.conv_transpose1d, input, weight,
-                            bias, stride, padding, output_padding,
-                            groups, dilation, padding_mode)
+    return conv_transposend(
+        F.conv_transpose1d,
+        input,
+        weight,
+        bias,
+        stride,
+        padding,
+        output_padding,
+        groups,
+        dilation,
+        padding_mode,
+    )
 
 
-def conv_transpose2d(input, weight, bias=None, stride=1,
-                     padding=0, output_padding=0, groups=0,
-                     dilation=1, padding_mode="zeros"):
+def conv_transpose2d(
+    input,
+    weight,
+    bias=None,
+    stride=1,
+    padding=0,
+    output_padding=0,
+    groups=0,
+    dilation=1,
+    padding_mode="zeros",
+):
     r"""Applies a complex 2d transposed convolution to the
     incoming complex tensor. See torch.nn.ConvTranspose2d
     for documentation."""
-    return conv_transposend(F.conv_transpose2d, input, weight,
-                            bias, stride, padding, output_padding,
-                            groups, dilation, padding_mode)
+    return conv_transposend(
+        F.conv_transpose2d,
+        input,
+        weight,
+        bias,
+        stride,
+        padding,
+        output_padding,
+        groups,
+        dilation,
+        padding_mode,
+    )
 
 
-def conv_transpose3d(input, weight, bias=None, stride=1,
-                     padding=0, output_padding=0, groups=0,
-                     dilation=1, padding_mode="zeros"):
+def conv_transpose3d(
+    input,
+    weight,
+    bias=None,
+    stride=1,
+    padding=0,
+    output_padding=0,
+    groups=0,
+    dilation=1,
+    padding_mode="zeros",
+):
     r"""Applies a complex 3d transposed convolution to the
     incoming complex tensor. See torch.nn.ConvTranspose3d
     for documentation."""
-    return conv_transposend(F.conv_transpose3d, input, weight,
-                            bias, stride, padding, output_padding,
-                            groups, dilation, padding_mode)
+    return conv_transposend(
+        F.conv_transpose3d,
+        input,
+        weight,
+        bias,
+        stride,
+        padding,
+        output_padding,
+        groups,
+        dilation,
+        padding_mode,
+    )
 
 
 def einsum(equation, *tensors):
     """2-tensor einstein summation."""
     if not tensors:
-        raise RuntimeError("""`einsum()` requires """
-                           """at least one tensor.""")
+        raise RuntimeError("`einsum()` requires at least one tensor.")
 
     cplx1, *tensors = tensors
     if not tensors:
         # no complex multiplication with only one tensor
-        return Cplx(torch.einsum(equation, cplx1.real),
-                    torch.einsum(equation, cplx1.imag))
+        return Cplx(
+            torch.einsum(equation, cplx1.real), torch.einsum(equation, cplx1.imag)
+        )
 
     cplx2, *tensors = tensors
     if not tensors:
         # Einsum is complex bilinear -- the logic is same here.
-        re = torch.einsum(equation, cplx1.real, cplx2.real) \
-            - torch.einsum(equation, cplx1.imag, cplx2.imag)
+        re = torch.einsum(equation, cplx1.real, cplx2.real) - torch.einsum(
+            equation, cplx1.imag, cplx2.imag
+        )
 
-        im = torch.einsum(equation, cplx1.real, cplx2.imag) \
-            + torch.einsum(equation, cplx1.imag, cplx2.real)
+        im = torch.einsum(equation, cplx1.real, cplx2.imag) + torch.einsum(
+            equation, cplx1.imag, cplx2.real
+        )
 
         return Cplx(re, im)
 
-    raise RuntimeError(f"""`einsum()` does not support more """
-                       f"""than 2 tensors. Got {2 + len(tensors)}.""")
+    raise RuntimeError(
+        f"`Cplx.einsum` does not support more than 2 tensors. Got {2 + len(tensors)}."
+    )
 
 
 def bilinear_naive(input1, input2, weight, bias=None, conjugate=True):
@@ -939,17 +1095,11 @@ def bilinear_cat(input1, input2, weight, bias=None, conjugate=True):
     U, V = weight.real, weight.imag
 
     UV = torch.cat([U, -V], dim=2)
-    VU = torch.cat([V,  U], dim=2)
+    VU = torch.cat([V, U], dim=2)
     if conjugate:
-        ww = torch.cat([
-            torch.cat([UV,  VU], dim=1),
-            torch.cat([VU, -UV], dim=1)
-        ], dim=0)
+        ww = torch.cat([torch.cat([UV, VU], dim=1), torch.cat([VU, -UV], dim=1)], dim=0)
     else:
-        ww = torch.cat([
-            torch.cat([UV, -VU], dim=1),
-            torch.cat([VU,  UV], dim=1)
-        ], dim=0)
+        ww = torch.cat([torch.cat([UV, -VU], dim=1), torch.cat([VU, UV], dim=1)], dim=0)
 
     x1 = to_concatenated_real(input1, dim=-1)
     x2 = to_concatenated_real(input2, dim=-1)
@@ -961,8 +1111,9 @@ def bilinear_cat(input1, input2, weight, bias=None, conjugate=True):
     return output
 
 
-def max_poolnd(pool, input, kernel_size, stride=None,
-               padding=0, dilation=1, ceil_mode=False):
+def max_poolnd(
+    pool, input, kernel_size, stride=None, padding=0, dilation=1, ceil_mode=False
+):
     r"""Applies complex version of n-d max-pooling to the incoming complex
     tensor `B x c_in x L_1 x ... L_n`.
 
@@ -1001,8 +1152,15 @@ def max_poolnd(pool, input, kernel_size, stride=None,
 
     # 1. get the abs max-pooling indices
     #  XXX should we care about the extra sqrt in abs?
-    _, indices = pool(abs(input), kernel_size, stride, padding,
-                      dilation, ceil_mode, return_indices=True)
+    _, indices = pool(
+        abs(input),
+        kernel_size,
+        stride,
+        padding,
+        dilation,
+        ceil_mode,
+        return_indices=True,
+    )
 
     # 2. the indices refer to the positions in the trailing flattened
     #    magnitudes, so we flatten the trailing dims after the channels.
@@ -1017,25 +1175,25 @@ def max_poolnd(pool, input, kernel_size, stride=None,
     return Cplx(re, im).reshape(input.shape[:2] + indices.shape[2:])
 
 
-def max_pool1d(input, kernel_size, stride=None, padding=0,
-               dilation=1, ceil_mode=False):
+def max_pool1d(input, kernel_size, stride=None, padding=0, dilation=1, ceil_mode=False):
     """Complex 1d max pooling on the complex tensor `B x c_in x L`."""
 
-    return max_poolnd(F.max_pool1d, input, kernel_size,
-                      stride, padding, dilation, ceil_mode)
+    return max_poolnd(
+        F.max_pool1d, input, kernel_size, stride, padding, dilation, ceil_mode
+    )
 
 
-def max_pool2d(input, kernel_size, stride=None, padding=0,
-               dilation=1, ceil_mode=False):
+def max_pool2d(input, kernel_size, stride=None, padding=0, dilation=1, ceil_mode=False):
     """Complex 2d max pooling on the complex tensor `B x c_in x H x W`."""
 
-    return max_poolnd(F.max_pool2d, input, kernel_size,
-                      stride, padding, dilation, ceil_mode)
+    return max_poolnd(
+        F.max_pool2d, input, kernel_size, stride, padding, dilation, ceil_mode
+    )
 
 
-def max_pool3d(input, kernel_size, stride=None, padding=0,
-               dilation=1, ceil_mode=False):
+def max_pool3d(input, kernel_size, stride=None, padding=0, dilation=1, ceil_mode=False):
     """Complex 3d max pooling on the complex tensor `B x c_in x H x W x D`."""
 
-    return max_poolnd(F.max_pool3d, input, kernel_size,
-                      stride, padding, dilation, ceil_mode)
+    return max_poolnd(
+        F.max_pool3d, input, kernel_size, stride, padding, dilation, ceil_mode
+    )
