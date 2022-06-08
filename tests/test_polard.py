@@ -6,7 +6,6 @@ import torch.sparse
 
 import torch.nn.functional as F
 
-from cplxmodule import Cplx
 from cplxmodule import cplx
 
 from cplxmodule.nn import CplxLinear
@@ -19,9 +18,22 @@ from cplxmodule.nn.masked import deploy_masks, named_masks
 from cplxmodule.nn.masked import binarize_masks
 from cplxmodule.nn.utils.sparsity import sparsity, named_sparsity
 
+import pytest
 
-def model_train(X, y, model, n_steps=20000, threshold=1.0,
-                reduction="sum", klw=1e-3, verbose=True):
+
+pytestmark = pytest.mark.skip(reason="this is not a test suite")
+
+
+def model_train(
+    X,
+    y,
+    model,
+    n_steps=20000,
+    threshold=1.0,
+    reduction="sum",
+    klw=1e-3,
+    verbose=True,
+):
     import tqdm
 
     model.train()
@@ -29,7 +41,7 @@ def model_train(X, y, model, n_steps=20000, threshold=1.0,
 
     losses = []
     with tqdm.tqdm(range(n_steps)) as bar:
-        for i in bar:
+        for _ in bar:
             optim.zero_grad()
 
             y_pred = model(X)
@@ -44,8 +56,7 @@ def model_train(X, y, model, n_steps=20000, threshold=1.0,
 
             losses.append(float(loss))
             if verbose:
-                f_sparsity = sparsity(model, hard=True,
-                                      threshold=threshold)
+                f_sparsity = sparsity(model, hard=True, threshold=threshold)
             else:
                 f_sparsity = float("nan")
 
@@ -72,17 +83,16 @@ def example(kind="cplx"):
     def construct_cplx(linear):
         from collections import OrderedDict
         from cplxmodule.nn import RealToCplx, CplxToReal
-        from cplxmodule.nn import CplxAdaptiveModReLU
 
-        return torch.nn.Sequential(OrderedDict([
-            ("cplx", RealToCplx()),
-            # ("body", torch.nn.Sequential(OrderedDict([
-            #     ("linear", linear(n_features // 2, n_features // 2, bias=True)),
-            #     ("relu", CplxAdaptiveModReLU(n_features // 2)),
-            # ]))),
-            ("final", linear(n_features // 2, n_output // 2, bias=False)),
-            ("real", CplxToReal()),
-        ]))
+        return torch.nn.Sequential(
+            OrderedDict(
+                [
+                    ("cplx", RealToCplx()),
+                    ("final", linear(n_features // 2, n_output // 2, bias=False)),
+                    ("real", CplxToReal()),
+                ]
+            )
+        )
 
     device_ = torch.device("cpu")
     if kind == "cplx-vd":
@@ -92,7 +102,7 @@ def example(kind="cplx"):
         phases = {
             "CplxLinear": (1000, 0.0),
             "CplxLinearVD": (14000, 1e0),
-            "CplxLinearMasked": (500, 0.0)
+            "CplxLinearMasked": (500, 0.0),
         }
 
     elif kind == "cplx-ard":
@@ -102,7 +112,7 @@ def example(kind="cplx"):
         phases = {
             "CplxLinear": (1000, 0.0),
             "CplxLinearARD": (14000, 1e0),
-            "CplxLinearMasked": (500, 0.0)
+            "CplxLinearMasked": (500, 0.0),
         }
 
     elif kind == "cplx-polar":
@@ -112,7 +122,7 @@ def example(kind="cplx"):
         phases = {
             "CplxLinear": (1000, 0.0),
             "CplxLinearPolARD": (14000, 1e0),
-            "CplxLinearMasked": (500, 0.0)
+            "CplxLinearMasked": (500, 0.0),
         }
 
     tau = 0.73105  # p = a / 1 + a, a = p / (1 - p)
@@ -125,7 +135,7 @@ def example(kind="cplx"):
 
     # a simple dataset
     X = torch.randn(10100, n_features)
-    y = - X[:, :n_output].clone()
+    y = -X[:, :n_output].clone()
     X, y = X.to(device_), cplx.from_interleaved_real(y.to(device_))
     # y = cplx.to_interleaved_real(y * y)
     y = cplx.to_interleaved_real(y * (1j))
@@ -135,9 +145,7 @@ def example(kind="cplx"):
 
     # construct models
     models = {"none": None}
-    models.update({
-        l.__name__: construct(l) for l in layers
-    })
+    models.update({ell.__name__: construct(ell) for ell in layers})
 
     # train a sequence of models
     names, losses = list(models.keys()), {}
@@ -150,8 +158,7 @@ def example(kind="cplx"):
         if models[src] is not None:
             # compute the dropout masks and normalize them
             state_dict = models[src].state_dict()
-            masks = compute_ard_masks(models[src], hard=False,
-                                      threshold=threshold)
+            masks = compute_ard_masks(models[src], hard=False, threshold=threshold)
 
             state_dict, masks = binarize_masks(state_dict, masks)
 
@@ -163,13 +170,20 @@ def example(kind="cplx"):
 
         model.to(device_)
 
-        model, losses[dst] = model_train(train_X, train_y, model,
-                                         n_steps=n_steps, threshold=threshold,
-                                         klw=klw, reduction=reduction)
+        model, losses[dst] = model_train(
+            train_X,
+            train_y,
+            model,
+            n_steps=n_steps,
+            threshold=threshold,
+            klw=klw,
+            reduction=reduction,
+        )
     # end for
 
     # get scores on test
     import matplotlib.pyplot as plt
+
     for key, model in models.items():
         if model is None:
             continue
@@ -181,15 +195,12 @@ def example(kind="cplx"):
         print([*named_sparsity(model, hard=True, threshold=threshold)])
 
         with torch.no_grad():
-            if isinstance(model.final, (CplxLinearVD, CplxLinearARD,
-                                        CplxLinearPolARD)):
+            if isinstance(model.final, (CplxLinearVD, CplxLinearARD, CplxLinearPolARD)):
 
-                plt.hist(model.final.log_alpha.cpu().numpy().ravel(),
-                         bins=21)
+                plt.hist(model.final.log_alpha.cpu().numpy().ravel(), bins=21)
                 plt.show()
 
-                plt.hist(model.final.log_sigma2.cpu().data.numpy().ravel(),
-                         bins=21)
+                plt.hist(model.final.log_sigma2.cpu().data.numpy().ravel(), bins=21)
                 plt.show()
 
             if isinstance(model.final, CplxLinearPolARD):
@@ -213,7 +224,7 @@ def example(kind="cplx"):
                 #                  vareta * torch.sin(phi))
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     example("cplx-vd")
     example("cplx-ard")
     example("cplx-polar")

@@ -16,19 +16,16 @@ class CplxLinearPolARD(CplxLinear, BaseARD, SparsityStats):
     def __init__(self, in_features, out_features, bias=True):
         super().__init__(in_features, out_features, bias=bias)
 
-        self.log_sigma2 = torch.nn.Parameter(
-            torch.Tensor(out_features, in_features))
-        self.log_eta = torch.nn.Parameter(
-            torch.Tensor(out_features, in_features))
-        self.log_phi = torch.nn.Parameter(
-            torch.Tensor(out_features, in_features))
+        self.log_sigma2 = torch.nn.Parameter(torch.Tensor(out_features, in_features))
+        self.log_eta = torch.nn.Parameter(torch.Tensor(out_features, in_features))
+        self.log_phi = torch.nn.Parameter(torch.Tensor(out_features, in_features))
 
         self.reset_variational_parameters()
 
     def reset_variational_parameters(self):
         self.log_sigma2.data.uniform_(-10, -10)
-        self.log_eta.data.uniform_(0., 0.)
-        self.log_phi.data.uniform_(-10., +10.)
+        self.log_eta.data.uniform_(0.0, 0.0)
+        self.log_phi.data.uniform_(-10.0, +10.0)
 
     @property
     def penalty(self):
@@ -40,7 +37,7 @@ class CplxLinearPolARD(CplxLinear, BaseARD, SparsityStats):
             \,, $$
         for $\eta = 2 * \sigma(x) - 1$.
         """
-        kl_div = F.softplus(- self.log_alpha) - math.log(2)
+        kl_div = F.softplus(-self.log_alpha) - math.log(2)
         return kl_div + self.log_eta / 2 + F.softplus(-self.log_eta)
 
     @property
@@ -62,7 +59,7 @@ class CplxLinearPolARD(CplxLinear, BaseARD, SparsityStats):
         return [(id(weight.real), n_dropped), (id(weight.imag), n_dropped)]
 
     def forward(self, input):
-        '''See handwritten notes.'''
+        """See handwritten notes."""
         # $\mu = \theta x$ in $\mathbb{C}$
         mu = super().forward(input)
         if not self.training:
@@ -70,8 +67,9 @@ class CplxLinearPolARD(CplxLinear, BaseARD, SparsityStats):
 
         # \sigma^2 = \Sigma^2 (x \odot \bar{x})
         var = torch.exp(self.log_sigma2)
-        s2 = torch.clamp(F.linear(input.real * input.real +
-                                  input.imag * input.imag, var, None), 1e-8)
+        s2 = torch.clamp(
+            F.linear(input.real * input.real + input.imag * input.imag, var, None), 1e-8
+        )
 
         vareta = torch.tanh(self.log_eta / 2) * var
 
@@ -80,7 +78,7 @@ class CplxLinearPolARD(CplxLinear, BaseARD, SparsityStats):
         # phi = torch.atan(self.log_phi)
         # unit = cplx.Cplx(torch.cos(phi), torch.sin(phi))
         root = torch.sqrt(1 + self.log_phi * self.log_phi)
-        unit = cplx.Cplx(1. / root, self.log_phi / root)
+        unit = cplx.Cplx(1.0 / root, self.log_phi / root)
 
         xi = cplx.linear_cat(input * input, vareta * unit, None) / s2
 
@@ -89,7 +87,11 @@ class CplxLinearPolARD(CplxLinear, BaseARD, SparsityStats):
         rho = torch.sqrt(torch.clamp(1 - xi.real * xi.real - xi.imag * xi.imag, 1e-8))
 
         std = 0.5 * torch.sqrt(s2 / (1 + rho))
-        return mu + cplx.Cplx(
-            eps1 * (1 + xi.real + rho) + xi.imag * eps2,
-            eps1 * xi.imag + (1 - xi.real + rho) * eps2,
-        ) * std
+        return (
+            mu
+            + cplx.Cplx(
+                eps1 * (1 + xi.real + rho) + xi.imag * eps2,
+                eps1 * xi.imag + (1 - xi.real + rho) * eps2,
+            )
+            * std
+        )
