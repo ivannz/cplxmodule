@@ -105,7 +105,7 @@ class CplxConv1d(CplxConvNd):
 
     def forward(self, input):
         return cplx.conv1d(input, self.weight, self.bias,
-                           self.stride[0], self.padding[0], self.dilation[0],
+                           self.stride, self.padding, self.dilation,
                            self.groups, self.padding_mode)
 
 
