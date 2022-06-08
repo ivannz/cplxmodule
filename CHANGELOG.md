@@ -12,6 +12,12 @@
 - DOC: improved docs for `.nn.ModReLU` indicating the sign-deviation from the original paper proposing it (issue #22)
 - DOC: added a basic TOC to the main README docs
 
+### Completed DEPRECATION cycles
+
+- misnamed VD and misplaced ARD layers in `.nn.relevance`
+- sparsity stats badly placed in `.utils.stats`
+- misnamed $\ell_0$ probabilistic pruning layer in `.nn.relevance.extensions.real`, since it had nothing to do with the Automatic Relevance Determination Bayesian approach
+
 ## Version 2020.08.17
 
 - FIX: Fixed shape mismatch in `.nn.init.cplx_trabelsi_independent_`, which prevented it from working properly [# 11](https://github.com/ivannz/cplxmodule/issues/11)
