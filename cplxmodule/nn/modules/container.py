@@ -13,6 +13,7 @@ class CplxSequential(torch.nn.Sequential, CplxToCplx):
         \,, $$
     for $l=1..L$ and the complex input $z_0$.
     """
+
     def __init__(self, *args):
         # make a simple typecheck on the passed arguments
         if len(args) == 1 and isinstance(args[0], OrderedDict):
@@ -22,8 +23,10 @@ class CplxSequential(torch.nn.Sequential, CplxToCplx):
 
         bad_modules = [str(n) for n, m in modules if not is_cplx_to_cplx(m)]
         if bad_modules:
-            raise TypeError(f"""Only complex-to-complex modules can be used """
-                            f"""in {self.__class__.__name__}. The following """
-                            f"""modules failed: {bad_modules}.""")
+            raise TypeError(
+                f"Only complex-to-complex modules can be used "
+                f"in {self.__class__.__name__}. The following "
+                f"modules failed: {bad_modules}."
+            )
 
         super().__init__(*args)

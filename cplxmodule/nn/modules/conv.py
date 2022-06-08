@@ -10,9 +10,21 @@ from ... import cplx
 
 class CplxConvNd(CplxToCplx):
     r"""An almost verbatim copy of `_ConvNd` from torch/nn/modules/conv.py"""
-    def __init__(self, in_channels, out_channels, kernel_size, stride,
-                 padding, dilation, transposed, output_padding, groups,
-                 bias, padding_mode):
+
+    def __init__(
+        self,
+        in_channels,
+        out_channels,
+        kernel_size,
+        stride,
+        padding,
+        dilation,
+        transposed,
+        output_padding,
+        groups,
+        bias,
+        padding_mode,
+    ):
         super().__init__()
 
         if in_channels % groups != 0:
@@ -31,11 +43,13 @@ class CplxConvNd(CplxToCplx):
         self.groups, self.padding_mode = groups, padding_mode
 
         if transposed:
-            self.weight = CplxParameter(cplx.Cplx.empty(
-                in_channels, out_channels // groups, *kernel_size))
+            self.weight = CplxParameter(
+                cplx.Cplx.empty(in_channels, out_channels // groups, *kernel_size)
+            )
         else:
-            self.weight = CplxParameter(cplx.Cplx.empty(
-                out_channels, in_channels // groups, *kernel_size))
+            self.weight = CplxParameter(
+                cplx.Cplx.empty(out_channels, in_channels // groups, *kernel_size)
+            )
 
         if bias:
             self.bias = CplxParameter(cplx.Cplx.empty(out_channels))
@@ -52,8 +66,10 @@ class CplxConvNd(CplxToCplx):
             init.cplx_uniform_independent_(self.bias, -bound, bound)
 
     def extra_repr(self):
-        s = ("{in_channels}, {out_channels}, kernel_size={kernel_size}"
-             ", stride={stride}")
+        s = (
+            "{in_channels}, {out_channels}, kernel_size={kernel_size}"
+            ", stride={stride}"
+        )
 
         if self.padding != (0,) * len(self.padding):
             s += ", padding={padding}"
@@ -88,25 +104,44 @@ class CplxConv1d(CplxConvNd):
 
     See torch.nn.Conv1d for reference on the input dimensions.
     """
-    def __init__(self,
-                 in_channels,
-                 out_channels,
-                 kernel_size,
-                 stride=1,
-                 padding=0,
-                 dilation=1,
-                 groups=1,
-                 bias=True,
-                 padding_mode="zeros"):
+
+    def __init__(
+        self,
+        in_channels,
+        out_channels,
+        kernel_size,
+        stride=1,
+        padding=0,
+        dilation=1,
+        groups=1,
+        bias=True,
+        padding_mode="zeros",
+    ):
         super().__init__(
-            in_channels, out_channels, _single(kernel_size), _single(stride),
-            _single(padding), _single(dilation), False, _single(0), groups,
-            bias, padding_mode)
+            in_channels,
+            out_channels,
+            _single(kernel_size),
+            _single(stride),
+            _single(padding),
+            _single(dilation),
+            False,
+            _single(0),
+            groups,
+            bias,
+            padding_mode,
+        )
 
     def forward(self, input):
-        return cplx.conv1d(input, self.weight, self.bias,
-                           self.stride, self.padding, self.dilation,
-                           self.groups, self.padding_mode)
+        return cplx.conv1d(
+            input,
+            self.weight,
+            self.bias,
+            self.stride,
+            self.padding,
+            self.dilation,
+            self.groups,
+            self.padding_mode,
+        )
 
 
 class CplxConv2d(CplxConvNd):
@@ -121,25 +156,44 @@ class CplxConv2d(CplxConvNd):
 
     See torch.nn.Conv2d for reference on the input dimensions.
     """
-    def __init__(self,
-                 in_channels,
-                 out_channels,
-                 kernel_size,
-                 stride=1,
-                 padding=0,
-                 dilation=1,
-                 groups=1,
-                 bias=True,
-                 padding_mode="zeros"):
+
+    def __init__(
+        self,
+        in_channels,
+        out_channels,
+        kernel_size,
+        stride=1,
+        padding=0,
+        dilation=1,
+        groups=1,
+        bias=True,
+        padding_mode="zeros",
+    ):
         super().__init__(
-            in_channels, out_channels, _pair(kernel_size), _pair(stride),
-            _pair(padding), _pair(dilation), False, _pair(0), groups,
-            bias, padding_mode)
+            in_channels,
+            out_channels,
+            _pair(kernel_size),
+            _pair(stride),
+            _pair(padding),
+            _pair(dilation),
+            False,
+            _pair(0),
+            groups,
+            bias,
+            padding_mode,
+        )
 
     def forward(self, input):
-        return cplx.conv2d(input, self.weight, self.bias,
-                           self.stride, self.padding, self.dilation,
-                           self.groups, self.padding_mode)
+        return cplx.conv2d(
+            input,
+            self.weight,
+            self.bias,
+            self.stride,
+            self.padding,
+            self.dilation,
+            self.groups,
+            self.padding_mode,
+        )
 
 
 class CplxConv3d(CplxConvNd):
@@ -154,40 +208,83 @@ class CplxConv3d(CplxConvNd):
 
     See torch.nn.Conv2d for reference on the input dimensions.
     """
-    def __init__(self,
-                 in_channels,
-                 out_channels,
-                 kernel_size,
-                 stride=1,
-                 padding=0,
-                 dilation=1,
-                 groups=1,
-                 bias=True,
-                 padding_mode="zeros"):
+
+    def __init__(
+        self,
+        in_channels,
+        out_channels,
+        kernel_size,
+        stride=1,
+        padding=0,
+        dilation=1,
+        groups=1,
+        bias=True,
+        padding_mode="zeros",
+    ):
         super().__init__(
-            in_channels, out_channels, _triple(kernel_size), _triple(stride),
-            _triple(padding), _triple(dilation), False, _triple(0), groups,
-            bias, padding_mode)
+            in_channels,
+            out_channels,
+            _triple(kernel_size),
+            _triple(stride),
+            _triple(padding),
+            _triple(dilation),
+            False,
+            _triple(0),
+            groups,
+            bias,
+            padding_mode,
+        )
 
     def forward(self, input):
-        return cplx.conv3d(input, self.weight, self.bias,
-                           self.stride, self.padding, self.dilation,
-                           self.groups, self.padding_mode)
+        return cplx.conv3d(
+            input,
+            self.weight,
+            self.bias,
+            self.stride,
+            self.padding,
+            self.dilation,
+            self.groups,
+            self.padding_mode,
+        )
 
 
 class CplxConvTransposeNd(CplxConvNd):
     r"""An almost verbatim copy of `_ConvTransposeNd` from torch/nn/modules/conv.py"""
-    def __init__(self, in_channels, out_channels, kernel_size, stride,
-                 padding, dilation, transposed, output_padding, groups,
-                 bias, padding_mode):
-        if padding_mode not in ('zeros', 'circular'):
-            raise ValueError('Only "zeros" or "circular" padding mode are supported for {}'\
-                             .format(self.__class__.__name__))
+
+    def __init__(
+        self,
+        in_channels,
+        out_channels,
+        kernel_size,
+        stride,
+        padding,
+        dilation,
+        transposed,
+        output_padding,
+        groups,
+        bias,
+        padding_mode,
+    ):
+        if padding_mode not in ("zeros", "circular"):
+            raise ValueError(
+                'Only "zeros" or "circular" padding mode are supported by `{}`'.format(
+                    self.__class__.__name__
+                )
+            )
 
         super().__init__(
-            in_channels, out_channels, _triple(kernel_size), _triple(stride),
-            _triple(padding), _triple(dilation), transposed, output_padding,
-            groups, bias, padding_mode)
+            in_channels,
+            out_channels,
+            _triple(kernel_size),
+            _triple(stride),
+            _triple(padding),
+            _triple(dilation),
+            transposed,
+            output_padding,
+            groups,
+            bias,
+            padding_mode,
+        )
 
     _output_padding = torch.nn.modules.conv._ConvTransposeNd._output_padding
 
@@ -197,32 +294,55 @@ class CplxConvTranspose1d(CplxConvTransposeNd):
 
     See torch.nn.ConvTranspose1d for reference on the input dimensions.
     """
-    def __init__(self,
-                 in_channels,
-                 out_channels,
-                 kernel_size,
-                 stride=1,
-                 padding=0,
-                 dilation=1,
-                 output_padding=0,
-                 groups=1,
-                 bias=None,
-                 padding_mode="zeros"):
+
+    def __init__(
+        self,
+        in_channels,
+        out_channels,
+        kernel_size,
+        stride=1,
+        padding=0,
+        dilation=1,
+        output_padding=0,
+        groups=1,
+        bias=None,
+        padding_mode="zeros",
+    ):
         super().__init__(
-            in_channels, out_channels, _single(kernel_size), _single(stride),
-            _single(padding), _single(dilation), True, _single(output_padding),
-            groups, bias, padding_mode)
+            in_channels,
+            out_channels,
+            _single(kernel_size),
+            _single(stride),
+            _single(padding),
+            _single(dilation),
+            True,
+            _single(output_padding),
+            groups,
+            bias,
+            padding_mode,
+        )
 
     def forward(self, input, output_size=None):
-        if self.padding_mode not in ('zeros', 'circular'):
-            raise ValueError('Only `zeros` or `circular` padding mode are '
-                             'supported for CplxConvTranspose1d')
-        output_padding = self._output_padding(input, output_size, self.stride,
-                                              self.padding, self.kernel_size)
+        if self.padding_mode not in ("zeros", "circular"):
+            raise ValueError(
+                "Only `zeros` or `circular` padding mode are supported "
+                "by `CplxConvTranspose1d`"
+            )
+        output_padding = self._output_padding(
+            input, output_size, self.stride, self.padding, self.kernel_size
+        )
 
         return cplx.conv_transpose1d(
-            input, self.weight, self.bias, self.stride, self.padding,
-            output_padding, self.groups, self.dilation, self.padding_mode)
+            input,
+            self.weight,
+            self.bias,
+            self.stride,
+            self.padding,
+            output_padding,
+            self.groups,
+            self.dilation,
+            self.padding_mode,
+        )
 
 
 class CplxConvTranspose2d(CplxConvTransposeNd):
@@ -230,32 +350,55 @@ class CplxConvTranspose2d(CplxConvTransposeNd):
 
     See torch.nn.ConvTranspose2d for reference on the input dimensions.
     """
-    def __init__(self,
-                 in_channels,
-                 out_channels,
-                 kernel_size,
-                 stride=1,
-                 padding=0,
-                 dilation=1,
-                 output_padding=0,
-                 groups=1,
-                 bias=None,
-                 padding_mode="zeros"):
+
+    def __init__(
+        self,
+        in_channels,
+        out_channels,
+        kernel_size,
+        stride=1,
+        padding=0,
+        dilation=1,
+        output_padding=0,
+        groups=1,
+        bias=None,
+        padding_mode="zeros",
+    ):
         super().__init__(
-            in_channels, out_channels, _pair(kernel_size), _pair(stride),
-            _pair(padding), _pair(dilation), True, _pair(output_padding),
-            groups, bias, padding_mode)
+            in_channels,
+            out_channels,
+            _pair(kernel_size),
+            _pair(stride),
+            _pair(padding),
+            _pair(dilation),
+            True,
+            _pair(output_padding),
+            groups,
+            bias,
+            padding_mode,
+        )
 
     def forward(self, input, output_size=None):
-        if self.padding_mode not in ('zeros', 'circular'):
-            raise ValueError('Only `zeros` or `circular` padding mode are '
-                             'supported for CplxConvTranspose2d')
-        output_padding = self._output_padding(input, output_size, self.stride,
-                                              self.padding, self.kernel_size)
+        if self.padding_mode not in ("zeros", "circular"):
+            raise ValueError(
+                "Only `zeros` or `circular` padding mode are supported "
+                "by `CplxConvTranspose2d`"
+            )
+        output_padding = self._output_padding(
+            input, output_size, self.stride, self.padding, self.kernel_size
+        )
 
         return cplx.conv_transpose2d(
-            input, self.weight, self.bias, self.stride, self.padding,
-            output_padding, self.groups, self.dilation, self.padding_mode)
+            input,
+            self.weight,
+            self.bias,
+            self.stride,
+            self.padding,
+            output_padding,
+            self.groups,
+            self.dilation,
+            self.padding_mode,
+        )
 
 
 class CplxConvTranspose3d(CplxConvTransposeNd):
@@ -263,29 +406,52 @@ class CplxConvTranspose3d(CplxConvTransposeNd):
 
     See torch.nn.ConvTranspose3d for reference on the input dimensions.
     """
-    def __init__(self,
-                 in_channels,
-                 out_channels,
-                 kernel_size,
-                 stride=1,
-                 padding=0,
-                 dilation=1,
-                 output_padding=0,
-                 groups=1,
-                 bias=None,
-                 padding_mode="zeros"):
+
+    def __init__(
+        self,
+        in_channels,
+        out_channels,
+        kernel_size,
+        stride=1,
+        padding=0,
+        dilation=1,
+        output_padding=0,
+        groups=1,
+        bias=None,
+        padding_mode="zeros",
+    ):
         super().__init__(
-            in_channels, out_channels, _triple(kernel_size), _triple(stride),
-            _triple(padding), _triple(dilation), True, _triple(output_padding),
-            groups, bias, padding_mode)
+            in_channels,
+            out_channels,
+            _triple(kernel_size),
+            _triple(stride),
+            _triple(padding),
+            _triple(dilation),
+            True,
+            _triple(output_padding),
+            groups,
+            bias,
+            padding_mode,
+        )
 
     def forward(self, input, output_size=None):
-        if self.padding_mode not in ('zeros', 'circular'):
-            raise ValueError('Only `zeros` or `circular` padding mode are '
-                             'supported for CplxConvTranspose3d')
-        output_padding = self._output_padding(input, output_size, self.stride,
-                                              self.padding, self.kernel_size)
+        if self.padding_mode not in ("zeros", "circular"):
+            raise ValueError(
+                "Only `zeros` or `circular` padding mode are supported "
+                "by `CplxConvTranspose3d`"
+            )
+        output_padding = self._output_padding(
+            input, output_size, self.stride, self.padding, self.kernel_size
+        )
 
         return cplx.conv_transpose3d(
-            input, self.weight, self.bias, self.stride, self.padding,
-            output_padding, self.groups, self.dilation, self.padding_mode)
+            input,
+            self.weight,
+            self.bias,
+            self.stride,
+            self.padding,
+            output_padding,
+            self.groups,
+            self.dilation,
+            self.padding_mode,
+        )

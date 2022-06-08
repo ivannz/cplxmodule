@@ -7,26 +7,36 @@ from ...cplx import Cplx
 
 class CplxParameter(torch.nn.ParameterDict):
     """Torch-friendly container for complex-valued parameter."""
+
     def __init__(self, cplx):
         if not isinstance(cplx, Cplx):
-            raise TypeError(f"""`{type(self).__name__}` accepts only """
-                            f"""Cplx tensors.""")
+            raise TypeError(f"`{type(self).__name__}` accepts only Cplx tensors.")
 
-        super().__init__({
-            "real": torch.nn.Parameter(cplx.real),
-            "imag": torch.nn.Parameter(cplx.imag),
-        })
+        super().__init__(
+            {
+                "real": torch.nn.Parameter(cplx.real),
+                "imag": torch.nn.Parameter(cplx.imag),
+            }
+        )
 
         # save a reference to the underlying cplx data (bypass ParameterDict)
-        torch.nn.Module.__setattr__(self, '_cplx', cplx)
+        torch.nn.Module.__setattr__(self, "_cplx", cplx)
 
-    def _load_from_state_dict(self, state_dict, prefix, local_metadata,
-                              strict, missing_keys, unexpected_keys,
-                              error_msgs):
+    def _load_from_state_dict(
+        self,
+        state_dict,
+        prefix,
+        local_metadata,
+        strict,
+        missing_keys,
+        unexpected_keys,
+        error_msgs,
+    ):
 
         missing, unexpected = [], []
-        super()._load_from_state_dict(state_dict, prefix, local_metadata,
-                                      strict, missing, unexpected, error_msgs)
+        super()._load_from_state_dict(
+            state_dict, prefix, local_metadata, strict, missing, unexpected, error_msgs
+        )
 
         if len(missing) == 2:
             # By desgin of `__init__` we get here if the last call to
@@ -56,21 +66,30 @@ class CplxParameter(torch.nn.ParameterDict):
                 # recursively call on a special state_dict to promote R to C
                 # NO missing or unexpected items are possible by design, only
                 # shape mismatch or general exceptions are now possible.
-                self._load_from_state_dict({
-                        f"{prefix}real": par,
-                        f"{prefix}imag": torch.zeros_like(par)
-                    }, prefix, local_metadata, strict, [], [], error_msgs)
+                self._load_from_state_dict(
+                    {f"{prefix}real": par, f"{prefix}imag": torch.zeros_like(par)},
+                    prefix,
+                    local_metadata,
+                    strict,
+                    [],
+                    [],
+                    error_msgs,
+                )
 
         elif len(missing) == 1:
             # Although loaded either `.real` or `.imag`, the state_dict
             # contains only one of ".real" or ".imag", so the other part is
             # missing. Therefore append to `error_msg`.
-            error_msgs.append(f"Complex parameter requires both `.imag`"
-                              f" and `.imag` parts. Missing `{missing[0]}`.")
+            error_msgs.append(
+                f"Complex parameter requires both `.real`"
+                f" and `.imag` parts. Missing `{missing[0]}`."
+            )
 
         if strict and unexpected:
-            error_msgs.append(f"Complex parameter disallows redundant key(s)"
-                              f" in state_dict: {unexpected}.")
+            error_msgs.append(
+                f"Complex parameter disallows redundant key(s)"
+                f" in state_dict: {unexpected}."
+            )
 
         unexpected_keys.extend(unexpected)
         missing_keys.extend(missing)
@@ -83,7 +102,7 @@ class CplxParameter(torch.nn.ParameterDict):
         return self._cplx
 
 
-class CplxParameterAccessor():
+class CplxParameterAccessor:
     """Cosmetic complex parameter accessor.
 
     Details
@@ -99,6 +118,7 @@ class CplxParameterAccessor():
     is why `SparseWeightMixin` in .masked couldn't work with 'weight'
     as a read-only @property.
     """
+
     def __getattr__(self, name):
         # default attr lookup straight to parent's __getattr__
         attr = super().__getattr__(name)
@@ -120,6 +140,7 @@ class BaseCplxToReal(torch.nn.Module):
 
 def _promote_callable_to_split(fn):
     """Create a runtime class promoting a real function to split activation."""
+
     class template(CplxToCplx):
         @wraps(fn)
         def __init__(self, *args, **kwargs):
@@ -137,13 +158,15 @@ def _promote_callable_to_split(fn):
     template.__name__ = f"CplxSplitFunc{fn.__name__.title()}"
     template.__qualname__ = f"<runtime type `{template.__name__}`>"
     template.__doc__ = f"Split activation based on `{fn.__name__}`"
-    template.forward.__doc__ = (f"Call `{fn.__name__}` on real and "
-                                "imaginary components independently.")
+    template.forward.__doc__ = (
+        f"Call `{fn.__name__}` on real and " "imaginary components independently."
+    )
     return template
 
 
 def _promote_module_to_split(Module):
     """Make a runtime class promoting a Module subclass to split activation."""
+
     class template(Module, CplxToCplx):
         def forward(self, input):
             """Apply to real and imaginary parts independently."""
@@ -157,6 +180,7 @@ def _promote_module_to_split(Module):
 
 class _CplxToCplxMeta(type):
     """Meta class for promoting real activations to split complex ones."""
+
     @lru_cache(maxsize=None)
     def __getitem__(self, Base):
         if not isinstance(Base, type) and callable(Base):
@@ -174,12 +198,13 @@ class _CplxToCplxMeta(type):
 
             return _promote_module_to_split(Base)
 
-        raise TypeError("Expecting either a torch.nn.Module subclass, or"
-                        f" a callable for promotion. Got `{type(Base)}`.")
+        raise TypeError(
+            "Expecting either a torch.nn.Module subclass, or"
+            f" a callable for promotion. Got `{type(Base)}`."
+        )
 
 
-class CplxToCplx(CplxParameterAccessor, torch.nn.Module,
-                 metaclass=_CplxToCplxMeta):
+class CplxToCplx(CplxParameterAccessor, torch.nn.Module, metaclass=_CplxToCplxMeta):
     pass
 
 

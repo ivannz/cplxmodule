@@ -32,6 +32,7 @@ class CplxLinear(CplxToCplx):
                     + i (W_\mathrm{im} u + W_\mathrm{re} v)
         \,. $$
     """
+
     def __init__(self, in_features, out_features, bias=True):
         super().__init__()
         self.in_features = in_features
@@ -42,7 +43,7 @@ class CplxLinear(CplxToCplx):
         if bias:
             self.bias = CplxParameter(cplx.Cplx.empty(out_features))
         else:
-            self.register_parameter('bias', None)
+            self.register_parameter("bias", None)
 
         self.reset_parameters()
 
@@ -58,7 +59,7 @@ class CplxLinear(CplxToCplx):
         return cplx.linear(input, self.weight, self.bias)
 
     def extra_repr(self):
-        return 'in_features={}, out_features={}, bias={}'.format(
+        return "in_features={}, out_features={}, bias={}".format(
             self.in_features, self.out_features, self.bias is not None
         )
 
@@ -73,20 +74,23 @@ class CplxBilinear(CplxToCplx):
         \colon (u, v) \mapsto (u^\top A_j v)_{j=1}^{d_2}
         \,. $$
     """
-    def __init__(self, in1_features, in2_features, out_features, bias=True,
-                 conjugate=True):
+
+    def __init__(
+        self, in1_features, in2_features, out_features, bias=True, conjugate=True
+    ):
         super().__init__()
         self.in1_features = in1_features
         self.in2_features = in2_features
         self.out_features = out_features
 
-        self.weight = CplxParameter(cplx.Cplx.empty(
-            out_features, in1_features, in2_features))
+        self.weight = CplxParameter(
+            cplx.Cplx.empty(out_features, in1_features, in2_features)
+        )
 
         if bias:
             self.bias = CplxParameter(cplx.Cplx.empty(out_features))
         else:
-            self.register_parameter('bias', None)
+            self.register_parameter("bias", None)
 
         self.conjugate = conjugate
 
@@ -100,15 +104,17 @@ class CplxBilinear(CplxToCplx):
             init.cplx_uniform_independent_(self.bias, -bound, bound)
 
     def forward(self, input1, input2):
-        return cplx.bilinear(input1, input2, self.weight,
-                             self.bias, self.conjugate)
+        return cplx.bilinear(input1, input2, self.weight, self.bias, self.conjugate)
 
     def extra_repr(self):
-        fmt = """in1_features={}, in2_features={}, out_features={}, """
-        fmt += """bias={}, conjugate={}"""
+        fmt = "in1_features={}, in2_features={}, out_features={}, bias={}, conjugate={}"
         return fmt.format(
-            self.in1_features, self.in2_features, self.out_features,
-            self.bias is not None, self.conjugate)
+            self.in1_features,
+            self.in2_features,
+            self.out_features,
+            self.bias is not None,
+            self.conjugate,
+        )
 
 
 class CplxPhaseShift(CplxToCplx):
@@ -126,6 +132,7 @@ class CplxPhaseShift(CplxToCplx):
     each complex feature in all channels by the same phase. Finally calling
     with CplxPhaseShift(1) shifts the inputs by the single common phase.
     """
+
     def __init__(self, *dim):
         super().__init__()
         self.phi = torch.nn.Parameter(torch.randn(*dim) * 0.02)

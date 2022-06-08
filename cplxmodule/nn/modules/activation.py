@@ -16,6 +16,7 @@ class CplxModReLU(CplxToCplx):
     with $\tau \in \mathbb{R}$. The if threshold=None then it
     becomes a learnable parameter.
     """
+
     def __init__(self, threshold=0.5):
         super().__init__()
         if not isinstance(threshold, float):
@@ -40,6 +41,7 @@ class CplxAdaptiveModReLU(CplxToCplx):
     features of the $d$-dim complex vector, and `CplxChanneledModReLU(d)` lets
     each dimension have its own threshold.
     """
+
     def __init__(self, *dim):
         super().__init__()
         self.dim = dim if dim else (1,)

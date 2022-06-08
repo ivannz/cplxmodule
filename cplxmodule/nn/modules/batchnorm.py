@@ -6,8 +6,14 @@ from .base import CplxToCplx
 from ... import cplx
 
 
-def whiten2x2(tensor, training=True, running_mean=None, running_cov=None,
-              momentum=0.1, nugget=1e-5):
+def whiten2x2(
+    tensor,
+    training=True,
+    running_mean=None,
+    running_cov=None,
+    momentum=0.1,
+    nugget=1e-5,
+):
     r"""Solve R M R = I for R and a given 2x2 matrix M = [[a, b], [c, d]].
 
     Arguments
@@ -81,10 +87,15 @@ def whiten2x2(tensor, training=True, running_mean=None, running_cov=None,
         # has to mul-mean here anyway (naïve) : reduction axes shifted left.
         cov_vu = cov_uv = (tensor[0] * tensor[1]).mean([a - 1 for a in axes])
         if running_cov is not None:
-            cov = torch.stack([
-                cov_uu.data, cov_uv.data,
-                cov_vu.data, cov_vv.data,
-            ], dim=0).reshape(2, 2, -1)
+            cov = torch.stack(
+                [
+                    cov_uu.data,
+                    cov_uv.data,
+                    cov_vu.data,
+                    cov_vv.data,
+                ],
+                dim=0,
+            ).reshape(2, 2, -1)
             running_cov += momentum * (cov - running_cov)
 
     else:
@@ -102,15 +113,24 @@ def whiten2x2(tensor, training=True, running_mean=None, running_cov=None,
     r, s = -cov_vu / denom, (cov_uu + sqrdet) / denom
 
     # 4. apply Q to x (manually)
-    out = torch.stack([
-        tensor[0] * p.reshape(tail) + tensor[1] * r.reshape(tail),
-        tensor[0] * q.reshape(tail) + tensor[1] * s.reshape(tail),
-    ], dim=0)
+    out = torch.stack(
+        [
+            tensor[0] * p.reshape(tail) + tensor[1] * r.reshape(tail),
+            tensor[0] * q.reshape(tail) + tensor[1] * s.reshape(tail),
+        ],
+        dim=0,
+    )
     return out  # , torch.cat([p, q, r, s], dim=0).reshape(2, 2, -1)
 
 
-def whitendxd(tensor, training=True, running_mean=None, running_cov=None,
-              momentum=0.1, nugget=1e-5):
+def whitendxd(
+    tensor,
+    training=True,
+    running_mean=None,
+    running_cov=None,
+    momentum=0.1,
+    nugget=1e-5,
+):
     """Jointly whiten features in tensors [P x B x F x ...]: take dim-P vectors
     and whiten individually for each F over [B x ...].
 
@@ -159,7 +179,8 @@ def whitendxd(tensor, training=True, running_mean=None, running_cov=None,
     ell = torch.cholesky(cov + eye, upper=True)
     soln = torch.triangular_solve(
         tensor.unsqueeze(-1).permute(*range(1, tensor.dim()), 0, -1),
-        ell.reshape(*shape, d, d))
+        ell.reshape(*shape, d, d),
+    )
 
     soln = soln.solution.squeeze(-1)
     return torch.stack(torch.unbind(soln, dim=-1), dim=0)
@@ -223,25 +244,36 @@ def cplx_batch_norm(
     speedup both on host and device computations).
     """
     # check arguments
-    assert ((running_mean is None and running_var is None)
-            or (running_mean is not None and running_var is not None))
-    assert ((weight is None and bias is None)
-            or (weight is not None and bias is not None))
+    assert (running_mean is None and running_var is None) or (
+        running_mean is not None and running_var is not None
+    )
+    assert (weight is None and bias is None) or (
+        weight is not None and bias is not None
+    )
 
     # stack along the first axis
     x = torch.stack([input.real, input.imag], dim=0)
 
     # whiten and apply affine transformation
-    z = whiten2x2(x, training=training, running_mean=running_mean,
-                  running_cov=running_var, momentum=momentum, nugget=eps)
+    z = whiten2x2(
+        x,
+        training=training,
+        running_mean=running_mean,
+        running_cov=running_var,
+        momentum=momentum,
+        nugget=eps,
+    )
 
     if weight is not None and bias is not None:
         shape = 1, x.shape[2], *([1] * (x.dim() - 3))
         weight = weight.reshape(2, 2, *shape)
-        z = torch.stack([
-            z[0] * weight[0, 0] + z[1] * weight[0, 1],
-            z[0] * weight[1, 0] + z[1] * weight[1, 1],
-        ], dim=0) + bias.reshape(2, *shape)
+        z = torch.stack(
+            [
+                z[0] * weight[0, 0] + z[1] * weight[0, 1],
+                z[0] * weight[1, 0] + z[1] * weight[1, 1],
+            ],
+            dim=0,
+        ) + bias.reshape(2, *shape)
 
     return cplx.Cplx(z[0], z[1])
 
@@ -251,6 +283,7 @@ class _CplxBatchNorm(CplxToCplx):
 
     Taken from `torch.nn.modules.batchnorm` verbatim.
     """
+
     def __init__(
         self,
         num_features,
@@ -271,18 +304,20 @@ class _CplxBatchNorm(CplxToCplx):
             self.bias = torch.nn.Parameter(torch.empty(2, num_features))
 
         else:
-            self.register_parameter('weight', None)
-            self.register_parameter('bias', None)
+            self.register_parameter("weight", None)
+            self.register_parameter("bias", None)
 
         if self.track_running_stats:
-            self.register_buffer('running_mean', torch.empty(2, num_features))
-            self.register_buffer('running_var', torch.empty(2, 2, num_features))
-            self.register_buffer('num_batches_tracked', torch.tensor(0, dtype=torch.long))
+            self.register_buffer("running_mean", torch.empty(2, num_features))
+            self.register_buffer("running_var", torch.empty(2, 2, num_features))
+            self.register_buffer(
+                "num_batches_tracked", torch.tensor(0, dtype=torch.long)
+            )
 
         else:
-            self.register_parameter('running_mean', None)
-            self.register_parameter('running_var', None)
-            self.register_parameter('num_batches_tracked', None)
+            self.register_parameter("running_mean", None)
+            self.register_parameter("running_var", None)
+            self.register_parameter("num_batches_tracked", None)
 
         self.reset_running_stats()
         self.reset_parameters()
@@ -294,13 +329,13 @@ class _CplxBatchNorm(CplxToCplx):
         self.num_batches_tracked.zero_()
 
         self.running_mean.zero_()
-        self.running_var.copy_(torch.eye(2,  2).unsqueeze(-1))
+        self.running_var.copy_(torch.eye(2, 2).unsqueeze(-1))
 
     def reset_parameters(self):
         if not self.affine:
             return
 
-        self.weight.data.copy_(torch.eye(2,  2).unsqueeze(-1))
+        self.weight.data.copy_(torch.eye(2, 2).unsqueeze(-1))
         init.zeros_(self.bias)
 
     def _check_input_dim(self, input):
@@ -323,40 +358,50 @@ class _CplxBatchNorm(CplxToCplx):
                     exponential_average_factor = self.momentum
 
         return cplx_batch_norm(
-            input, self.running_mean, self.running_var, self.weight, self.bias,
+            input,
+            self.running_mean,
+            self.running_var,
+            self.weight,
+            self.bias,
             self.training or not self.track_running_stats,
-            exponential_average_factor, self.eps)
+            exponential_average_factor,
+            self.eps,
+        )
 
     def extra_repr(self):
-        return '{num_features}, eps={eps}, momentum={momentum}, affine={affine}, ' \
-               'track_running_stats={track_running_stats}'.format(**vars(self))
+        return (
+            "{num_features}, eps={eps}, momentum={momentum}, affine={affine}, "
+            "track_running_stats={track_running_stats}".format(**vars(self))
+        )
 
 
 class CplxBatchNorm1d(_CplxBatchNorm):
     """Complex-valued batch normalization for 2D or 3D data.
     See torch.nn.BatchNorm1d for details.
     """
+
     def _check_input_dim(self, input):
         if input.dim() != 2 and input.dim() != 3:
-            raise ValueError('expected 2D or 3D input (got {}D input)'
-                             .format(input.dim()))
+            raise ValueError(
+                "expected 2D or 3D input (got {}D input)".format(input.dim())
+            )
 
 
 class CplxBatchNorm2d(_CplxBatchNorm):
     """Complex-valued batch normalization for 4D data.
     See torch.nn.BatchNorm2d for details.
     """
+
     def _check_input_dim(self, input):
         if input.dim() != 4:
-            raise ValueError('expected 4D input (got {}D input)'
-                             .format(input.dim()))
+            raise ValueError("expected 4D input (got {}D input)".format(input.dim()))
 
 
 class CplxBatchNorm3d(_CplxBatchNorm):
     """Complex-valued batch normalization for 5D data.
     See torch.nn.BatchNorm3d for details.
     """
+
     def _check_input_dim(self, input):
         if input.dim() != 5:
-            raise ValueError('expected 5D input (got {}D input)'
-                             .format(input.dim()))
+            raise ValueError("expected 5D input (got {}D input)".format(input.dim()))

@@ -20,6 +20,7 @@ class InterleavedRealToCplx(BaseRealToCplx):
 
     Inverts `CplxToInterleavedReal`.
     """
+
     def __init__(self, copy=False, dim=-1):
         super().__init__()
         self.copy, self.dim = copy, dim
@@ -43,6 +44,7 @@ class ConcatenatedRealToCplx(BaseRealToCplx):
 
     Inverts `CplxToConcatenatedReal`.
     """
+
     def __init__(self, copy=False, dim=-1):
         super().__init__()
         self.copy, self.dim = copy, dim
@@ -63,6 +65,7 @@ class CplxToInterleavedReal(BaseCplxToReal):
 
     Inverts `InterleavedRealToCplx`.
     """
+
     def __init__(self, dim=-1):
         super().__init__()
         self.dim = dim
@@ -83,6 +86,7 @@ class CplxToConcatenatedReal(BaseCplxToReal):
 
     Inverts `ConcatenatedRealToCplx`.
     """
+
     def __init__(self, dim=-1):
         super().__init__()
         self.dim = dim
@@ -103,6 +107,7 @@ class AsTypeCplx(BaseRealToCplx):
 
     Inverts `nn.linear.CplxReal`.
     """
+
     def forward(self, input):
         return cplx.Cplx(input)
 
@@ -120,6 +125,7 @@ class TensorToCplx(BaseRealToCplx):
 
     Inverts `CplxToTensor`.
     """
+
     def forward(self, input):
         """input must be a , and may have
         arbitrary number of.
@@ -141,5 +147,6 @@ class CplxToTensor(BaseCplxToReal):
 
     Inverts `TensorToCplx`.
     """
+
     def forward(self, input):
         return cplx.to_interleaved_real(input, False, -1)
