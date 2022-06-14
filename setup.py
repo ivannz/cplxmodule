@@ -14,12 +14,8 @@ if __name__ == "__main__":
         name="cplxmodule",
         version=version,
         description="Variational Dropout and Complex-valued Neural Networks in pytorch",
-        long_description="""An extension for pytorch providing essential building """
-        """blocks for Complex-valued Neural Networks and `torch.nn`-compatible """
-        """real- and complex-valued Variational Dropout methods. Implements the """
-        """tools necessary to train, sparsify and fine-tune both real- and """
-        """complex-valued models, and seamlessly integrate them into existing """
-        """pipelines.""",
+        long_description=open("README.md").read(),
+        long_description_content_type="text/markdown",
         url="https://github.com/ivannz/cplxmodule",
         keywords=[
             "pytorch",

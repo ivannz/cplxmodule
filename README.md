@@ -1,6 +1,6 @@
 # CplxModule
 
-A lightweight extension for `torch.nn` that adds layers and activations, which respect algebraic operations over the *field of complex numbers*, and implements *real- and complex-valued Variational Dropout* methods for weight sparsification.
+A lightweight extension for `torch.nn` that adds layers and activations, which respect algebraic operations over the *field of complex numbers*, and implements *real- and complex-valued Variational Dropout* methods for weight sparsification. The complex-valued building blocks and Variational Dropout layers of both kinds can be seamlessly integrated into pytorch-based training pipelines. The package provides the toolset necessary to train, sparsify and fine-tune both real- and complex-valued models.
 
 ## Documentation
 
